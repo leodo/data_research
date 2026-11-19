@@ -51,6 +51,8 @@ TURNING_MIN_DIMS = 6            # 少于此数量的有效维度不出信号（�
 TURNING_FWD_WINS = (20, 60)     # 历史回测的前瞻收益窗口（交易日）
 TURNING_TRIGGER_GAP = 20        # 触发日去重的间隔（交易日），避免重叠样本夸大显著性
 TURNING_MIN_HIST = 250          # 单维度 expanding 分位的最小历史样本
+TURNING_ARMS_PANIC_ADV = 20.0   # 上涨家数占比低于此值(极端普跌日)时剔除 TRIN 维度：
+                                # 此时低 TRIN 是资金抱团+全面失血，不是买盘强劲
 
 # ---------------- ERP 股债归因（build_mood.py 内）----------------
 ERP_ATTR_WIN = 250              # 归因回看窗口（交易日，约 1 年）

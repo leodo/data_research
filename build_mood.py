@@ -8,7 +8,7 @@
 8 个指标：
   1. rp         A股风险溢价      = 全A盈利收益率(1/PE) − 10年国债收益率    [月频PE按日对齐]
   2. dgz        低估指数行业      = 申万31个一级行业中处于低估(低分位)的个数 [近似:价格分位代理估值]
-  3. fx_fe      新基金发行        = 近90日滚动日均发行份额(亿份), 反向指标   [精确自算]
+  3. fx_fe      新基金发行        = 近90日窗口各发行日平均募集份额(亿份)   [精确自算; 源仅回溯2023-01]
   4. pgjj_zsy   正收益偏股基金占比= 上证基金指数近1年收益率为正占比的代理     [代理]
   5. qschsl     全市场换手率      = 两市成交额 ÷ 全市场总市值 ×100%         [精确自算]
   6. pcr        PCR(认沽/认购持仓)= 上交所ETF期权未平仓认沽/认购比           [精确自算]
@@ -61,11 +61,8 @@ def fetch_all_pe():
     return sjoin(d.set_index("date")["平均市盈率"], "all_pe_lg")
 
 
-# 1b) 保留：全市场总市值（当前无指标消费，仅供换手率分母复核）
-def fetch_total_mv():
-    d = ak.stock_market_pe_lg(symbol="全部A股")
-    d["date"] = pd.to_datetime(d["日期"])
-    return sjoin(d.set_index("date")["总市值"], "total_mv")
+# 注：data/mood_all_pe.csv 与 data/mood_total_mv.csv 是口径修复前遗留的坏缓存
+# (symbol 参数失效误取科创板 PE 90.51)，已无任何消费者，仅为历史留档，勿再读取。
 
 
 # 1c) 10年国债收益率（优先用已缓存的原始文件，避免东财限流）
@@ -417,9 +414,13 @@ def build_erp_attrib(src):
                          & (d["d_ep"] <= 0)).astype(int)
         d["illusion_gap"] = pct_rank(d["erp"]) - pct_rank(d["ep"])
         d["bond_pct"] = pct_rank(d["bond10"])
-        out = d.dropna(subset=["d_erp"]).copy()
+        # 落盘保留完整 erp/ep/bond10 历史：派生列 d_erp 等前 w 行为 NaN 属正常。
+        # 2026-11-20 复核修复：此前用 dropna(subset=["d_erp"]) 裁掉前 250 行，
+        # 导致「ERP 股债归因」卡与「A股风险溢价」主卡对同一个 rp 值给出
+        # 97.05 与 97.23 两个不同分位。裁行只应发生在取最新归因结果时。
+        out = d.copy()
         out.to_csv(DATA / "mood_erp_attrib.csv", index_label="date", float_format="%.4f")
-        r = out.iloc[-1]
+        r = out.dropna(subset=["d_erp"]).iloc[-1]
         log(f"    [erp_attrib] rp={r['erp']:.3f}% 近{w}日 Δrp={r['d_erp']:+.3f}pp "
             f"= 股票端{r['d_ep']:+.3f} + 债券端{r['d_bond']:+.3f}；"
             f"债券端占 {r['bond_share']:.1f}%，便宜错觉={'是' if r['illusion'] else '否'}")
@@ -544,11 +545,23 @@ def calc_fx_fe(src):
     try:
         fi = src["fi"]
         if fi is not None:
+            # 2026-11-20 复核：东财 fund_new_found_em 实际只回溯到 2023-01，
+            # 缓存里 2013/2018 两个孤点是接口残留，会让序列「看起来」有 13 年历史。
+            # 剔除孤点后如实以 2023-01 为起点，并在来源说明里写明样本限制。
+            fi = fi[fi.index >= "2023-01-01"]
             roll = fi.rolling("90D").mean().dropna()
             roll = roll[roll.index <= TODAY]
             return make_panel("fx_fe", "新基金发行", roll,
-                              "按成立日期聚合募集份额(akshare fund_new_found_em)，取近90日滚动日均发行份额(亿份)",
-                              reverse=False, unit="亿份", desc="近90日日均新基金发行份额，反映资金亢奋程度(越高越贪婪)")
+                              "按成立日期聚合募集份额(akshare fund_new_found_em)，取近90日窗口内"
+                              "各发行日募集份额的滚动平均值(亿份)。"
+                              "【数据限制】该接口仅回溯至 2023-01，2014-2022 无公开逐日发行份额数据，"
+                              "故本卡历史分位仅基于约 3.8 年样本，跨时代可比性有限；"
+                              "缓存中 2013/2018 两个孤立残点已剔除。",
+                              reverse=False, unit="亿份",
+                              desc="近90日窗口内各发行日的平均募集份额，反映单日新基金发行热度"
+                              "(越高越亢奋)。注意这不是「日均发行份额」(合计÷90)，也不是窗口合计；"
+                              "东财接口仅回溯至 2023-01，历史分位样本短于本页其他指标。"
+                              "综合分历史已相应改为按当日可用指标等权，2023-02 前不含本指标。")
         return None
     except Exception as e:
         log(f"    [fx_fe] 计算失败: {e}")
@@ -609,7 +622,7 @@ def calc_zzpgnh(src):
             ann = ann.dropna() * 100
             ann.name = "ann"
             return make_panel("zzpgnh", "股基滚动年化收益", ann,
-                              "代理指标：上证基金指数(sh000011)相对3年前(756交易日)的年化收益率。原站用偏股型基金全样本，此处用基金指数代理",
+                              "代理指标：上证基金指数(sh000011)相对3年前(3×244=732个交易日)的年化收益率。原站用偏股型基金全样本，此处用基金指数代理",
                               reverse=False, desc="往前3年买入偏股基金并持有的年化收益，向下偏离均值可能是底部")
         return None
     except Exception as e:
@@ -653,7 +666,7 @@ def calc_compare_panel():
             tss = tss[tss.index <= TODAY].dropna()
             return make_panel(
                 "qschsl_sse", "换手率·上交所官方口径", tss,
-                "上交所官方每日股票换手率字段（成交额÷市价总值×100%），2022-02 起，全程同一口径、不拼接深市、不做系数换算。用于与上方『全市场换手率』对比：上方为还原全市场量级的桥接口径，本项为原始沪市口径，数值系统性偏低但无拼接",
+                "上交所官方每日股票换手率字段（成交额÷市价总值×100%），2022-01 起，全程同一口径、不拼接深市、不做系数换算。与上方全市场换手率由同一次抓取同步产出、日期严格对齐。用于与上方『全市场换手率』对比：上方为还原全市场量级的桥接口径，本项为原始沪市口径，数值系统性偏低但无拼接",
                 reverse=False, unit="%",
                 desc="【口径对比图】与上方全市场换手率对照：本图只用上交所官方换手率，2022年起口径统一、无深市桥接，因此2024年9月前后不出现拼接差异。数值为沪市单一市场口径，低于全市场属正常，主要用于观察形态与台阶变化，不参与综合情绪分。")
         return None
@@ -1209,12 +1222,23 @@ def build_macro_panels():
 
 # ---------------- 综合情绪分 ----------------
 def build_composite(panels):
-    """各面板 score 等权平均；历史按共同区间对齐后周频采样。"""
+    """当前值 = 各面板 score 等权平均；历史 = 当日可用面板等权平均后周频采样。
+
+    2026-11-20 复核修复：此前用 common_start = max(各面板起点) 裁历史，
+    而「新基金发行」的数据源只回溯到 2023-01，把整条综合分历史截到 2023-02，
+    白白丢掉其余 7 个指标二十多年的历史。现改为「当日至少 4 个指标有效即出分」，
+    早期为少指标口径，并用 composite.meta 明确标注口径变化点，不伪装成 8 指标全程可比。
+    """
     composite_parts = {k: p["score"] for k, p in panels.items()}
     composite = round(float(np.mean(list(composite_parts.values()))), 2) if composite_parts else 50.0
+    comp_hist = []
+    meta = {"n_metrics": len(panels), "history_start": None, "full_start": None,
+            "min_metrics": 4,
+            "note": "综合分历史按「当日已有数据的指标等权」计算：早期部分指标尚未发布，"
+                    "参与指标少于 8 个，与当前 8 指标等权口径不完全可比；"
+                    "全指标齐备后才是严格等权。当前值始终为全部有效指标等权。"}
     try:
         score_series = {}
-        starts = []
         for k, p in panels.items():
             s = pd.Series(
                 [h["pct"] for h in p["history"]],
@@ -1223,31 +1247,32 @@ def build_composite(panels):
             if p["reverse"]:
                 s = 100 - s
             score_series[k] = s
-            if len(s):
-                starts.append(s.index.min())
         df = pd.DataFrame(score_series).sort_index()
-        common_start = max(starts) if starts else df.index.min()
-        comp = df.ffill().mean(axis=1).dropna()
-        comp = comp[comp.index >= common_start]
+        n_avail = df.notna().sum(axis=1)
+        comp = df.ffill().mean(axis=1).where(n_avail >= meta["min_metrics"]).dropna()
+        full = n_avail[n_avail >= len(panels)]
+        meta["full_start"] = full.index.min().strftime("%Y-%m-%d") if len(full) else None
+        meta["history_start"] = comp.index.min().strftime("%Y-%m-%d") if len(comp) else None
         comp_w = comp.resample("W-FRI").last().dropna()
         comp_hist = [
             {"date": dt.strftime("%Y-%m-%d"), "score": round(float(v), 2)}
             for dt, v in comp_w.items()
         ]
-        log(f"    综合分历史: {comp.index.min().date()} ~ {comp.index.max().date()}, {len(comp_hist)}周点")
+        log(f"    综合分历史: {comp.index.min().date()} ~ {comp.index.max().date()}, {len(comp_hist)}周点；"
+            f"全{len(panels)}指标齐备自 {meta['full_start']}")
     except Exception as e:
         log(f"    综合分历史计算失败: {e}")
-        comp_hist = []
-    return composite, comp_hist
+    return composite, comp_hist, meta
 
 
 # ---------------- 输出 ----------------
 def write_output(panels, compare_panel, macro_panels, crowding_panel,
-                 signal_panels, turning_panel, composite, comp_hist, t0):
+                 signal_panels, turning_panel, composite, comp_hist, comp_meta, t0):
     out = {
         "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "data_date": TODAY.strftime("%Y-%m-%d"),
-        "composite": {"score": composite, "state": state_of(composite)[0], "history": comp_hist},
+        "composite": {"score": composite, "state": state_of(composite)[0],
+                      "history": comp_hist, "meta": comp_meta},
         "panels": panels,
         "compare_panel": compare_panel,
         "macro_panels": macro_panels,
@@ -1314,9 +1339,9 @@ def main():
         turning_panel = None
     signal_panels = build_signal_panels()
 
-    composite, comp_hist = build_composite(panels)
+    composite, comp_hist, comp_meta = build_composite(panels)
     write_output(panels, compare_panel, macro_panels, crowding_panel,
-                 signal_panels, turning_panel, composite, comp_hist, t0)
+                 signal_panels, turning_panel, composite, comp_hist, comp_meta, t0)
 
 
 if __name__ == "__main__":

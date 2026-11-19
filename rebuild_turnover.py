@@ -20,7 +20,10 @@
   说明：这是用单市场权威数据 + 市值权重还原的"全市场换手率"近似，
   量级与真实全市场一致，分位走势可靠；页面来源中会明确标注。
 
-输出：data/mood_turnover_rate.csv (index=date, 列=turnover_rate)
+输出：data/mood_turnover_rate.csv   (index=date, 列=turnover_rate，全市场桥接口径)
+      data/mood_turnover_sse.csv    (index=ds,   列=turnover_sse，上交所原始口径对比图)
+两份文件同一次运行产出，日期严格对齐；后者由 2022 起的沪市结果除以
+K_SH_TO_ALL 精确还原，不额外发请求。
 """
 import time
 import warnings
@@ -96,9 +99,23 @@ def main():
     s = s.sort_index()
     full = pd.Series(index=pd.to_datetime(cal), dtype=float)
     full.loc[s.index] = s.values
+    # 2026-11-20 复核修复：官方交易日历含「今天」，但盘后数据尚未发布时
+    # 该日无真实值；若保留在 full 里，下面的 interpolate 会把上一交易日
+    # 的值复制到今天，制造一个「幽灵数据点」，使主图日期比官方口径图多一天。
+    full = full.loc[:s.index.max()]
     full = full.interpolate(method="linear", limit=7).dropna()
     full.name = "turnover_rate"
     full.to_csv(OUT)
+
+    # 同步输出「上交所官方原始口径」对比序列：2022 起 done 本身就是
+    # sh_rate × K_SH_TO_ALL，除以系数即可精确还原，零额外网络请求。
+    # 2026-11-20 复核修复：此前 mood_turnover_sse.csv 没有任何脚本生成、
+    # 也不在启动 DAG 里，是一次性静态文件，对比卡永远停在生成当天，
+    # 与上方主图日期错位，用户无法逐日对齐比较两张换手率图。
+    sse = s[s.index >= "2022-01-04"] / K_SH_TO_ALL
+    sse.name = "turnover_sse"
+    sse.to_csv(DATA / "mood_turnover_sse.csv", index_label="ds")
+    log(f"同步上交所官方口径 {len(sse)} 日，末日 {sse.index[-1].date()} = {sse.iloc[-1]:.4f}%")
 
     log(f"完成 {len(full)} 日 {full.index.min().date()} ~ {full.index.max().date()}")
     log(f"最新 {full.iloc[-1]:.4f}% 近5日 {[round(x,3) for x in full.tail(5).tolist()]}")

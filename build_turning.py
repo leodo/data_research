@@ -18,6 +18,12 @@ build_arms.py 产出，缺失时自动跳过，不影响其余 11 维）。
 分位用全历史 expanding(min_periods=250)，与情绪面板口径一致；
 月频序列最多前向填充 45 个交易日、日频最多 10 日，避免停更数据无限前推。
 
+**TRIN 普跌日屏蔽（2026-11-20 复核新增）**：A 股极端普跌日少数上涨股
+吸走大量成交会让 TRIN 系统性偏低，阿姆氏卡片已明确警示「此时不是买盘
+强劲」。若不屏蔽，共振板当前唯一的「顶部极值」维度恰好来自这一已知误读。
+故当上涨家数占比 < TURNING_ARMS_PANIC_ADV 时，把该日 TRIN 维度置空，
+不计入有效维度数；维度明细里仍列出但标注「已剔除」。
+
 历史回测：以沪深300 收盘价计算未来 20 / 60 交易日收益，分「底部拐点触发 /
 底部极值未确认 / 顶部警戒 / 全样本基准」四组统计胜率与平均收益；
 连续触发段按 20 交易日间隔去重，避免重叠样本夸大显著性。
@@ -36,9 +42,9 @@ import json
 import numpy as np
 import pandas as pd
 
-from config import (TURNING_FEAR_PCT, TURNING_FWD_WINS, TURNING_MIN_DIMS,
-                    TURNING_MIN_HIST, TURNING_TOP_PCT, TURNING_TRIGGER,
-                    TURNING_TRIGGER_GAP)
+from config import (TURNING_ARMS_PANIC_ADV, TURNING_FEAR_PCT, TURNING_FWD_WINS,
+                    TURNING_MIN_DIMS, TURNING_MIN_HIST, TURNING_TOP_PCT,
+                    TURNING_TRIGGER, TURNING_TRIGGER_GAP)
 from core import DATA, TODAY, log
 
 OUT_CSV = DATA / "mood_turning.csv"
@@ -156,6 +162,28 @@ def build():
             "last_date": last_pos.strftime("%Y-%m-%d") if last_pos is not None else None,
         })
 
+    # ---------- 极端普跌日的 TRIN 屏蔽 ----------
+    # 阿姆氏卡片已明确警示：A 股普跌日少数上涨股吸走大量成交会让 TRIN 系统性
+    # 偏低，此时不是「买盘强劲/超买」，不能机械套用美股教科书的顶部结论。
+    # 若共振板照单全收，当前唯一的「顶部极值」维度恰好来自这一已知误读。
+    panic_mask = None
+    if "arms" in fear:
+        try:
+            adv = _series("mood_breadth_extra.csv", "adv_ratio").reindex(idx).ffill(limit=10)
+            panic_mask = adv < TURNING_ARMS_PANIC_ADV
+            fear["arms"] = fear["arms"].where(~panic_mask)
+            log(f"    [turning] TRIN 维度在 {int(panic_mask.sum())} 个极端普跌日"
+                f"（上涨家数占比 < {TURNING_ARMS_PANIC_ADV}%）被剔除，不参与极值统计")
+        except (FileNotFoundError, KeyError) as e:
+            log(f"    [turning] 普跌日屏蔽未生效：{e}")
+            panic_mask = None
+    if panic_mask is not None and len(panic_mask) and bool(panic_mask.iloc[-1]):
+        for d in detail:
+            if d["key"] == "arms":
+                d["masked"] = True
+                d["is_bottom"] = False
+                d["is_top"] = False
+
     F = pd.DataFrame(fear, index=idx)
     n_valid = F.notna().sum(axis=1)
     bottom_score = ((F >= TURNING_FEAR_PCT).sum(axis=1) / n_valid * 100).where(n_valid >= TURNING_MIN_DIMS)
@@ -267,6 +295,7 @@ def build():
             "hs300": round(float(cur["hs300"]), 2),
         },
         "dims": detail,
+        "masked_dims": [d["name"] for d in detail if d.get("masked")],
         "backtest": backtest,
         "triggers": trig[:12],
         "thresholds": {
@@ -278,6 +307,9 @@ def build():
         "disclaimer": ("共振度是赔率统计而非择时信号。阈值为本脚本设定、未做样本外检验，"
                        "触发日按20交易日去重但收益窗口仍重叠，未计交易成本与滑点；"
                        "低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。"
+                       "各维度统一对齐 2015 年起交易日历、分位用 expanding(min_periods=250)，"
+                       "与单卡「自身全历史 + min_periods=20」的分位略有差异属口径不同、并非计算错误；"
+                       "极端普跌日（上涨家数占比<20%）的 TRIN 维度已按阿姆氏卡片的警示剔除。"
                        "极值可长期钝化，政策与盈利才决定反弹还是反转。仅供研究参考，不构成投资建议。"),
     }
     OUT_META.write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
