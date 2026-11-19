@@ -109,6 +109,7 @@ a{text-decoration:none;color:inherit}
     <div class="nav-group">
       <div class="nav-title">工具指标</div>
       <a class="nav-item active" href="indicators.html"><span class="ico">⚑</span> 恐贪指数</a>
+      <div class="toc-side" id="tocSide"></div>
       <a class="nav-item" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
     </div>
   </aside>
@@ -125,6 +126,7 @@ a{text-decoration:none;color:inherit}
         <a href="mood.html"><button>情绪面板</button></a>
       </div>
 
+      <div id="tocBar"></div>
       <div id="app" class="loading">数据加载中…</div>
     </div>
   </div>
@@ -231,7 +233,7 @@ a{text-decoration:none;color:inherit}
       html += '<div class="src-note-line">ⓘ '+esc(META_IN[current].note)+'</div>';
     }
 
-    html += '<div class="card"><div class="hero">';
+    html += '<div class="card" data-toc="'+esc(m.name)+' · 恐贪指数总览" data-toc-group="当前指数" id="toc_hero"><div class="hero">';
     html += '<div class="hero-left"><div class="big-num" style="color:'+d.color+'">'+fmt(d.value)+'</div>';
     html += '<div class="badge" style="background:'+d.color+'">'+d.desc+'</div>';
     html += '<div class="date-line">数据日期：'+d.date+' · 更新于 '+esc(window.FG_DATA.generated_at)+'</div></div>';
@@ -246,7 +248,7 @@ a{text-decoration:none;color:inherit}
     html += '<div class="how" id="howBtn"><span class="q">?</span> 如何计算恐贪指数 <span>›</span></div>';
     html += '</div>';
 
-    html += '<div class="card"><div class="sec-head"><div class="sec-title">恐贪指数走势</div><div class="ranges">';
+    html += '<div class="card" data-toc="恐贪指数走势" data-toc-group="当前指数" id="toc_main"><div class="sec-head"><div class="sec-title">恐贪指数走势</div><div class="ranges">';
     html += '<button data-range="y1" class="'+(range==="y1"?"active":"")+'">近1年</button>';
     html += '<button data-range="y2" class="'+(range==="y2"?"active":"")+'">近两年</button>';
     html += '<button data-range="all" class="'+(range==="all"?"active":"")+'">全部</button>';
@@ -254,12 +256,14 @@ a{text-decoration:none;color:inherit}
 
     var hasFut = (current==="hs300" || current==="zz500" || current==="zz1000");
     var synthTxt = '构成因子（隐波45% + 乖离45% + 其余共10%）';
-    html += '<div class="card"><div class="sec-head"><div class="sec-title">'+synthTxt+'</div><span class="src-tag '+tagCls+'">'+tagTxt+'</span></div>';
+    html += '<div class="card" data-toc="构成因子" data-toc-group="当前指数" id="toc_factors"><div class="sec-head"><div class="sec-title">'+synthTxt+'</div><span class="src-tag '+tagCls+'">'+tagTxt+'</span></div>';
     html += '<div class="factor-grid" id="factorGrid"></div></div>';
 
-    html += '<div class="note"><b>数据口径与局限：</b>'+esc(d.source_note)+' 该指标刻画短期情绪，算法未完全公开，不宜作为独立交易系统；极端行情下可能长期钝化。本页仅供研究参考，不构成投资建议。</div>';
+    html += '<div class="note" data-toc="数据口径与局限" data-toc-group="说明" id="toc_note"><b>数据口径与局限：</b>'+esc(d.source_note)+' 该指标刻画短期情绪，算法未完全公开，不宜作为独立交易系统；极端行情下可能长期钝化。本页仅供研究参考，不构成投资建议。</div>';
 
+    app.className = "";
     app.innerHTML = html;
+    if(window.mountToc) mountToc({app:"#app", bar:"#tocBar", side:"#tocSide", prefix:"fg"});
     charts = [];
     bind();
     drawMain(d);

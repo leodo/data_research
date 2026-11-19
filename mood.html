@@ -114,6 +114,7 @@ a{text-decoration:none;color:inherit}
       <div class="nav-title">工具指标</div>
       <a class="nav-item" href="indicators.html"><span class="ico">⚑</span> 恐贪指数</a>
       <a class="nav-item active" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
+      <div class="toc-side" id="tocSide"></div>
     </div>
   </aside>
 
@@ -129,6 +130,7 @@ a{text-decoration:none;color:inherit}
         <a href="mood.html"><button class="active">情绪面板</button></a>
       </div>
 
+      <div id="tocBar"></div>
       <div id="app" class="loading">数据加载中…</div>
     </div>
   </div>
@@ -248,7 +250,7 @@ a{text-decoration:none;color:inherit}
     var comp = D.composite || {score:50,state:"中立",history:[]};
     var cs = Number(comp.score)||50;
     var cst = comp.state || (cs<=30?"积极":(cs>=70?"谨慎":"中立"));
-    html += '<div class="card"><div class="hero">';
+    html += '<div class="card" data-toc="市场综合情绪分" data-toc-group="总览" id="toc_overview"><div class="hero">';
     html += '<div class="hero-left"><div style="color:var(--text-3);font-size:13px;margin-bottom:6px">市场综合情绪分</div>';
     html += '<div class="big-num" style="color:'+stateColor(cst)+'">'+fmt(cs,1)+'</div>';
     html += '<span class="badge" style="background:'+stateColor(cst)+'">'+esc(cst)+'</span>';
@@ -266,7 +268,7 @@ a{text-decoration:none;color:inherit}
     html += '</div><span class="range-hint">切换区间后，曲线支持鼠标拖拽平移、滚轮缩放细节</span></div></div>';
 
     // 综合情绪分走势
-    html += '<div class="card"><div class="sec-head"><span class="sec-title">综合情绪分 · 历史走势</span><span style="color:var(--text-3);font-size:12px">鼠标拖拽平移 · 滚轮缩放 · 双击复位</span></div><div id="compChart" class="chart"></div></div>';
+    html += '<div class="card" data-toc="综合情绪分 · 历史走势" data-toc-group="总览" id="toc_comp"><div class="sec-head"><span class="sec-title">综合情绪分 · 历史走势</span><span style="color:var(--text-3);font-size:12px">鼠标拖拽平移 · 滚轮缩放 · 双击复位</span></div><div id="compChart" class="chart"></div></div>';
 
     // 8个指标卡片
     html += '<div class="sec-head" style="margin-top:6px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
@@ -276,7 +278,7 @@ a{text-decoration:none;color:inherit}
       if(!p) return;
       var flag = flags[k] || "精确";
       var flagCls = (flag==="精确") ? "exact" : "proxy";
-      html += '<div class="panel">';
+      html += '<div class="panel" data-toc="'+esc(p.name)+'" data-toc-group="分项指标" id="toc_'+k+'">';
       html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag '+flagCls+'">'+esc(flag)+'自算</span>'+staleTag(p)+'</div></div>';
       html += '<span class="pstate '+stateCls(p.state)+'">'+esc(p.state)+'</span></div>';
       html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value, p.unit==="个"?0:2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
@@ -304,7 +306,7 @@ a{text-decoration:none;color:inherit}
     if(cd){
       html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">交易拥挤度</span><span style="color:var(--text-3);font-size:12px">市场微观结构观察 · 反向情绪指标 · 不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
-      html += '<div class="panel">';
+      html += '<div class="panel" data-toc="'+esc(cd.name)+'" data-toc-group="交易拥挤度" id="toc_crowding">';
       html += '<div class="panel-hd"><div><div class="panel-name">'+esc(cd.name)+'</div><div class="panel-tags"><span class="ptag exact">精确自算</span><span class="ptag proxy" style="margin-left:6px">反向指标</span></div></div>';
       html += '<span class="pstate '+stateCls(cd.state)+'">'+esc(cd.state)+'</span></div>';
       html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(cd.value,2)+'<span class="u">'+esc(cd.unit||"")+'</span></div>';
@@ -335,7 +337,7 @@ a{text-decoration:none;color:inherit}
       html += '<div class="panel-grid">';
       mo.forEach(function(k){
         var p = mp[k]; if(!p) return;
-        html += '<div class="panel" style="border-style:dashed">';
+        html += '<div class="panel" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="结构观察" id="toc_'+k+'">';
         html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">结构指标</span>'+(p.freq==="monthly"?'<span class="ptag" style="margin-left:6px">月频</span>':'')+staleTag(p)+'</div></div>';
         html += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">市场结构</span></div>';
         html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
@@ -355,10 +357,12 @@ a{text-decoration:none;color:inherit}
       html += '</div>';
     }
 
-    html += '<div class="note" style="margin-top:18px"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
-    html += '<div class="note" style="margin-top:12px"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB 均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号。</div>';
+    html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
+    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB 均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号。</div>';
 
+    app.className = "";   // 移除初始 loading 态（padding/text-align 会压缩卡片）
     app.innerHTML = html;
+    if(window.mountToc) mountToc({app:"#app", bar:"#tocBar", side:"#tocSide", prefix:"mood"});
 
     var how = document.getElementById("howBtn");
     if(how) how.addEventListener("click", function(){ document.getElementById("mask").classList.add("show"); });

@@ -43,8 +43,8 @@ python serve.py                 # 只起静态服务，不更新数据（调试�
          build_mood.py                   情绪面板汇总 + 输出
 公共层   config.py                        全局口径系数、抓取参数、端口
          core.py                          路径/日期/日志/缓存/分位/交易日历
-         app.js                           前端十字准星 helper
-         app.css                          三页共用主题变量（浅/暗双主题）
+         app.js                           前端公共层：十字准星 helper + 二级目录组件 mountToc()
+         app.css                          三页共用主题变量（浅/暗双主题）+ 目录样式
 数据层   data/                            CSV 缓存 + JSON/JS 输出（派生产物，不入库）
 展示层   index.html / indicators.html / mood.html / vendor/
 archive/                                治理前旧版脚本快照（可回溯）
@@ -55,6 +55,17 @@ archive/                                治理前旧版脚本快照（可回溯�
 `start_site.py` 的 `PIPELINES` 定义了显式依赖顺序，情绪链必须按
 `rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_mood`
 执行，否则汇总脚本读到的是旧的上游数据。新增构建脚本时要同步登记到这里。
+
+## 页面内二级目录
+
+`mood.html`（17 个锚点）与 `indicators.html`（4 个锚点）在页面顶部有吸顶目录条，侧边栏同步生成二级树。一级目录是页面分组，二级是该组卡片：
+
+- 点击分组切换二级条目；只有 1 张卡片的分组（如"交易拥挤度"）点一下直接跳转。
+- 点击卡片平滑滚动定位，卡片边框闪烁提示，地址栏 hash 同步更新，**链接可直接分享到某张卡片**（如 `mood.html#toc_pcr`）。
+- 按 `/` 聚焦搜索框，输入名称即时过滤，`↑` `↓` 选择、`Enter` 跳转、`Esc` 关闭。
+- 页面滚动时自动高亮当前分组与卡片；"收起"状态按页面记忆在 `localStorage`。
+
+目录由 `app.js` 的 `mountToc()` 扫描 DOM 自动生成：**卡片只要加 `data-toc="名称" data-toc-group="分组"` 就会自动进目录**，新增指标不需要改目录代码。页面在 `render()` 完成后调用一次 `mountToc({app:"#app", bar:"#tocBar", side:"#tocSide"})` 即可。首页只有 2 张入口卡、一屏可见，未启用目录。
 
 ## 数据更新策略
 
@@ -85,10 +96,13 @@ archive/                                治理前旧版脚本快照（可回溯�
 - **想强制刷新**：`python start_site.py --force`，会透传给所有构建脚本。
 - **改错了想回滚**：`git log` / `git diff` 可用；`archive/` 保存了治理前的旧版脚本快照。
 - **改配色**：只改 `app.css` 的 `:root` / `[data-theme="dark"]` 即可，三页共用。
+- **新增卡片没进目录**：确认元素上有 `data-toc` / `data-toc-group`，且 `mountToc()` 在 `innerHTML` 赋值之后调用。
+- **目录挡住卡片标题**：目录条吸顶偏移是动态计算的；若调整了 `.topbar` 高度，检查 `app.js` 的 `offset()`。
 
 ## 已完成
 
 - 7 指数恐贪 + 8 项综合情绪指标 + 交易拥挤度 + 4 张结构观察卡片
+- 页面内二级目录：分组/卡片快速定位、搜索、滚动高亮、侧栏树、hash 直达
 - 结构治理：`config.py` / `core.py` / `app.js` / `app.css`、`build_mood` 指标注册表、显式 DAG
 - 工程配套：git 版本控制、`.gitignore`、`.gitattributes`、`requirements.txt`、本文档
 - 数据更新：PCR 真增量、申万缓存与回退保护、成分股滞后容忍、启动器今日去重
