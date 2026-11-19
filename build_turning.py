@@ -11,8 +11,10 @@ fear 分位（0=极热/顶部，100=极冷/底部），构造：
   confirm      = 独立的「价格/宽度已转向」确认条件数(0~3)
   divergence   = 指数创60日新低但市场宽度未同步创新低（底部动能背离）
 
-11 个维度：股债风险溢价、破净率、200日宽度、新高新低差、换手率、PCR、
-两融60日增速、全A PB(月频)、股基3年年化、沪深300 BIAS20、RSI14。
+13 个维度：股债风险溢价、破净率、200日宽度、新高新低差、换手率、PCR、
+两融60日增速、全A PB(月频)、股基3年年化、沪深300 BIAS20、RSI14，
+以及 2026-11-20 新增的阿姆氏指标 TRIN10、麦克莱伦摆动值（后两者由
+build_arms.py 产出，缺失时自动跳过，不影响其余 11 维）。
 分位用全历史 expanding(min_periods=250)，与情绪面板口径一致；
 月频序列最多前向填充 45 个交易日、日频最多 10 日，避免停更数据无限前推。
 
@@ -59,6 +61,15 @@ def _series(fname: str, col: str) -> pd.Series:
     return s
 
 
+def _opt_series(fname: str, col: str):
+    """可选维度：上游脚本未运行（如首次克隆）时跳过该维度，不让信号板整体失败。"""
+    try:
+        return _series(fname, col)
+    except (FileNotFoundError, KeyError) as e:
+        log(f"    [turning] 维度 {col} 跳过：{e}")
+        return None
+
+
 def build_tech():
     """沪深300 技术位置：BIAS20、RSI14、MA20/MA60。"""
     h = _series("mood_hs300.csv", "hs300")
@@ -101,6 +112,10 @@ def build_dimensions(tech):
         ("fund_ann",  "股基3年年化",    fund_ann,                               "%",   -1, 10),
         ("bias20",    "沪深300 BIAS20", tech["bias20"],                         "%",   -1, 10),
         ("rsi14",     "沪深300 RSI14",  tech["rsi14"],                          "",    -1, 10),
+        # 2026-11-20 新增：成交量分布与宽度动能，与既有估值/宽度维度互补。
+        # TRIN10 高=抛压重/恐慌→底部(+1)；摆动值高=买盘强/偏热→顶部(-1)。
+        ("arms",      "阿姆氏指标 TRIN10", _opt_series("mood_arms.csv", "trin10"), "",  +1, 10),
+        ("mcc",       "麦克莱伦摆动值",  _opt_series("mood_breadth_advance.csv", "mcc_osc"), "pp", -1, 10),
     ]
 
 
@@ -115,7 +130,7 @@ def build():
     log("=" * 60)
     h, tech = build_tech()
     idx = h.index[(h.index >= START) & (h.index <= TODAY)]
-    dims = build_dimensions(tech)
+    dims = [x for x in build_dimensions(tech) if x[2] is not None]
     log(f"基准交易日历 {len(idx)} 日：{idx[0].date()} ~ {idx[-1].date()}，维度 {len(dims)} 个")
     fear, detail = {}, []
     for key, name, raw, unit, direction, max_ff in dims:

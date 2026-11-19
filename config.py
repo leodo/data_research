@@ -51,3 +51,23 @@ TURNING_MIN_DIMS = 6            # 少于此数量的有效维度不出信号（�
 TURNING_FWD_WINS = (20, 60)     # 历史回测的前瞻收益窗口（交易日）
 TURNING_TRIGGER_GAP = 20        # 触发日去重的间隔（交易日），避免重叠样本夸大显著性
 TURNING_MIN_HIST = 250          # 单维度 expanding 分位的最小历史样本
+
+# ---------------- ERP 股债归因（build_mood.py 内）----------------
+ERP_ATTR_WIN = 250              # 归因回看窗口（交易日，约 1 年）
+ERP_ILLUSION_SHARE = 60         # 债券端贡献占比 ≥ 此值且股票端未变便宜 → 判定「低利率便宜错觉」
+
+# ---------------- 阿姆氏指标与宽广度体系（build_arms.py）----------------
+ARMS_MIN_STOCKS = 100           # 当日有效股票数下限
+ARMS_TRIN_SMOOTH = 10           # TRIN 平滑窗口（交易日），10 日为常用判极值口径
+MCC_FAST = 19                   # McClellan 快线 EMA
+MCC_SLOW = 39                   # McClellan 慢线 EMA
+BT_SPAN = 10                    # Zweig Breadth Thrust 的 EMA 窗口
+BT_LOW = 40.0                   # 推力起点（超卖）
+BT_HIGH = 61.5                  # 推力确认线
+BT_LOOKBACK = 10                # 由低点升至确认线的最大间隔（交易日）
+BREADTH_SCORE_MIN_HIST = 20     # 合成宽度分前各维度 expanding 分位的最小样本
+
+# ---------------- P1 宏观 / 机构 / 产业资本指标 ----------------
+M1M2_START = "2008-01-01"       # 东财货币供应量接口起点
+REPURCHASE_START = "2015-01-01" # 回购样本 2005 起，但 2015 前样本稀疏，作图从此开始
+REPURCHASE_ROLL = 12            # 回购规模滚动窗口（月）

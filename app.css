@@ -36,6 +36,7 @@
   --neu:#58a6ff;--neu-bg:rgba(88,166,255,.14);
   --cau:#ff6b6b;--cau-bg:rgba(255,107,107,.14);
   --mask-bg:rgba(0,0,0,.72);--modal-shadow:0 20px 60px rgba(0,0,0,.6);
+  --chart-tip-bg:#161b22;--chart-tip-bd:#30363d;--chart-tip-fg:#e6edf3;
   --chart-legend:#adbac7;--chart-axis-line:#30363d;--chart-axis-label:#7d8590;--chart-split:#21262d;--chart-mark:#484f58;
   --shadow:0 4px 18px rgba(0,0,0,.45);
 }

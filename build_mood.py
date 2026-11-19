@@ -43,6 +43,7 @@ import akshare as ak
 import numpy as np
 import pandas as pd
 
+from config import ERP_ATTR_WIN, ERP_ILLUSION_SHARE, REPURCHASE_ROLL
 from core import (BASE, DATA, TODAY, get_or_fetch, log, pct_rank,
                   sjoin, window_pct)
 
@@ -386,6 +387,100 @@ def load_sources():
 
 
 # ---------------- 综合分指标：一个指标一个函数，逻辑与原 main 逐字一致 ----------------
+def build_erp_attrib(src):
+    """把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)贡献，落盘供归因卡片与 rp 警示复用。
+
+    rp = 盈利收益率 EP − 10年国债。两端都会让 rp 抬升：股票变便宜(EP↑)，
+    或者无风险利率下行(bond10↓)。后者不代表权益更划算，只是债券收益率更低，
+    此时用 ERP 历史分位判断「股票便宜」会系统性高估性价比（便宜错觉）。
+    本函数不新增网络请求，直接复用 load_sources() 已加载的两条源序列。
+    """
+    try:
+        pe, bond10 = src.get("pe"), src.get("bond10")
+        if pe is None or bond10 is None:
+            log("    [erp_attrib] 缺少 PE / 国债源，跳过")
+            return None
+        pe, bond10 = sjoin(pe, "pe"), sjoin(bond10, "bond10")
+        idx = pe.index.union(bond10.index)
+        idx = idx[idx <= TODAY]
+        ep = 100.0 / pe.reindex(idx).ffill()
+        b = bond10.reindex(idx).ffill()
+        d = pd.DataFrame({"erp": ep - b, "ep": ep, "bond10": b}).dropna()
+        w = ERP_ATTR_WIN
+        d["d_erp"] = d["erp"].diff(w)
+        d["d_ep"] = d["ep"].diff(w)
+        d["d_bond"] = -d["bond10"].diff(w)      # 利率下行 → 正贡献
+        den = d["d_ep"].abs() + d["d_bond"].abs()
+        d["bond_share"] = d["d_bond"].abs() / den.where(den > 1e-9) * 100
+        # 「便宜错觉」：rp 抬升、债券端主导、且股票端并没有同步变便宜
+        d["illusion"] = ((d["d_erp"] > 0) & (d["bond_share"] >= ERP_ILLUSION_SHARE)
+                         & (d["d_ep"] <= 0)).astype(int)
+        d["illusion_gap"] = pct_rank(d["erp"]) - pct_rank(d["ep"])
+        d["bond_pct"] = pct_rank(d["bond10"])
+        out = d.dropna(subset=["d_erp"]).copy()
+        out.to_csv(DATA / "mood_erp_attrib.csv", index_label="date", float_format="%.4f")
+        r = out.iloc[-1]
+        log(f"    [erp_attrib] rp={r['erp']:.3f}% 近{w}日 Δrp={r['d_erp']:+.3f}pp "
+            f"= 股票端{r['d_ep']:+.3f} + 债券端{r['d_bond']:+.3f}；"
+            f"债券端占 {r['bond_share']:.1f}%，便宜错觉={'是' if r['illusion'] else '否'}")
+        return out
+    except Exception as e:
+        log(f"    [erp_attrib] 计算失败: {e}")
+        return None
+
+
+def calc_erp_attrib_panel():
+    """ERP 股债归因：主序列 erp，同轴叠加 1/PE 与 10年国债，一眼看出谁在动。"""
+    try:
+        d = _read_frame("erp_attrib")
+        if d is None or "erp" not in d.columns:
+            return None
+        p = make_panel("erp_attrib", "ERP 股债归因（便宜是真便宜吗）",
+                       d["erp"].dropna(),
+                       "全A平均市盈率(乐咕 stock_market_pe_lg 无参，月频)算盈利收益率1/PE，"
+                       "10年国债收益率取自东财 bond_zh_us_yield_em(日频)；两序列按交易日并集 ffill 对齐后，"
+                       "把近250交易日 rp 变动分解为股票端与债券端贡献。零额外网络请求。",
+                       reverse=True, unit="%",
+                       desc="rp = 1/PE − 10年国债。分子端(股票变便宜)与分母端(利率下行)都会让 rp 抬升，"
+                       "但后者不代表权益更划算，只是无风险利率更低；此时用 ERP 历史分位判断估值便宜会"
+                       "系统性高估性价比。图中三条线同轴：红实线=ERP，橙虚线=盈利收益率，蓝虚线=国债收益率，"
+                       "可直接看出抬升由谁贡献。PE 为月频 ffill，股票端贡献呈阶梯状属正常。"
+                       "注意本卡显示的是 ERP 原始值历史分位（越高=补偿越充分），与上方「A股风险溢价」"
+                       "卡片的方向相反（后者是反向情绪分，越低越接近底部）。")
+        if p:
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=补偿越充分）"
+            p["auxiliary"] = _aux_rows(d, ["ep", "bond10"])
+            p["aux_lines"] = [
+                {"name": "盈利收益率 1/PE", "field": "ep", "color": "#e8633a"},
+                {"name": "10年国债收益率", "field": "bond10", "color": "#5b8ff9"},
+            ]
+            a = d.dropna(subset=["d_erp"])
+            r = a.iloc[-1]
+            if r["d_erp"] > 0 and r["illusion"] == 1:
+                driver = "利率驱动 · 便宜错觉"
+            elif r["d_erp"] > 0 and r["bond_share"] >= ERP_ILLUSION_SHARE:
+                driver = "利率主导 · 需警惕"
+            elif r["d_erp"] > 0:
+                driver = "股票驱动 · 真实便宜"
+            elif r["d_erp"] < 0:
+                driver = "风险补偿收窄"
+            else:
+                driver = "基本持平"
+            n_ill = int(a["illusion"].sum())
+            p["aux_text"] = (
+                f"近 {ERP_ATTR_WIN} 交易日：Δrp {r['d_erp']:+.3f}pp = 股票端(1/PE) {r['d_ep']:+.3f}pp "
+                f"+ 债券端(利率下行) {r['d_bond']:+.3f}pp；债券端占变动 {r['bond_share']:.1f}% → {driver}。"
+                f"10年国债 {r['bond10']:.3f}%（历史 {r['bond_pct']:.1f} 分位）；"
+                f"ERP 分位与股票端 EP 分位之差 {r['illusion_gap']:+.1f}（越大越可能是利率造成的错觉）。"
+                f"全历史「便宜错觉」触发 {n_ill} 天（占 {n_ill/len(a)*100:.1f}%），当前"
+                f"{'已触发' if r['illusion'] == 1 else '未触发'}。")
+        return p
+    except Exception as e:
+        log(f"    [erp_attrib] 面板失败: {e}")
+        return None
+
+
 def calc_rp(src):
     try:
         pe, bond10 = src["pe"], src["bond10"]
@@ -395,9 +490,27 @@ def calc_rp(src):
         idx = ep.index.union(bond10.index)
         rp = (ep.reindex(idx).ffill() - bond10.reindex(idx).ffill()).dropna()
         rp = rp[rp.index <= TODAY]
-        return make_panel("rp", "A股风险溢价", rp,
-                          "全A平均市盈率(乐咕 stock_market_pe_lg 无参，月频1997-12起)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em 日频2010起)；两序列各自ffill到交易日历并集后相减。2026-11-20 修复此前 symbol 参数失效误用科创板PE(90.51)的失真口径",
-                          reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)。PE 为月频数据按日对齐，月内数值不变属正常；分位基于日频填充序列计算")
+        p = make_panel("rp", "A股风险溢价", rp,
+                       "全A平均市盈率(乐咕 stock_market_pe_lg 无参，月频1997-12起)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em 日频2010起)；两序列各自ffill到交易日历并集后相减。2026-11-20 修复此前 symbol 参数失效误用科创板PE(90.51)的失真口径",
+                       reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)。PE 为月频数据按日对齐，月内数值不变属正常；分位基于日频填充序列计算")
+        # 联动股债归因：低利率可能制造「便宜错觉」，在主卡直接给出警示
+        if p is not None:
+            try:
+                a = _read_frame("erp_attrib")
+                if a is not None and len(a):
+                    r = a.dropna(subset=["d_erp"]).iloc[-1]
+                    ill = int(r["illusion"]) == 1
+                    p["erp_warn_level"] = "warn" if ill else "ok"
+                    p["erp_warning"] = (
+                        f"近 {ERP_ATTR_WIN} 交易日 Δrp {r['d_erp']:+.3f}pp 中，股票端(1/PE)贡献 "
+                        f"{r['d_ep']:+.3f}pp、债券端(利率下行)贡献 {r['d_bond']:+.3f}pp（占 {r['bond_share']:.1f}%）。"
+                        + ("注意：rp 抬升主要由无风险利率下行造成，股票端并未同步变便宜，"
+                           "ERP 的高历史分位可能高估权益性价比，请勿单凭本指标判定底部。"
+                           if ill else
+                           "当前 rp 抬升主要由股票变便宜驱动，暂不属于低利率造成的「便宜错觉」。"))
+            except Exception:
+                pass
+        return p
     except Exception as e:
         log(f"    [rp] 计算失败: {e}")
         return None
@@ -842,11 +955,225 @@ def calc_tech_panel():
         return None
 
 
+# ---------------- 新增观察卡：机构 / 宏观流动性 / 产业资本 ----------------
+def calc_fund_position_panel():
+    """公募基金股票仓位（周频，2017-12 起）。"""
+    try:
+        d = _read_frame("fund_position")
+        if d is None or "position" not in d.columns:
+            return None
+        p = make_panel("fund_position", "公募基金股票仓位",
+                       d["position"].dropna(),
+                       "乐咕乐股 fund_stock_position_lg（akshare），周频，2017-12 起，一次返回全历史。"
+                       "仓位为第三方用基金净值回归测算的估计值，并非季报披露的真实持仓比例。",
+                       reverse=False, unit="%",
+                       desc="机构已经加了多少仓。高仓位=弹药消耗充分、增量买盘有限，历史上常对应情绪偏热与"
+                       "阶段性高位；低仓位=现金充裕、潜在买盘足，多对应底部区域。注意这是测算值，"
+                       "不同机构口径可差 1~3 个百分点，且历史起点为 2017-12，样本短于本页其他指标。")
+        if p:
+            p["freq"] = "weekly"
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=机构越满仓）"
+            p["auxiliary"] = _aux_rows(d, ["ma_12w", "chg_4w"])
+            p["aux_lines"] = [{"name": "12周均线", "field": "ma_12w", "color": "#5b8ff9"}]
+            r = d.iloc[-1]
+            chg = f"{r['chg_4w']:+.2f}pp" if pd.notna(r["chg_4w"]) else "—"
+            ma = f"{r['ma_12w']:.2f}%" if pd.notna(r["ma_12w"]) else "—"
+            p["aux_text"] = (f"近 4 周仓位变化 {chg}，12 周均线 {ma}；"
+                             f"历史区间 {d['position'].min():.2f}~{d['position'].max():.2f}%（{len(d)} 期周频样本）。")
+        return p
+    except Exception as e:
+        log(f"    [fund_position] 计算失败: {e}")
+        return None
+
+
+def calc_m1m2_panel():
+    """M1-M2 剪刀差（月频，2008-01 起）。"""
+    try:
+        d = _read_frame("m1m2")
+        if d is None or "gap" not in d.columns:
+            return None
+        p = make_panel("m1m2", "M1-M2 剪刀差（资金活化）", d["gap"].dropna(),
+                       "东方财富 macro_china_money_supply_em（akshare），月频，2008-01 起一次返回全历史；"
+                       "gap = M1 同比 − M2 同比（百分点），辅助线为 M1/M2 同比与 3 月均值。",
+                       reverse=False, unit="pp",
+                       desc="M1 以企业活期存款为主，M2 还含居民储蓄与定期存款。剪刀差走阔或由负转正，"
+                       "说明资金「活化」、流入实体与风险资产，历史上常领先或同步于股市行情；深度为负"
+                       "说明资金沉淀、风险偏好低，多对应底部区域。央行 2024 年起调整过 M1 统计范围"
+                       "（纳入个人活期存款与非银支付备付金），前后绝对值不完全可比，请以历史分位与方向为主。")
+        if p:
+            p["freq"] = "monthly"
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=资金越活化）"
+            p["auxiliary"] = _aux_rows(d, ["m1_yoy", "m2_yoy", "gap_ma3"])
+            p["aux_lines"] = [
+                {"name": "M1同比", "field": "m1_yoy", "color": "#e8633a"},
+                {"name": "M2同比", "field": "m2_yoy", "color": "#5b8ff9"},
+            ]
+            p["mark_lines"] = [{"y": 0, "label": "0 资金活化分界", "color": "#2aa876"}]
+            r = d.iloc[-1]
+            p["aux_text"] = (f"当前 M1 {r['m1_yoy']:.2f}% / M2 {r['m2_yoy']:.2f}%，剪刀差 {r['gap']:+.2f}pp"
+                             f"（3 月均值 {r['gap_ma3']:+.2f}pp）；历史区间 "
+                             f"{d['gap'].min():.2f}~{d['gap'].max():.2f}pp，共 {len(d)} 个月点。")
+        return p
+    except Exception as e:
+        log(f"    [m1m2] 计算失败: {e}")
+        return None
+
+
+def calc_repurchase_panel():
+    """A股回购规模（月频，2015-01 起）。"""
+    try:
+        d = _read_frame("repurchase")
+        col = f"plan_amt_roll{REPURCHASE_ROLL}"
+        if d is None or col not in d.columns:
+            return None
+        p = make_panel("repurchase", f"A股回购规模（滚动{REPURCHASE_ROLL}月）",
+                       d[col].dropna(),
+                       "东方财富 stock_repurchase_em（akshare），5811 条回购方案按(代码,起始日)去重后"
+                       "按月聚合；主口径为计划回购金额（上下限均值）的 12 个月滚动合计，辅助线为已回购金额。",
+                       reverse=False, unit="亿元",
+                       desc="回购是产业资本用真金白银表达「自家股票便宜」的行为，规模放量常出现在市场底部"
+                       "或政策鼓励期（2018Q4、2024 年回购增持再贷款），是底部/转折的辅助证据。"
+                       "局限：计划金额为预案区间中值、未必全部实施；已回购金额按方案起始月归档而非实际实施月；"
+                       "金额未经市值归一化，长期有规模膨胀趋势，故以历史分位与相对变化为主，不宜跨时代比绝对值。")
+        if p:
+            p["freq"] = "monthly"
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=产业资本越认可低估）"
+            done_col = f"done_amt_roll{REPURCHASE_ROLL}"
+            p["auxiliary"] = _aux_rows(d, [done_col])
+            p["aux_lines"] = [{"name": f"已回购金额({REPURCHASE_ROLL}月)", "field": done_col, "color": "#5b8ff9"}]
+            r = d.iloc[-1]
+            p["aux_text"] = (f"当前滚动 {REPURCHASE_ROLL} 月计划回购 {r[col]:.1f} 亿、"
+                             f"其中已实施 {r[done_col]:.1f} 亿；当月新披露预案 {int(r['n_plans'])} 家。"
+                             f"历史峰值 {d[col].max():.1f} 亿，区间切换按数据点计（月频）。")
+        return p
+    except Exception as e:
+        log(f"    [repurchase] 计算失败: {e}")
+        return None
+
+
+# ---------------- 新增观察卡：阿姆氏指标与市场宽广度体系 ----------------
+def calc_arms_panel():
+    """阿姆氏指标 TRIN：两套口径 + 10 日平滑。"""
+    try:
+        d = _read_frame("arms")
+        if d is None or "trin_vol" not in d.columns:
+            return None
+        p = make_panel("arms", "阿姆氏指标 TRIN（Arms Index）", d["trin_vol"].dropna(),
+                       "复用 data/breadth_prices/(5547 只未复权收盘价) 与 data/crowding_amounts/(成交额) "
+                       "按日对齐自算，零个股请求。TRIN=(涨家数/跌家数)÷(涨股量/跌股量)；"
+                       "主序列为经典成交量口径(amount/close 反推股数)，辅助线含 10 日平滑与成交额口径。",
+                       reverse=False, unit="",
+                       desc="Richard Arms 1967 年的短期情绪指标：>1 表示下跌股放量、抛压主导，"
+                       "<1 表示上涨股放量；>2 常对应恐慌性抛售（超卖/底部机会），<0.5 常对应买盘过热。"
+                       "日频噪声大，10 日平滑(蓝虚线)更常用于判极值。"
+                       "A 股口径特别注意：极端普跌日涨家数极少，若少数上涨股吸走大量成交，TRIN 会系统性偏低，"
+                       "此时并非「买盘强劲」而是资金抱团叠加全面失血，须结合上涨家数占比一起读，"
+                       "不能机械套用美股教科书的超买结论。")
+        if p:
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=抛压越重）"
+            p["auxiliary"] = _aux_rows(d, ["trin10", "trin"])
+            p["aux_lines"] = [
+                {"name": "TRIN 10日平滑", "field": "trin10", "color": "#5b8ff9"},
+                {"name": "成交额口径 Dollar TRIN", "field": "trin", "color": "#8b5cf6"},
+            ]
+            p["mark_lines"] = [
+                {"y": 0.5, "label": "0.5 超买线", "color": "#e8633a"},
+                {"y": 1.0, "label": "1.0 均衡", "color": "#2aa876"},
+                {"y": 2.0, "label": "2.0 超卖线", "color": "#2aa876"},
+            ]
+            r = d.iloc[-1]
+            p["aux_text"] = (f"当前成交量口径 {r['trin_vol']:.3f}、10 日平滑 {r['trin10']:.3f}、"
+                             f"成交额口径 {r['trin']:.3f}；上涨/下跌量比 {r['adv_vol_ratio']:.3f}、"
+                             f"上涨股量占比 {r['up_vol_share']:.2f}%、上涨 {int(r['n_adv'])} 家 / "
+                             f"下跌 {int(r['n_dec'])} 家。两套口径中位均为 "
+                             f"{d['trin_vol'].median():.3f}，1%/99% 分位 "
+                             f"{d['trin_vol'].quantile(.01):.3f}/{d['trin_vol'].quantile(.99):.3f}。")
+        return p
+    except Exception as e:
+        log(f"    [arms] 计算失败: {e}")
+        return None
+
+
+def calc_breadth_score_panel():
+    """市场宽广度综合指标：6 维宽度分位等权合成 + Zweig 推力线。"""
+    try:
+        d = _read_frame("breadth_advance")
+        if d is None or "breadth_score" not in d.columns:
+            return None
+        p = make_panel("breadth_score", "市场宽广度综合指标", d["breadth_score"].dropna(),
+                       "复用 mood_breadth.csv 与 mood_breadth_extra.csv：站上MA200/MA60占比、NH-NL、"
+                       "上涨家数占比、20日动量广度、多头排列占比，各自取全历史 expanding 分位后等权合成 0~100；"
+                       "辅助线为 Zweig Breadth Thrust 的 10 日 EMA。零网络请求。",
+                       reverse=False, unit="",
+                       desc="把多个宽度维度压成一个可跨时代比较的读数：高=普涨、内部健康、情绪偏热；"
+                       "低=普跌、内部动能枯竭，常对应底部区域。相比单一「站上 200 日线占比」，"
+                       "综合分不易被某一口径的除权跳空或行业结构带偏，但也因此更平滑、更滞后。"
+                       "紫虚线为宽度推力 EMA10：由 ≤40% 在 10 日内快速升破 61.5% 是经典的底部反转确认信号。")
+        if p:
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=内部越健康）"
+            p["auxiliary"] = _aux_rows(d, ["bt_ema"])
+            p["aux_lines"] = [{"name": "宽度推力 EMA10", "field": "bt_ema", "color": "#8b5cf6"}]
+            p["mark_lines"] = [
+                {"y": 20, "label": "20 宽度冰点", "color": "#2aa876"},
+                {"y": 80, "label": "80 普涨过热", "color": "#e8633a"},
+            ]
+            r = d.iloc[-1]
+            hits = d.index[d["bt_signal"] == 1]
+            recent = f"，最近一次 {hits[-1].date()}" if len(hits) else ""
+            p["aux_text"] = (f"当前宽度综合分 {r['breadth_score']:.2f} / 100；"
+                             f"宽度推力 EMA10 {r['bt_ema']:.2f}%（确认线 61.5%，起点 40%）；"
+                             f"当日净广度 {r['net_pct']:+.2f}pp（涨 {int(r['n_adv'])} / 跌 {int(r['n_dec'])} 家）。"
+                             f"Zweig 推力历史触发 {len(hits)} 次{recent}。")
+        return p
+    except Exception as e:
+        log(f"    [breadth_score] 计算失败: {e}")
+        return None
+
+
+def calc_mcclellan_panel():
+    """McClellan Oscillator / Summation（归一化净广度的 EMA19−EMA39）。"""
+    try:
+        d = _read_frame("breadth_advance")
+        if d is None or "mcc_osc" not in d.columns:
+            return None
+        p = make_panel("mcclellan", "麦克莱伦摆动指标（市场宽广度动能）", d["mcc_osc"].dropna(),
+                       "由逐股涨跌家数算净广度占比(涨−跌)/有效股票数×100，再取 EMA19 − EMA39 得摆动值；"
+                       "Summation Index 为其累计和。数据源同宽度扩展包，零网络请求。",
+                       reverse=False, unit="pp",
+                       desc="经典 McClellan 用净涨跌「家数」，但 A 股上市公司数由 2015 年约 2800 增至 2026 年"
+                       "约 5500，绝对家数量纲随时代膨胀、阈值无法跨时代比较，故此处改用占比(百分点)。"
+                       "摆动值上穿 0 = 短期买盘转强，深度负值后收敛常是下跌动能衰竭的早期迹象；"
+                       "Summation 是长期趋势，与指数背离时提示内部参与度不足。")
+        if p:
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=短期买盘越强）"
+            p["auxiliary"] = _aux_rows(d, ["net_pct"])
+            p["aux_lines"] = [{"name": "当日净广度", "field": "net_pct", "color": "#5b8ff9"}]
+            p["mark_lines"] = [{"y": 0, "label": "0 多空分界", "color": "#2aa876"}]
+            r = d.iloc[-1]
+            chg = r["mcc_sum"] - d["mcc_sum"].iloc[-61] if len(d) > 60 else float("nan")
+            p["aux_text"] = (f"当前摆动值 {r['mcc_osc']:+.2f}pp、Summation {r['mcc_sum']:.1f}"
+                             f"（近 60 交易日变化 {chg:+.1f}）；当日净广度 {r['net_pct']:+.2f}pp。"
+                             f"摆动值历史区间 {d['mcc_osc'].min():.1f} ~ {d['mcc_osc'].max():.1f}pp。")
+        return p
+    except Exception as e:
+        log(f"    [mcclellan] 计算失败: {e}")
+        return None
+
+
 SIGNAL_BUILDERS = [
     ("below_net", calc_below_net_panel),
     ("nhnl", calc_nhnl_panel),
     ("adv_ratio", calc_adv_panel),
     ("hs300_rsi", calc_tech_panel),
+    ("arms", calc_arms_panel),
+    ("breadth_score", calc_breadth_score_panel),
+    ("mcclellan", calc_mcclellan_panel),
 ]
 
 
@@ -864,6 +1191,10 @@ MACRO_BUILDERS = [
     ("margin_growth", calc_margin_panel),
     ("breadth_ma200", calc_breadth_panel),
     ("a_pb", calc_pb_panel),
+    ("erp_attrib", calc_erp_attrib_panel),
+    ("fund_position", calc_fund_position_panel),
+    ("m1m2", calc_m1m2_panel),
+    ("repurchase", calc_repurchase_panel),
 ]
 
 
@@ -944,7 +1275,7 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
         if k in panels:
             p = panels[k]
             log(f"  {p['name']:16s} 值={p['value']:>8.3f} 情绪分={p['score']:>6.2f} {p['state']} [{out['proxy_flags'][k]}] 历史{len(p['history'])}日")
-    log(f"结构观察卡片 {len(macro_panels)}/4: {', '.join(macro_panels.keys())}")
+    log(f"结构观察卡片 {len(macro_panels)}/{len(MACRO_BUILDERS)}: {', '.join(macro_panels.keys())}")
     log(f"顶底信号卡片 {len(signal_panels)}/{len(SIGNAL_BUILDERS)}: {', '.join(signal_panels.keys())}")
     if turning_panel:
         c = turning_panel["current"]
@@ -960,6 +1291,9 @@ def main():
     log("=" * 60)
 
     src = load_sources()
+    # 归因卡片与 rp 警示都读 mood_erp_attrib.csv，必须在指标面板之前落盘；
+    # 复用上面已加载的 PE / 国债序列，不额外发请求。
+    build_erp_attrib(src)
     panels = {}
     for key, fn in METRIC_BUILDERS:
         p = fn(src)
