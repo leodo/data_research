@@ -100,6 +100,31 @@ a{text-decoration:none;color:inherit}
 .how .q{width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
 .loading{padding:60px;text-align:center;color:var(--text-3)}
 @media(max-width:900px){.sidebar{display:none}.panel-grid{grid-template-columns:1fr}.wrap{padding:16px}.big-num{font-size:46px}}
+
+/* 顶底信号板 */
+.sig-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0 6px}
+.sig-kpi{background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.sig-kpi .k{font-size:11px;color:var(--text-3)}
+.sig-kpi .v{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:5px}
+.sig-kpi .s{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.5}
+.sig-state{font-size:12px;padding:5px 13px;border-radius:999px;font-weight:700;white-space:nowrap}
+.sig-state.bottom{color:var(--pos);background:var(--pos-bg)}
+.sig-state.top{color:var(--cau);background:var(--cau-bg)}
+.sig-state.mid{color:var(--neu);background:var(--neu-bg)}
+.sig-sub{font-size:12.5px;font-weight:700;color:var(--ink);margin:18px 0 7px;padding-left:9px;border-left:3px solid var(--brand)}
+.sig-chart{width:100%;height:280px;margin-top:6px}
+.sig-tbl-wrap{overflow-x:auto}
+.sig-table{width:100%;border-collapse:collapse;font-size:12px}
+.sig-table th,.sig-table td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:right;color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sig-table th{color:var(--text-3);font-weight:600;background:var(--bg-soft)}
+.sig-table th:first-child,.sig-table td:first-child{text-align:left}
+.sig-table tr.hit td:first-child{color:var(--pos);font-weight:700}
+.sig-table tr.hit-top td:first-child{color:var(--cau);font-weight:700}
+.sig-table .dim-hit{color:var(--pos);font-weight:700}
+.sig-table .dim-top{color:var(--cau);font-weight:700}
+.sig-flag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:999px;margin-left:6px;background:var(--pos-bg);color:var(--pos);font-weight:700}
+.sig-flag.top{background:var(--cau-bg);color:var(--cau)}
+@media(max-width:900px){.sig-kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -142,7 +167,7 @@ a{text-decoration:none;color:inherit}
     <div class="modal-b">
       <p>本页仿照 funddb.cn「情绪指标」面板，用<b>公开市场数据自行计算</b> 8 个情绪指标，不取用原站任何专有或会员数据。每个指标按其历史分位赋 0-100 分，<b>高分代表情绪乐观/亢奋，低分代表悲观/冰点</b>，50 为中立。</p>
       <ul>
-        <li><b>A股风险溢价。</b>全A盈利收益率(1/PE) − 10年国债收益率。越高说明股票相对债券越便宜、越接近底部。（反向指标）</li>
+        <li><b>A股风险溢价。</b>全A盈利收益率(1/PE) − 10年国债收益率。越高说明股票相对债券越便宜、越接近底部。（反向指标）2026-11-20 修复口径：此前 akshare 的 symbol 参数失效误取科创板 PE(90.51)，现改用乐咕全A平均市盈率(月频，最新 24.09)按交易日 ffill 对齐国债，历史起点由 2019 延至 2010。</li>
         <li><b>低估指数行业。</b>申万31个一级行业中，价格处于历史低分位的行业个数。越多说明市场整体越低估。（反向指标，价格分位近似估值分位）</li>
         <li><b>新基金发行。</b>近90日滚动日均发行份额，反映资金亢奋程度，越高越贪婪。（精确自算）</li>
         <li><b>正收益偏股基金占比。</b>近一年收益为正的偏股基金占比，越低越接近底部。<b>代理</b>：用上证基金指数近1年收益为正的滚动占比。</li>
@@ -155,8 +180,12 @@ a{text-decoration:none;color:inherit}
         <li><b>两融余额60日增速。</b>融资余额相对60个交易日前的变动率，观察杠杆资金进出速度；附融资余额规模与平均维持担保比例（杠杆安全垫）。数据取 akshare 两融账户统计，2012-09 起日更。</li>
         <li><b>全A站上200日均线占比。</b>逐日横截面统计收盘价站上自身200日均线的个股比例，高=普涨趋势强、低=普跌超卖；附60日均线宽度。全A个股收盘价取新浪公开接口、多进程逐只缓存后自算（未复权）。</li>
         <li><b>全A市净率中位数（月频）。</b>全市场估值中枢，2005 起月频，附等权平均 PB 观察风格分化。中位数不易被超大市值股拉动；注意与日频指标不同频。</li>
+        <li><b>破净率。</b>破净个股数 ÷ 全A公司数，2005 起日频。历次大底峰值 2005年 24.4% / 2008年 14.1% / 2018年 14.0% / 2024年 16.6%，是底部指示最硬的单指标；顶部预测力弱。</li>
+        <li><b>新高新低差(NH-NL) 与 上涨家数占比。</b>复用 5547 只个股收盘价缓存逐日横截面自算，零网络请求。重点看与指数的背离：指数创新低而宽度不再创新低 = 下跌动能衰竭。</li>
+        <li><b>沪深300 RSI14。</b>Wilder RSI，30/70 阈值仅作参考（趋势中可长期钝化），附 BIAS20 与 MA20/MA60 位置。</li>
+        <li><b>顶底共振信号板。</b>把 11 个维度统一成 fear 分位（0=极热/顶部、100=极冷/底部），输出底部/顶部共振度 + 价格与宽度的独立拐点确认，并用沪深300 未来 20/60 日收益做历史胜率回测。这是赔率统计而非择时信号，阈值未经样本外检验。</li>
       </ul>
-      <p>综合情绪分为 8 个指标情绪分的等权平均（交易拥挤度、300ETF占比、两融增速、市场宽度、全A PB 共 5 张独立观察卡片均不计入）。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。</p>
+      <p>综合情绪分为 8 个指标情绪分的等权平均（拥挤度、300ETF占比、两融增速、市场宽度、全A PB、破净率、NH-NL、上涨家数占比、RSI14 与共振信号板均不计入）。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。</p>
       <p class="note-inline"><b>数据来源：</b>akshare（乐咕估值、东方财富、新浪财经、中债估值、上交所期权）。分位采用全历史 expanding 口径，每个指标卡片下方标注了具体来源。本页面为透明复刻实现，非官方数值，仅供研究参考，不构成投资建议。</p>
     </div>
   </div>
@@ -190,7 +219,11 @@ a{text-decoration:none;color:inherit}
     crowding:   {low:"成交相对分散、微观结构较健康（低位区间），交易拥挤风险小。", high:"成交明显集中于少数头部个股（高位区间，尤其>50%时为结构风险信号），抱团拥挤、结构脆弱，历史上常对应阶段性高低点或风格切换，需警惕。", mid:"成交集中度处于上升趋势中（40~50% 附近），需关注局部过热。"},
     margin_growth:{low:"融资余额增速转负且持续走低，杠杆资金主动撤离、风险偏好收缩，历史上常对应调整或底部区域。", high:"融资余额快速扩张，加杠杆意愿强、情绪偏亢奋，需关注后续去杠杆压力。", mid:"两融资金进出处于常态水平。"},
     breadth_ma200:{low:"仅少数个股站上200日均线，市场普跌、内部动能弱，超卖状态常对应底部区域。", high:"多数个股站上200日均线，普涨且趋势强、情绪偏热；若指数创新高而宽度走低则提示涨势由少数权重股支撑。", mid:"站上长均线的个股占比处于历史中枢。"},
-    a_pb:       {low:"全A市净率处于历史低分位，整体估值便宜、长期赔率较好。", high:"全A市净率处于历史高分位，整体估值偏贵。", mid:"全市场估值中枢处于历史中位。"}
+    a_pb:       {low:"全A市净率处于历史低分位，整体估值便宜、长期赔率较好。", high:"全A市净率处于历史高分位，整体估值偏贵。", mid:"全市场估值中枢处于历史中位。"},
+    below_net:  {low:"破净个股占比处于历史高位，资产折价极端、系统性悲观，历史上与 998/1664/2440/2635 等大底重合，长期赔率较好但可长期钝化。", high:"破净个股极少，市场极少以低于净资产定价，通常不在底部区域。", mid:"破净率处于历史中枢。"},
+    nhnl:       {low:"创60日新低个股远多于创新高，抛压广泛、市场内部动能极弱；若指数创新低而本指标不再创新低，即为底部动能背离。", high:"创新高个股显著多于创新低，普涨且内部动能强；若指数创新高而本指标走低，提示涨势收窄。", mid:"新高新低家数大体均衡。"},
+    adv_ratio:  {low:"上涨家数占比极低、普跌明显，需观察 20 日动量广度与多头排列是否同步回升来确认修复的全面性。", high:"上涨家数占比高、普涨，情绪偏热。", mid:"涨跌家数处于常态分布。"},
+    hs300_rsi:  {low:"沪深300 RSI14 处于超卖区，短期跌幅急促；强势下跌趋势中 RSI 可长期钝化，需与宽度、破净率等结构指标共振才有参考意义。", high:"RSI14 处于超买区，短期涨势急促，需关注过热。", mid:"RSI14 处于中性区间。"}
   };
   function interpretation(k,p){
     var s=Number(p.score)||50;
@@ -243,6 +276,80 @@ a{text-decoration:none;color:inherit}
     return '<span style="color:var(--text-3);font-size:11px;margin-left:6px">数据至 '+esc(last)+'</span>';
   }
   function stateColor(st){ return st==="积极"?cssVar("--pos"):(st==="谨慎"?cssVar("--cau"):cssVar("--neu")); }
+
+
+  // 扩展观察卡片统一渲染（结构观察 / 顶底信号共用），新增指标只需在 signal_order 或 macro_order 登记
+  function extraCardHtml(k, p, group, tag, badge){
+    if(!p) return "";
+    var h = "";
+    h += '<div class="panel" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="'+esc(group)+'" id="toc_'+k+'">';
+    h += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">'+esc(tag)+'</span>'+(p.freq==="monthly"?'<span class="ptag" style="margin-left:6px">月频</span>':'')+staleTag(p)+'</div></div>';
+    h += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">'+esc(badge||group)+'</span></div>';
+    h += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
+    h += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
+    h += '<div class="panel-pcts">';
+    [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
+      h += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+    });
+    h += '</div></div>';
+    h += '<div class="pchart" id="pc_'+k+'"></div>';
+    h += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+    if(p.aux_text) h += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
+    h += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
+    h += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
+    h += '</div>';
+    return h;
+  }
+
+  // 顶底共振信号板：多维度共振度 + 维度明细 + 前瞻收益胜率回测
+  function turningHtml(T){
+    if(!T || !T.current) return "";
+    var c=T.current, th=T.thresholds||{}, lv=c.level||"mid";
+    var hits=(T.dims||[]).filter(function(x){return x.is_bottom;}).length;
+    var h="";
+    h += '<div class="card" data-toc="顶底共振信号板" data-toc-group="顶底信号" id="toc_turning">';
+    h += '<div class="sec-head"><span class="sec-title">顶底共振信号板</span><span class="sig-state '+esc(lv)+'">'+esc(c.state)+'</span></div>';
+    h += '<div style="color:var(--text-3);font-size:11.5px;line-height:1.7">把 '+c.n_dims+' 个不同来源的序列统一成 fear 分位（0=极热/顶部，100=极冷/底部），统计处于极值的维度占比；再用价格与宽度是否转向作独立确认。数据截至 '+esc(T.data_date||"")+'。</div>';
+    h += '<div class="sig-kpis">';
+    h += '<div class="sig-kpi"><div class="k">底部共振度</div><div class="v" style="color:var(--pos)">'+fmt(c.bottom_score,1)+'</div><div class="s">'+hits+' / '+c.n_valid+' 个有效维度触发极值 · 触发线 '+fmt(th.trigger,0)+'</div></div>';
+    h += '<div class="sig-kpi"><div class="k">顶部共振度</div><div class="v" style="color:var(--cau)">'+fmt(c.top_score,1)+'</div><div class="s">维度 fear ≤ '+fmt(th.top_pct,0)+' 的占比 · 触发线 '+fmt(th.trigger,0)+'</div></div>';
+    h += '<div class="sig-kpi"><div class="k">拐点确认</div><div class="v" style="color:var(--neu)">'+fmt(c.confirm,0)+' <span style="font-size:15px;color:var(--text-3)">/ 3</span></div><div class="s">指数20日动量转正 / 200日宽度5日回升 / NH-NL 5日回升</div></div>';
+    h += '</div>';
+    h += '<div class="panel-interp"><b>当前判断：</b>'+esc(c.state)+'。';
+    if(c.level==="bottom") h += '底部共振度已达 '+fmt(c.bottom_score,1)+'，说明「赔率」处在历史罕见的有利位置；但拐点确认 '+fmt(c.confirm,0)+'/3，价格与宽度尚未出现转向迹象，属于<b>左侧区域</b>而非反转信号。';
+    else if(c.level==="top") h += '多维指标同时偏热，需关注结构风险与拥挤度变化。';
+    else h += '各维度未形成一致极值，处于常态区间。';
+    if(c.divergence_bottom) h += ' <span class="sig-flag">底部动能背离</span>指数创60日新低但宽度未同步创新低，抛压有衰竭迹象。';
+    if(c.divergence_top) h += ' <span class="sig-flag top">顶部动能背离</span>指数创60日新高但宽度未同步创新高。';
+    h += '</div>';
+    h += '<div class="sig-chart" id="turningChart"></div>';
+    h += '<div style="color:var(--text-3);font-size:11px;margin-top:2px">橙实线=底部共振度，蓝虚线=顶部共振度；灰色虚线为 '+fmt(th.trigger,0)+' 触发线。拖拽/滚轮可缩放。</div>';
+
+    h += '<div class="sig-sub">维度明细（fear 分位：越高越接近底部）</div><div class="sig-tbl-wrap"><table class="sig-table"><thead><tr><th>维度</th><th>当前值</th><th>原始分位</th><th>fear</th><th>近5日</th><th>判定</th><th>数据末日</th></tr></thead><tbody>';
+    (T.dims||[]).forEach(function(d){
+      var cls=d.is_bottom?" class=\"hit\"":(d.is_top?" class=\"hit-top\"":"");
+      var judge=d.is_bottom?'底部极值':(d.is_top?'顶部极值':'中性');
+      h += '<tr'+cls+'><td>'+esc(d.name)+'</td><td>'+(d.value==null?"—":fmt(d.value,2)+esc(d.unit||""))+'</td><td>'+(d.pct==null?"—":fmt(d.pct,1))+'</td><td><b>'+(d.fear==null?"—":fmt(d.fear,1))+'</b></td><td>'+esc(d.trend||"—")+'</td><td class="'+(d.is_bottom?"dim-hit":(d.is_top?"dim-top":""))+'">'+judge+'</td><td>'+esc(d.last_date||"—")+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+
+    h += '<div class="sig-sub">历史胜率回测（沪深300 前瞻收益，触发日按 '+fmt(th.gap,0)+' 交易日去重）</div><div class="sig-tbl-wrap"><table class="sig-table"><thead><tr><th>分组</th><th>样本数</th><th>20日胜率</th><th>20日均值</th><th>20日中位</th><th>60日胜率</th><th>60日均值</th></tr></thead><tbody>';
+    (T.backtest||[]).forEach(function(b){
+      h += '<tr><td>'+esc(b.label)+'</td><td>'+b.n+'</td><td>'+(b.win20==null?"—":fmt(b.win20,1)+"%")+'</td><td>'+(b.avg20==null?"—":fmt(b.avg20,2)+"%")+'</td><td>'+(b.med20==null?"—":fmt(b.med20,2)+"%")+'</td><td>'+(b.win60==null?"—":fmt(b.win60,1)+"%")+'</td><td>'+(b.avg60==null?"—":fmt(b.avg60,2)+"%")+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<div class="panel-interp" style="border-left-color:var(--neu)"><b>回测怎么读：</b>「底部极值未确认」组 60 日胜率高于全样本基准，说明极值本身提供赔率；而加入「拐点确认」后并未带来稳定超额，反而弱于单纯极值组——提示等价格/宽度转正确认后往往已经错过最左侧的修复段，追涨确认可能滞后。顶部警戒样本很少，20 日仍常上涨（趋势惯性），60 日才转弱，说明顶部钝化比底部更常见。</div>';
+
+    h += '<div class="sig-sub">最近触发日</div><div class="sig-tbl-wrap"><table class="sig-table"><thead><tr><th>日期</th><th>类型</th><th>底部共振</th><th>确认</th><th>此后20日</th><th>此后60日</th></tr></thead><tbody>';
+    (T.triggers||[]).forEach(function(x){
+      var f=function(v){ return v==null?'<span style="color:var(--text-3)">未到期</span>':(v>=0?'<span style="color:var(--cau)">+'+fmt(v,2)+'%</span>':'<span style="color:var(--pos)">'+fmt(v,2)+'%</span>'); };
+      h += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.kind)+'</td><td>'+fmt(x.bottom_score,1)+'</td><td>'+x.confirm+'/3</td><td>'+f(x.ret20)+'</td><td>'+f(x.ret60)+'</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<div class="note" style="margin-top:16px"><b>方法与局限：</b>'+esc(T.disclaimer||"")+' 11 个维度为 ERP、破净率、200日宽度、NH-NL、换手率、PCR、两融增速、全A PB、股基3年年化、BIAS20、RSI14；分位为全历史 expanding(min_periods='+fmt(th.min_hist,0)+')，月频数据最多前向填充45个交易日。需注意：低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。</div>';
+    h += '</div>';
+    return h;
+  }
 
   function render(){
     var html = "";
@@ -335,30 +442,25 @@ a{text-decoration:none;color:inherit}
     if(mo.length){
       html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">估值 · 杠杆 · 市场结构</span><span style="color:var(--text-3);font-size:12px">结构观察指标 · 部分含情绪方向 · 均不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
-      mo.forEach(function(k){
-        var p = mp[k]; if(!p) return;
-        html += '<div class="panel" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="结构观察" id="toc_'+k+'">';
-        html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">结构指标</span>'+(p.freq==="monthly"?'<span class="ptag" style="margin-left:6px">月频</span>':'')+staleTag(p)+'</div></div>';
-        html += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">市场结构</span></div>';
-        html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
-        html += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
-        html += '<div class="panel-pcts">';
-        [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
-          html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
-        });
-        html += '</div></div>';
-        html += '<div class="pchart" id="pc_'+k+'"></div>';
-        html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
-        if(p.aux_text) html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
-        html += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
-        html += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
-        html += '</div>';
-      });
+      mo.forEach(function(k){ html += extraCardHtml(k, mp[k], "结构观察", "结构指标", "市场结构"); });
       html += '</div>';
     }
 
+    // 顶底信号与转折点栏目（共振板 + 4 张明细卡，均不计入综合分）
+    var T = D.turning_panel;
+    var sp = D.signal_panels || {}, so = D.signal_order || Object.keys(sp);
+    if(T || so.length){
+      html += '<div class="sec-head" style="margin-top:24px"><span class="sec-title">顶底信号与转折点</span><span style="color:var(--text-3);font-size:12px">赔率而非时点 · 全部不计入综合情绪分</span></div>';
+      html += turningHtml(T);
+      if(so.length){
+        html += '<div class="panel-grid">';
+        so.forEach(function(k){ html += extraCardHtml(k, sp[k], "顶底信号", "顶底指标", "顶底信号"); });
+        html += '</div>';
+      }
+    }
+
     html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
-    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB 均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号。</div>';
+    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14 与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。</div>';
 
     app.className = "";   // 移除初始 loading 态（padding/text-align 会压缩卡片）
     app.innerHTML = html;
@@ -403,6 +505,33 @@ a{text-decoration:none;color:inherit}
     var tipBg = cssVar("--chart-tip-bg")||"#fff";
     var tipBd = cssVar("--chart-tip-bd")||"#e8e8e8";
     var tipFg = cssVar("--chart-tip-fg")||"#111";
+    // 顶底共振度走势（双序列 + 触发线）
+    var tEl = document.getElementById("turningChart");
+    if(tEl && D.turning_panel && D.turning_panel.history){
+      var th = rangeData(D.turning_panel.history);
+      var td = th.map(function(x){return x.date;});
+      var tb = th.map(function(x){return x.bottom;});
+      var tt = th.map(function(x){return x.top;});
+      var tc = echarts.init(tEl);
+      var bCol = cssVar("--brand")||"#ff4713";
+      tc.setOption({
+        tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:tipBg,borderColor:tipBd,textStyle:{color:tipFg,fontSize:11}},
+        legend:{show:true,top:0,right:8,itemWidth:16,itemHeight:8,textStyle:{color:axisLabel,fontSize:10}},
+        grid:{left:42,right:18,top:26,bottom:52},
+        xAxis:{type:"category",data:td,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:10,hideOverlap:true}},
+        yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:10},splitLine:{lineStyle:{color:splitLine}}},
+        dataZoom:dataZoomOpt({bottom:8,filterMode:"none"}),
+        series:[
+          {name:"底部共振度",type:"line",data:tb,showSymbol:false,smooth:true,
+           lineStyle:{width:2,color:bCol},areaStyle:{color:bCol+"1c"},
+           markLine:{silent:true,symbol:"none",label:{show:true,formatter:"60 触发线",color:axisLabel,fontSize:10,position:"insideEndTop"},
+             lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1},data:[{yAxis:60}]}},
+          {name:"顶部共振度",type:"line",data:tt,showSymbol:false,smooth:true,
+           lineStyle:{width:1.8,color:"#5b8ff9",type:"dashed"},itemStyle:{color:"#5b8ff9"}}
+        ]
+      });
+      charts.push(tc);
+    }
     // 综合情绪分走势
     var cc = document.getElementById("compChart");
     if(cc){
@@ -467,6 +596,25 @@ a{text-decoration:none;color:inherit}
           lineStyle:{color:"#e8633a",type:"dashed",width:1,opacity:.7},data:[{yAxis:50}]};
         hasLegend=true;
       }
+      // 顶底信号卡：通用辅助线（同轴，量纲均为 % 或 0-100）
+      if(p.aux_lines && p.aux_lines.length && p.auxiliary && p.auxiliary.length){
+        var am={}; p.auxiliary.forEach(function(x){ am[x.date]=x; });
+        p.aux_lines.forEach(function(al){
+          var av=dates.map(function(d){ return (am[d] && am[d][al.field]!=null)?am[d][al.field]:null; });
+          var ac=al.color||"#5b8ff9";
+          series.push({name:al.name,type:"line",data:av,showSymbol:false,smooth:true,
+                       lineStyle:{width:1.5,color:ac,type:"dashed"},itemStyle:{color:ac},connectNulls:true});
+        });
+        hasLegend=true;
+      }
+      // 顶底信号卡：阈值参考线（如 RSI 30/70）
+      if(p.mark_lines && p.mark_lines.length){
+        series[0].markLine={silent:true,symbol:"none",
+          label:{show:true,color:axisLabel,fontSize:10,position:"insideEndTop",
+                 formatter:function(x){ return (x.data&&x.data.name)||x.name||""; }},
+          lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1,opacity:.8},
+          data:p.mark_lines.map(function(m){ return {yAxis:m.y,name:m.label}; })};
+      }
       // "全部"区间默认聚焦近5年，避免远古极值(如2007年85%)把当前曲线压平；
       // 用户可拖动滑块/滚轮查看更早数据，纵轴会随窗口自适应。
       var startPct = 0;
@@ -507,6 +655,9 @@ a{text-decoration:none;color:inherit}
     // 估值与宏观比较栏目
     var mp=D.macro_panels||{}, mo=D.macro_order||Object.keys(mp);
     mo.forEach(function(k){ renderOneChart(k, "pc_"+k, mp[k]); });
+    // 顶底信号明细卡
+    var sp=D.signal_panels||{}, so=D.signal_order||Object.keys(sp);
+    so.forEach(function(k){ renderOneChart(k, "pc_"+k, sp[k]); });
   }
 
   function redrawCharts(){

@@ -6,7 +6,7 @@
 不取用原站任何专有/会员数据。指标口径依据原站公开释义(paraphrase)还原。
 
 8 个指标：
-  1. rp         A股风险溢价      = 全A盈利收益率(1/PE) − 10年国债收益率    [精确自算]
+  1. rp         A股风险溢价      = 全A盈利收益率(1/PE) − 10年国债收益率    [月频PE按日对齐]
   2. dgz        低估指数行业      = 申万31个一级行业中处于低估(低分位)的个数 [近似:价格分位代理估值]
   3. fx_fe      新基金发行        = 近90日滚动日均发行份额(亿份), 反向指标   [精确自算]
   4. pgjj_zsy   正收益偏股基金占比= 上证基金指数近1年收益率为正占比的代理     [代理]
@@ -47,14 +47,20 @@ from core import (BASE, DATA, TODAY, get_or_fetch, log, pct_rank,
                   sjoin, window_pct)
 
 
-# 1) 全A PE（乐咕，含总市值）
+# 1) 全A平均市盈率（乐咕乐股，月频全历史）
+# 2026-11-20 口径修复：ak.stock_market_pe_lg(symbol="全部A股"/"沪深300") 的
+# symbol 参数在 akshare 1.20.65 已失效，三个取值都返回同一份科创板日频数据
+# (1778行、最新PE 90.51)。以此为分子会把 1/PE 压到 1.1%，ERP 算出负值，
+# 占综合分 1/8 权重却严重失真。改用无参接口的全A「平均市盈率」(月频、
+# 1997-12 起、最新 24.09)，由 calc_rp 按交易日 ffill 对齐国债。
+# 缓存 key 用 all_pe_lg，确保不会复用旧的坏缓存 mood_all_pe.csv。
 def fetch_all_pe():
-    d = ak.stock_market_pe_lg(symbol="全部A股")
+    d = ak.stock_market_pe_lg()
     d["date"] = pd.to_datetime(d["日期"])
-    return sjoin(d.set_index("date")["市盈率"], "all_pe")
+    return sjoin(d.set_index("date")["平均市盈率"], "all_pe_lg")
 
 
-# 1b) 全市场总市值（乐咕，换手率分母）
+# 1b) 保留：全市场总市值（当前无指标消费，仅供换手率分母复核）
 def fetch_total_mv():
     d = ak.stock_market_pe_lg(symbol="全部A股")
     d["date"] = pd.to_datetime(d["日期"])
@@ -305,6 +311,7 @@ def _read_frame(name):
         return None
     try:
         d = pd.read_csv(p, parse_dates=["date"]).set_index("date").sort_index()
+        d = d[~d.index.duplicated(keep="last")]   # 上游偶发重复日期，统一去重
         return d[d.index <= TODAY]
     except Exception as e:
         log(f"    [{name}] 读取失败: {e}")
@@ -327,9 +334,8 @@ def fetch_pb():
 def load_sources():
     """取全部原始序列。任一源失败置 None，由对应指标自行跳过，不拖垮全局。"""
     src = {}
-    log("[src 1/7] 全A PE / 总市值 / 10年国债 ...")
-    src["pe"] = get_or_fetch("all_pe", fetch_all_pe)
-    src["mv"] = get_or_fetch("total_mv", fetch_total_mv)
+    log("[src 1/7] 全A PE(月频) / 10年国债 ...")
+    src["pe"] = get_or_fetch("all_pe_lg", fetch_all_pe)
     src["bond10"] = get_or_fetch("bond10", fetch_bond10)
 
     log("[src 2/7] 全市场换手率(交易所权威口径) ...")
@@ -384,12 +390,14 @@ def calc_rp(src):
     try:
         pe, bond10 = src["pe"], src["bond10"]
         ep = (1.0 / pe) * 100.0  # 盈利收益率%
-        j = ep.index.intersection(bond10.index)
-        rp = (ep.loc[j] - bond10.loc[j]).dropna()
+        # PE 为月频、国债为日频：各自前向填充到并集日历再相减，
+        # 避免直接取交集导致每月只剩 1 个点（历史分位样本不足）。
+        idx = ep.index.union(bond10.index)
+        rp = (ep.reindex(idx).ffill() - bond10.reindex(idx).ffill()).dropna()
         rp = rp[rp.index <= TODAY]
         return make_panel("rp", "A股风险溢价", rp,
-                          "全A市盈率(乐咕 stock_market_pe_lg)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em)；值越高股票越便宜",
-                          reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)")
+                          "全A平均市盈率(乐咕 stock_market_pe_lg 无参，月频1997-12起)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em 日频2010起)；两序列各自ffill到交易日历并集后相减。2026-11-20 修复此前 symbol 参数失效误用科创板PE(90.51)的失真口径",
+                          reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)。PE 为月频数据按日对齐，月内数值不变属正常；分位基于日频填充序列计算")
     except Exception as e:
         log(f"    [rp] 计算失败: {e}")
         return None
@@ -683,6 +691,174 @@ def calc_pb_panel():
         return None
 
 
+# ---------------- 顶底信号明细卡（独立观察，均不计入综合分）----------------
+def _aux_rows(d, fields):
+    """扩展序列 -> 前端 auxiliary 数组（与图表主序列按日期对齐）。"""
+    rows = []
+    for dt, r in d.iterrows():
+        if dt > TODAY:
+            continue
+        row = {"date": dt.strftime("%Y-%m-%d")}
+        for f in fields:
+            v = r.get(f)
+            row[f] = round(float(v), 3) if pd.notna(v) else None
+        rows.append(row)
+    return rows
+
+
+def calc_below_net_panel():
+    """破净率：历次大底峰值同步出现的硬指标。"""
+    try:
+        d = _read_frame("below_net")
+        if d is None or "below_net_ratio" not in d.columns:
+            return None
+        s = d["below_net_ratio"].dropna()
+        p = make_panel(
+            "below_net", "破净率（全A破净个股占比）", s,
+            "破净个股数 ÷ 全A上市公司数 ×100%，取 akshare stock_a_below_net_asset_statistics（乐咕乐股，2005-01 起日频，一次返回全历史）。"
+            "破净率越高=资产折价越极端，历史上 2005/2008/2018/2024 大底峰值分别为 24.4%/14.1%/14.0%/16.6%。",
+            reverse=True, unit="%",
+            desc="A股顶底判断中底部指示最硬的单指标：市场愿意以低于净资产的价格卖出大量公司，通常意味着系统性的极度悲观。"
+            "但它给的是赔率不是时点——破净率可以在高位维持数月，且顶部预测力明显弱于底部。"
+            "外部口径（如东财财富号）因子公司剔除规则不同可能与本序列有 1~2 个百分点差异，比较时需注意口径。")
+        if p:
+            p["score_label"] = "底部信号分位"
+            p["score_hint"] = "（越高=越接近历史底部）"
+            parts = []
+            for label, a, b in [("2005年998点", "2005-01-01", "2005-12-31"),
+                                ("2008年1664点", "2008-09-01", "2008-12-31"),
+                                ("2018年2440点", "2018-10-01", "2019-01-31"),
+                                ("2024年2635点", "2024-01-01", "2024-03-31")]:
+                x = s[(s.index >= a) & (s.index <= b)]
+                if len(x):
+                    parts.append(f"{label} {x.max():.1f}%")
+            p["aux_text"] = ("历次大底峰值：" + "、".join(parts) +
+                             f"；当前 {s.iloc[-1]:.2f}%（破净 {int(d['below_net_asset'].iloc[-1])} 家 / "
+                             f"全A {int(d['total_company'].iloc[-1])} 家）。")
+        return p
+    except Exception as e:
+        log(f"    [below_net] 计算失败: {e}")
+        return None
+
+
+def calc_nhnl_panel():
+    """新高新低差：创60日新高家数 - 新低家数，观察下跌动能是否衰竭。"""
+    try:
+        d = _read_frame("breadth_extra")
+        if d is None or "nh_nl" not in d.columns:
+            return None
+        s = d["nh_nl"].dropna()
+        p = make_panel(
+            "nhnl", "新高新低差（NH-NL）", s,
+            "逐日横截面：创 60 日新高个股占比 − 创 60 日新低个股占比（%）。"
+            "复用 data/breadth_prices/ 下 5547 只个股未复权收盘价，零网络请求自算；"
+            "辅助线为创新高/创新低家数占比。",
+            reverse=False, unit="%",
+            desc="市场内部动能最直观的宽度指标。大幅为负=普跌、抛压广泛；由极负值收敛往往是下跌动能衰竭的早期迹象。"
+            "顶底关键看背离：指数创 60 日新低而 NH-NL 不再创新低，说明下跌只剩少数权重股贡献；"
+            "指数创新高而 NH-NL 走低则提示涨势收窄。背离判定见「顶底共振信号板」。")
+        if p:
+            p["score_label"] = "情绪分位"
+            p["score_hint"] = "（越低=抛压越广泛）"
+            p["auxiliary"] = _aux_rows(d, ["new_high", "new_low"])
+            p["aux_lines"] = [
+                {"name": "创新高占比", "field": "new_high", "color": "#e8633a"},
+                {"name": "创新低占比", "field": "new_low", "color": "#5b8ff9"},
+            ]
+            p["aux_text"] = (f"辅助：当前创新高 {d['new_high'].iloc[-1]:.2f}%、"
+                             f"创新低 {d['new_low'].iloc[-1]:.2f}%；"
+                             f"当日有效股票 {int(d['n_stocks'].iloc[-1])} 只（需上市满 60 个交易日）。")
+        return p
+    except Exception as e:
+        log(f"    [nhnl] 计算失败: {e}")
+        return None
+
+
+def calc_adv_panel():
+    """涨跌家数占比 + 20日动量广度 + 均线多头排列 + 腾落线变化。"""
+    try:
+        d = _read_frame("breadth_extra")
+        if d is None or "adv_ratio" not in d.columns:
+            return None
+        s = d["adv_ratio"].dropna()
+        p = make_panel(
+            "adv_ratio", "上涨家数占比与动能广度", s,
+            "逐日横截面：收盘价高于前一日收盘的个股占比（%）。辅助线：近 20 日收益为正的个股占比、"
+            "MA5>MA20>MA60 多头排列个股占比，三条序列同为 0~100% 可同轴比较。数据源同 NH-NL 卡片。",
+            reverse=False, unit="%",
+            desc="短周期参与度。上涨家数占比持续偏低=普跌；若指数横盘或反弹而该比例与 20 日动量广度同步回升，"
+            "说明内部修复是全面的而非少数权重拉动。腾落线(ADL)为每日净广度的累计值，绝对值无意义，"
+            "重点看它是否与指数同步创新低——不同步即为底部动能背离。")
+        if p:
+            p["score_label"] = "情绪分位"
+            p["score_hint"] = "（越低=越普跌）"
+            p["auxiliary"] = _aux_rows(d, ["mom20_ratio", "ma_bull"])
+            p["aux_lines"] = [
+                {"name": "20日动量广度", "field": "mom20_ratio", "color": "#8b5cf6"},
+                {"name": "多头排列占比", "field": "ma_bull", "color": "#5b8ff9"},
+            ]
+            ad = d["ad_line"].dropna()
+            chg = float(ad.iloc[-1] - ad.iloc[-61]) if len(ad) > 60 else float("nan")
+            p["aux_text"] = (f"辅助：20 日动量广度 {d['mom20_ratio'].iloc[-1]:.2f}%、"
+                             f"多头排列占比 {d['ma_bull'].iloc[-1]:.2f}%；"
+                             f"腾落线近 60 交易日累计变化 {chg:+.1f} 个百分点"
+                             f"（当前 {ad.iloc[-1]:.1f}，负值持续扩大=广度仍在恶化）。")
+        return p
+    except Exception as e:
+        log(f"    [adv_ratio] 计算失败: {e}")
+        return None
+
+
+def calc_tech_panel():
+    """沪深300 RSI14 + BIAS20：短期超卖/超买与均线乖离。"""
+    try:
+        d = _read_frame("tech")
+        if d is None or "rsi14" not in d.columns:
+            return None
+        s = d["rsi14"].dropna()
+        p = make_panel(
+            "hs300_rsi", "沪深300 RSI14（超卖/超买）", s,
+            "Wilder RSI(14)，取新浪沪深300价格指数收盘价(sh000300)自算；辅助信息给出 BIAS20=(收盘/MA20−1)×100% "
+            "与 MA20/MA60 相对位置。用固定 30/70 阈值作参考线，历史分位用于观察极端程度。",
+            reverse=False, unit="",
+            desc="短期动量极端值。<30 为超卖、>70 为超买，但强势趋势中 RSI 可长期钝化，"
+            "单独用阈值抄底/逃顶容易被趋势碾过；与宽度、破净率等结构性指标共振时参考价值更高。"
+            "BIAS20 为负说明指数在 20 日均线下方，负值越深短期跌幅越急。")
+        if p:
+            p["score_label"] = "情绪分位"
+            p["score_hint"] = "（越低=越超卖）"
+            p["mark_lines"] = [
+                {"y": 30, "label": "30 超卖线", "color": "#2aa876"},
+                {"y": 70, "label": "70 超买线", "color": "#e8633a"},
+            ]
+            last = d.iloc[-1]
+            p["aux_text"] = (f"辅助：BIAS20 {last['bias20']:+.2f}%（收盘 {last['hs300']:.2f} / "
+                             f"MA20 {last['ma20']:.2f} / MA60 {last['ma60']:.2f}）；"
+                             f"收盘{'高于' if last['hs300'] > last['ma20'] else '低于'}MA20，"
+                             f"{'高于' if last['hs300'] > last['ma60'] else '低于'}MA60。")
+        return p
+    except Exception as e:
+        log(f"    [hs300_rsi] 计算失败: {e}")
+        return None
+
+
+SIGNAL_BUILDERS = [
+    ("below_net", calc_below_net_panel),
+    ("nhnl", calc_nhnl_panel),
+    ("adv_ratio", calc_adv_panel),
+    ("hs300_rsi", calc_tech_panel),
+]
+
+
+def build_signal_panels():
+    out = {}
+    for key, fn in SIGNAL_BUILDERS:
+        p = fn()
+        if p:
+            out[key] = p
+    return out
+
+
 MACRO_BUILDERS = [
     ("etf300_ratio", calc_etf_ratio_panel),
     ("margin_growth", calc_margin_panel),
@@ -736,7 +912,7 @@ def build_composite(panels):
 
 # ---------------- 输出 ----------------
 def write_output(panels, compare_panel, macro_panels, crowding_panel,
-                 composite, comp_hist, t0):
+                 signal_panels, turning_panel, composite, comp_hist, t0):
     out = {
         "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "data_date": TODAY.strftime("%Y-%m-%d"),
@@ -746,6 +922,9 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
         "macro_panels": macro_panels,
         "macro_order": [k for k, _ in MACRO_BUILDERS if k in macro_panels],
         "crowding_panel": crowding_panel,
+        "signal_panels": signal_panels,
+        "signal_order": [k for k, _ in SIGNAL_BUILDERS if k in signal_panels],
+        "turning_panel": turning_panel,
         "order": METRIC_ORDER,
         "proxy_flags": {
             "rp": "精确", "dgz": "近似", "fx_fe": "精确", "pgjj_zsy": "代理",
@@ -766,6 +945,10 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
             p = panels[k]
             log(f"  {p['name']:16s} 值={p['value']:>8.3f} 情绪分={p['score']:>6.2f} {p['state']} [{out['proxy_flags'][k]}] 历史{len(p['history'])}日")
     log(f"结构观察卡片 {len(macro_panels)}/4: {', '.join(macro_panels.keys())}")
+    log(f"顶底信号卡片 {len(signal_panels)}/{len(SIGNAL_BUILDERS)}: {', '.join(signal_panels.keys())}")
+    if turning_panel:
+        c = turning_panel["current"]
+        log(f"共振信号板: 底部{c['bottom_score']} 顶部{c['top_score']} 确认{c['confirm']}/3 -> {c['state']}")
     log(f"综合情绪分: {composite} ({state_of(composite)[0]})")
     log(f"输出: {jpath.name} ({jpath.stat().st_size/1024:.0f}KB) / {jspath.name}")
 
@@ -786,9 +969,20 @@ def main():
     compare_panel = calc_compare_panel()
     macro_panels = build_macro_panels()
     crowding_panel = calc_crowding_panel()
+
+    # 共振板依赖 load_sources() 刚落盘的各源缓存，且会生成 mood_tech.csv 供技术位置卡片读取，
+    # 因此必须先于 build_signal_panels()。build_turning.py 亦可独立运行重算。
+    try:
+        import build_turning
+        turning_panel = build_turning.build()
+    except Exception as e:
+        log(f"    [turning] 共振信号板构建失败: {e}")
+        turning_panel = None
+    signal_panels = build_signal_panels()
+
     composite, comp_hist = build_composite(panels)
     write_output(panels, compare_panel, macro_panels, crowding_panel,
-                 composite, comp_hist, t0)
+                 signal_panels, turning_panel, composite, comp_hist, t0)
 
 
 if __name__ == "__main__":

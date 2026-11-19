@@ -42,3 +42,12 @@ BREADTH_MIN_STOCKS = 100        # 当日有效股票数下限，低于此不输�
 
 # ---------------- 两融（build_margin.py）----------------
 MARGIN_GROWTH_WIN = 60          # 融资余额增速回看窗口（交易日）
+
+# ---------------- 顶底共振信号板（build_turning.py）----------------
+TURNING_FEAR_PCT = 70           # 单维度「底部极值」阈值：fear>=70（0=极热/顶部，100=极冷/底部）
+TURNING_TOP_PCT = 20            # 单维度「顶部极值」阈值：fear<=20
+TURNING_TRIGGER = 60            # 共振度触发线（满足极值的维度占比 %）
+TURNING_MIN_DIMS = 6            # 少于此数量的有效维度不出信号（早期样本不足）
+TURNING_FWD_WINS = (20, 60)     # 历史回测的前瞻收益窗口（交易日）
+TURNING_TRIGGER_GAP = 20        # 触发日去重的间隔（交易日），避免重叠样本夸大显著性
+TURNING_MIN_HIST = 250          # 单维度 expanding 分位的最小历史样本

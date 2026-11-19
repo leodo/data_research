@@ -117,6 +117,10 @@ PIPELINES = {
         ("两融余额增速", "build_margin.py"),
         ("全A PB(月频)", "build_pb.py"),
         ("全A市场宽度", "build_breadth.py"),
+        ("破净率", "build_below_net.py"),
+        ("宽度扩展包", "build_breadth_extra.py"),
+        # build_turning.py 由 build_mood.py 在 load_sources() 之后同进程调用，
+        # 不单独登记：它依赖那些刚落盘的源缓存，并生成信号卡所需的 mood_tech.csv。
         ("情绪面板(综合)", "build_mood.py"),
     ],
 }
