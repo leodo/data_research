@@ -399,8 +399,22 @@ a{text-decoration:none;color:inherit}
     }
     html += '</div>';
 
+    // 顶底信号与转折点栏目：结论前置，紧跟总览，先给赔率再看支撑证据
+    // （共振板 + 7 张明细卡，均不计入综合分）
+    var T = D.turning_panel;
+    var sp = D.signal_panels || {}, so = D.signal_order || Object.keys(sp);
+    if(T || so.length){
+      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">顶底信号与转折点</span><span style="color:var(--text-3);font-size:12px">结论前置 · 赔率而非时点 · 全部不计入综合情绪分</span></div>';
+      html += turningHtml(T);
+      if(so.length){
+        html += '<div class="panel-grid">';
+        so.forEach(function(k){ html += extraCardHtml(k, sp[k], "顶底信号", "顶底指标", "顶底信号"); });
+        html += '</div>';
+      }
+    }
+
     // 8个指标卡片
-    html += '<div class="sec-head" style="margin-top:6px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
+    html += '<div class="sec-head" style="margin-top:24px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
     html += '<div class="panel-grid">';
     order.forEach(function(k){
       var p = panels[k];
@@ -471,19 +485,6 @@ a{text-decoration:none;color:inherit}
       html += '<div class="panel-grid">';
       mo.forEach(function(k){ html += extraCardHtml(k, mp[k], "结构观察", "结构指标", "市场结构"); });
       html += '</div>';
-    }
-
-    // 顶底信号与转折点栏目（共振板 + 7 张明细卡，均不计入综合分）
-    var T = D.turning_panel;
-    var sp = D.signal_panels || {}, so = D.signal_order || Object.keys(sp);
-    if(T || so.length){
-      html += '<div class="sec-head" style="margin-top:24px"><span class="sec-title">顶底信号与转折点</span><span style="color:var(--text-3);font-size:12px">赔率而非时点 · 全部不计入综合情绪分</span></div>';
-      html += turningHtml(T);
-      if(so.length){
-        html += '<div class="panel-grid">';
-        so.forEach(function(k){ html += extraCardHtml(k, sp[k], "顶底信号", "顶底指标", "顶底信号"); });
-        html += '</div>';
-      }
     }
 
     html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
