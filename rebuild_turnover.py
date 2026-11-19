@@ -31,15 +31,12 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 import akshare as ak
 
+from config import (START_TURNOVER as START, K_SZ_TO_ALL, K_SH_TO_ALL)
 from core import DATA, TODAY_TAG as TODAY, log, trade_dates
 
 OUT = DATA / "mood_turnover_rate.csv"
 RAW = DATA / "mood_turnover_raw.csv"
 DONE = DATA / "mood_turnover_done.csv"
-START = "20150105"
-
-K_SZ_TO_ALL = 0.72   # 早期：全市场 ≈ 深市换手率 * 0.72
-K_SH_TO_ALL = 1.36   # 近期：全市场 ≈ 沪市换手率 * 1.36（重叠样本实测 1.28~1.42）
 
 
 def fetch_sz_rate(ds):

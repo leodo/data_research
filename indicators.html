@@ -6,41 +6,8 @@
 <title>恐贪指数 · 7大指数 · 投研工作台</title>
 <script src="vendor/echarts.min.js"></script>
 <script src="app.js"></script>
+<link rel="stylesheet" href="app.css" />
 <style>
-:root{
-  /* 浅色主题（默认） */
-  --brand:#ff4713;--brand-deep:#d93a0e;--brand-soft:#fff1ec;
-  --bg:#ffffff;--bg-soft:#fafafa;--bg-sidebar:#fbfcfd;--bg-card:#ffffff;
-  --ink:#111111;--text-2:#4d4d4d;--text-3:#8c8c8c;--line:#e8e8e8;
-  --mark-grad:linear-gradient(135deg,#ff4713,#e82e5c);
-  --nav-hover:#f2f3f5;--switch-bg:#f4f5f7;--switch-active:#ffffff;--switch-shadow:0 1px 4px rgba(0,0,0,.1);
-  --srcbg:#f5f6f8;
-  --tag-off-fg:#005eb8;--tag-off-bg:#eef6ff;--tag-off-bd:#d6e9ff;
-  --tag-rep-fg:#a86400;--tag-rep-bg:#fff8e8;--tag-rep-bd:#ffe6b8;
-  --pin-fg:#111111;--pin-ring:#ffffff;
-  --up:#ff4713;--down:#00875a;
-  --mask-bg:rgba(17,24,39,.5);--modal-shadow:0 20px 60px rgba(15,23,42,.25);
-  --chart-tip-bg:#ffffff;--chart-tip-bd:#e8e8e8;--chart-tip-fg:#111111;
-  --chart-legend:#4d4d4d;--chart-axis-line:#e8e8e8;--chart-axis-label:#8c8c8c;--chart-split:#f3f3f3;--chart-mark:#d4d4d4;
-  --radius:10px;--shadow:0 4px 16px rgba(0,0,0,.06);
-}
-[data-theme="dark"]{
-  /* 暗色主题 */
-  --brand:#ff5b2e;--brand-deep:#ff9b7a;--brand-soft:rgba(255,91,46,.14);
-  --bg:#0d1117;--bg-soft:#1c2128;--bg-sidebar:#0a0d12;--bg-card:#161b22;
-  --ink:#e6edf3;--text-2:#adbac7;--text-3:#7d8590;--line:#30363d;
-  --mark-grad:linear-gradient(135deg,#ff5b2e,#ff2e63);
-  --nav-hover:#1c2128;--switch-bg:#161b22;--switch-active:#30363d;--switch-shadow:0 1px 5px rgba(0,0,0,.4);
-  --srcbg:#161b22;
-  --tag-off-fg:#58a6ff;--tag-off-bg:rgba(88,166,255,.12);--tag-off-bd:rgba(88,166,255,.3);
-  --tag-rep-fg:#e3b341;--tag-rep-bg:rgba(227,179,65,.12);--tag-rep-bd:rgba(227,179,65,.3);
-  --pin-fg:#ffffff;--pin-ring:#0d1117;
-  --up:#ff6b6b;--down:#3fb950;
-  --mask-bg:rgba(0,0,0,.72);--modal-shadow:0 20px 60px rgba(0,0,0,.6);
-  --chart-tip-bg:#1c2128;--chart-tip-bd:#30363d;--chart-tip-fg:#e6edf3;
-  --chart-legend:#adbac7;--chart-axis-line:#30363d;--chart-axis-label:#7d8590;--chart-split:#21262d;--chart-mark:#484f58;
-  --shadow:0 4px 18px rgba(0,0,0,.45);
-}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}

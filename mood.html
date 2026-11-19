@@ -6,45 +6,8 @@
 <title>情绪面板 · 8大指标 · 投研工作台</title>
 <script src="vendor/echarts.min.js"></script>
 <script src="app.js"></script>
+<link rel="stylesheet" href="app.css" />
 <style>
-:root{
-  --brand:#ff4713;--brand-deep:#d93a0e;--brand-soft:#fff1ec;
-  --bg:#ffffff;--bg-soft:#fafafa;--bg-sidebar:#fbfcfd;--bg-card:#ffffff;
-  --ink:#111111;--text-2:#4d4d4d;--text-3:#8c8c8c;--line:#e8e8e8;
-  --mark-grad:linear-gradient(135deg,#ff4713,#e82e5c);
-  --nav-hover:#f2f3f5;--switch-bg:#f4f5f7;--switch-active:#ffffff;--switch-shadow:0 1px 4px rgba(0,0,0,.1);
-  --srcbg:#f5f6f8;
-  --tag-off-fg:#005eb8;--tag-off-bg:#eef6ff;--tag-off-bd:#d6e9ff;
-  --tag-rep-fg:#a86400;--tag-rep-bg:#fff8e8;--tag-rep-bd:#ffe6b8;
-  --pin-fg:#111111;--pin-ring:#ffffff;
-  --up:#ff4713;--down:#00875a;
-  --pos:#11b66e;--pos-bg:rgba(17,182,110,.12);
-  --neu:#1e88ff;--neu-bg:rgba(30,136,255,.12);
-  --cau:#ff2525;--cau-bg:rgba(255,37,37,.12);
-  --mask-bg:rgba(17,24,39,.5);--modal-shadow:0 20px 60px rgba(15,23,42,.25);
-  --chart-tip-bg:#ffffff;--chart-tip-bd:#e8e8e8;--chart-tip-fg:#111111;
-  --chart-legend:#4d4d4d;--chart-axis-line:#e8e8e8;--chart-axis-label:#8c8c8c;--chart-split:#f3f3f3;--chart-mark:#d4d4d4;
-  --radius:10px;--shadow:0 4px 16px rgba(0,0,0,.06);
-}
-[data-theme="dark"]{
-  --brand:#ff5b2e;--brand-deep:#ff9b7a;--brand-soft:rgba(255,91,46,.14);
-  --bg:#0d1117;--bg-soft:#1c2128;--bg-sidebar:#0a0d12;--bg-card:#161b22;
-  --ink:#e6edf3;--text-2:#adbac7;--text-3:#7d8590;--line:#30363d;
-  --mark-grad:linear-gradient(135deg,#ff5b2e,#ff2e63);
-  --nav-hover:#1c2128;--switch-bg:#161b22;--switch-active:#30363d;--switch-shadow:0 1px 5px rgba(0,0,0,.4);
-  --srcbg:#161b22;
-  --tag-off-fg:#58a6ff;--tag-off-bg:rgba(88,166,255,.12);--tag-off-bd:rgba(88,166,255,.3);
-  --tag-rep-fg:#e3b341;--tag-rep-bg:rgba(227,179,65,.12);--tag-rep-bd:rgba(227,179,65,.3);
-  --pin-fg:#ffffff;--pin-ring:#0d1117;
-  --up:#ff6b6b;--down:#3fb950;
-  --pos:#3fb950;--pos-bg:rgba(63,185,80,.14);
-  --neu:#58a6ff;--neu-bg:rgba(88,166,255,.14);
-  --cau:#ff6b6b;--cau-bg:rgba(255,107,107,.14);
-  --mask-bg:rgba(0,0,0,.72);--modal-shadow:0 20px 60px rgba(0,0,0,.6);
-  --chart-tip-bg:#1c2128;--chart-tip-bd:#30363d;--chart-tip-fg:#e6edf3;
-  --chart-legend:#adbac7;--chart-axis-line:#30363d;--chart-axis-label:#7d8590;--chart-split:#21262d;--chart-mark:#484f58;
-  --shadow:0 4px 18px rgba(0,0,0,.45);
-}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
@@ -186,9 +149,12 @@ a{text-decoration:none;color:inherit}
         <li><b>股基滚动年化收益。</b>往前3年买入偏股基金的持有年化收益，向下偏离均值可能是底部。<b>代理</b>：上证基金指数3年年化。</li>
         <li><b>神奇指标。</b>股票与债券资产回报差，沪深300越贴近债券走势越可能见底。<b>代理</b>：沪深300 ÷ 中债综合财富指数归一化比价。（反向指标）</li>
         <li><b>交易拥挤度（独立卡片，不计入综合分）。</b>全A按每日成交额排序，前5%个股成交额之和 ÷ 全A总成交额。越低越分散（&lt;40%健康），越高越抱团（&gt;50%结构风险）。反向情绪指标：越高情绪分越高（越谨慎）。附 Top10% 占比与 HHI 有效个股数作辅助。全A个股成交额取新浪公开接口逐日横截面自算。</li>
-        <li><b>头部300ETF占沪深300流通市值比例（估值与宏观栏目）。</b>被动资金定价力量观察指标，公开数据自算，不含情绪方向判断，不计入综合分。</li>
+        <li><b>头部300ETF占沪深300流通市值比例。</b>被动资金定价力量观察指标，公开数据自算，不含情绪方向判断，不计入综合分。</li>
+        <li><b>两融余额60日增速。</b>融资余额相对60个交易日前的变动率，观察杠杆资金进出速度；附融资余额规模与平均维持担保比例（杠杆安全垫）。数据取 akshare 两融账户统计，2012-09 起日更。</li>
+        <li><b>全A站上200日均线占比。</b>逐日横截面统计收盘价站上自身200日均线的个股比例，高=普涨趋势强、低=普跌超卖；附60日均线宽度。全A个股收盘价取新浪公开接口、多进程逐只缓存后自算（未复权）。</li>
+        <li><b>全A市净率中位数（月频）。</b>全市场估值中枢，2005 起月频，附等权平均 PB 观察风格分化。中位数不易被超大市值股拉动；注意与日频指标不同频。</li>
       </ul>
-      <p>综合情绪分为 8 个指标情绪分的等权平均（交易拥挤度与300ETF占比为独立观察卡片，不计入）。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。</p>
+      <p>综合情绪分为 8 个指标情绪分的等权平均（交易拥挤度、300ETF占比、两融增速、市场宽度、全A PB 共 5 张独立观察卡片均不计入）。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。</p>
       <p class="note-inline"><b>数据来源：</b>akshare（乐咕估值、东方财富、新浪财经、中债估值、上交所期权）。分位采用全历史 expanding 口径，每个指标卡片下方标注了具体来源。本页面为透明复刻实现，非官方数值，仅供研究参考，不构成投资建议。</p>
     </div>
   </div>
@@ -219,7 +185,10 @@ a{text-decoration:none;color:inherit}
     zzpgnh:     {low:"持有偏股基金的回报低迷，常对应中长期底部。", high:"持有回报丰厚，情绪偏乐观。", mid:"持有回报处于历史中枢。"},
     magic:      {low:"股票相对债券的表现偏弱，历史上常对应底部区域。", high:"股票显著强于债券，需警惕拥挤与过热。", mid:"股债比价处于均衡区间。"},
     etf300_ratio:{low:"头部300ETF占沪深300流通市值比例偏低，被动资金定价力量较弱。", high:"头部300ETF占比处于高位，被动资金定价力量与拥挤度上升，反映汇金等资金增持宽基ETF。", mid:"头部300ETF占比处于历史中枢。"},
-    crowding:   {low:"成交相对分散、微观结构较健康（低位区间），交易拥挤风险小。", high:"成交明显集中于少数头部个股（高位区间，尤其>50%时为结构风险信号），抱团拥挤、结构脆弱，历史上常对应阶段性高低点或风格切换，需警惕。", mid:"成交集中度处于上升趋势中（40~50% 附近），需关注局部过热。"}
+    crowding:   {low:"成交相对分散、微观结构较健康（低位区间），交易拥挤风险小。", high:"成交明显集中于少数头部个股（高位区间，尤其>50%时为结构风险信号），抱团拥挤、结构脆弱，历史上常对应阶段性高低点或风格切换，需警惕。", mid:"成交集中度处于上升趋势中（40~50% 附近），需关注局部过热。"},
+    margin_growth:{low:"融资余额增速转负且持续走低，杠杆资金主动撤离、风险偏好收缩，历史上常对应调整或底部区域。", high:"融资余额快速扩张，加杠杆意愿强、情绪偏亢奋，需关注后续去杠杆压力。", mid:"两融资金进出处于常态水平。"},
+    breadth_ma200:{low:"仅少数个股站上200日均线，市场普跌、内部动能弱，超卖状态常对应底部区域。", high:"多数个股站上200日均线，普涨且趋势强、情绪偏热；若指数创新高而宽度走低则提示涨势由少数权重股支撑。", mid:"站上长均线的个股占比处于历史中枢。"},
+    a_pb:       {low:"全A市净率处于历史低分位，整体估值便宜、长期赔率较好。", high:"全A市净率处于历史高分位，整体估值偏贵。", mid:"全市场估值中枢处于历史中位。"}
   };
   function interpretation(k,p){
     var s=Number(p.score)||50;
@@ -227,7 +196,7 @@ a{text-decoration:none;color:inherit}
     var m = (MEANING[k]||{})[lvl] || "该指标处于历史中性区间。";
     var srcHint = (flags[k]&&flags[k]!=="精确") ? "（"+flags[k]+"口径，仅作方向参考）" : "";
     // 结构指标(如300ETF占比)不带情绪分语义，改用历史分位表述
-    if(k==="etf300_ratio"){
+    if(k==="etf300_ratio" || k==="a_pb"){
       var pf=Number(p.pct_all)||0;
       var lv2 = pf<35?"low":(pf>65?"high":"mid");
       var m2=(MEANING[k]||{})[lv2]||"";
@@ -362,15 +331,15 @@ a{text-decoration:none;color:inherit}
     var mp = D.macro_panels || {};
     var mo = D.macro_order || Object.keys(mp);
     if(mo.length){
-      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">估值与宏观比较</span><span style="color:var(--text-3);font-size:12px">市场结构观察指标 · 不含情绪方向判断 · 不计入综合情绪分</span></div>';
+      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">估值 · 杠杆 · 市场结构</span><span style="color:var(--text-3);font-size:12px">结构观察指标 · 部分含情绪方向 · 均不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
       mo.forEach(function(k){
         var p = mp[k]; if(!p) return;
         html += '<div class="panel" style="border-style:dashed">';
-        html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">结构指标</span></div></div>';
+        html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">结构指标</span>'+(p.freq==="monthly"?'<span class="ptag" style="margin-left:6px">月频</span>':'')+staleTag(p)+'</div></div>';
         html += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">市场结构</span></div>';
         html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
-        html += '<div class="score-line">历史分位 <b style="color:var(--text)">'+fmt(p.pct_all,0)+'</b> / 100（越高=被动资金占比越高）</div></div>';
+        html += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
         html += '<div class="panel-pcts">';
         [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
           html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
@@ -378,6 +347,7 @@ a{text-decoration:none;color:inherit}
         html += '</div></div>';
         html += '<div class="pchart" id="pc_'+k+'"></div>';
         html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+        if(p.aux_text) html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
         html += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
         html += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
         html += '</div>';
@@ -386,7 +356,7 @@ a{text-decoration:none;color:inherit}
     }
 
     html += '<div class="note" style="margin-top:18px"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
-    html += '<div class="note" style="margin-top:12px"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度（前5%成交额占比，2015 起）与头部300ETF占比为独立观察卡片，不计入综合分；拥挤度基于新浪全A个股历史成交额逐日横截面自算，与乐咕/中金研报口径一致，可作为结构风险参考但非择时信号。</div>';
+    html += '<div class="note" style="margin-top:12px"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB 均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号。</div>';
 
     app.innerHTML = html;
 

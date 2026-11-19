@@ -25,12 +25,11 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
+from config import NPROC, START_CROWDING as START
 from core import DATA, TODAY_TAG as TODAY, log
 
 ADIR = DATA / "crowding_amounts"      # 每只股票一个CSV: date,amount
 OUT = DATA / "mood_crowding.csv"
-START = "20150101"
-NPROC = 8
 
 
 def get_universe():

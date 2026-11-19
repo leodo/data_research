@@ -297,79 +297,107 @@ def make_panel(key, name, raw, source, reverse=False, unit="%", desc=""):
     }
 
 
-def main():
-    t0 = time.time()
-    log("=" * 60)
-    log("情绪指标面板构建（公开数据自算版）")
-    log("=" * 60)
-
-    log("[1/8] 全A PE / 总市值 / 10年国债 ...")
-    pe = get_or_fetch("all_pe", fetch_all_pe)
-    mv = get_or_fetch("total_mv", fetch_total_mv)
-    bond10 = get_or_fetch("bond10", fetch_bond10)
-
-    log("[2/8] 全市场换手率(交易所权威口径) ...")
+# ---------------- 扩展指标数据读取（CSV 由独立构建脚本产出）----------------
+def _read_frame(name):
+    p = DATA / f"mood_{name}.csv"
+    if not p.exists():
+        log(f"    [{name}] 尚无数据文件，跳过（请先运行对应构建脚本）")
+        return None
     try:
-        turnover = fetch_turnover_rate()
-        if turnover is None:
+        d = pd.read_csv(p, parse_dates=["date"]).set_index("date").sort_index()
+        return d[d.index <= TODAY]
+    except Exception as e:
+        log(f"    [{name}] 读取失败: {e}")
+        return None
+
+
+def fetch_margin():
+    return _read_frame("margin")
+
+
+def fetch_breadth():
+    return _read_frame("breadth")
+
+
+def fetch_pb():
+    return _read_frame("a_pb")
+
+
+# ---------------- 原始数据源加载 ----------------
+def load_sources():
+    """取全部原始序列。任一源失败置 None，由对应指标自行跳过，不拖垮全局。"""
+    src = {}
+    log("[src 1/7] 全A PE / 总市值 / 10年国债 ...")
+    src["pe"] = get_or_fetch("all_pe", fetch_all_pe)
+    src["mv"] = get_or_fetch("total_mv", fetch_total_mv)
+    src["bond10"] = get_or_fetch("bond10", fetch_bond10)
+
+    log("[src 2/7] 全市场换手率(交易所权威口径) ...")
+    try:
+        src["turnover"] = fetch_turnover_rate()
+        if src["turnover"] is None:
             log("    未找到 mood_turnover_rate.csv，请先运行 python rebuild_turnover.py")
     except Exception as e:
         log(f"    换手率读取失败: {e}")
-        turnover = None
+        src["turnover"] = None
 
-    log("[3/8] PCR(上交所ETF期权持仓比，需逐个交易日抓取，首次较慢) ...")
+    log("[src 3/7] PCR(上交所ETF期权持仓比，真增量) ...")
     try:
-        pcr = get_or_fetch("pcr", fetch_pcr, max_age_hours=12)
+        src["pcr"] = get_or_fetch("pcr", fetch_pcr, max_age_hours=12)
     except Exception as e:
         log(f"    PCR抓取失败: {e}")
-        pcr = None
+        src["pcr"] = None
 
-    log("[4/8] 新基金发行 ...")
+    log("[src 4/7] 新基金发行 ...")
     try:
-        fi = get_or_fetch("fund_issue", fetch_fund_issue)
+        src["fi"] = get_or_fetch("fund_issue", fetch_fund_issue)
     except Exception as e:
         log(f"    新基金发行失败: {e}")
-        fi = None
+        src["fi"] = None
 
-    log("[5/8] 基金指数(股基年化/正收益占比代理) ...")
+    log("[src 5/7] 基金指数(股基年化/正收益占比代理) ...")
     try:
-        fi_idx = get_or_fetch("fund_index", fetch_fund_index)
+        src["fi_idx"] = get_or_fetch("fund_index", fetch_fund_index)
     except Exception as e:
         log(f"    基金指数失败: {e}")
-        fi_idx = None
+        src["fi_idx"] = None
 
-    log("[6/8] 沪深300 + 中债综合指数(神奇指标) ...")
+    log("[src 6/7] 沪深300 + 中债综合指数(神奇指标) ...")
     try:
-        hs300 = get_or_fetch("hs300", fetch_hs300)
-        bidx = get_or_fetch("bond_idx", fetch_bond_idx)
+        src["hs300"] = get_or_fetch("hs300", fetch_hs300)
+        src["bidx"] = get_or_fetch("bond_idx", fetch_bond_idx)
     except Exception as e:
         log(f"    神奇指标数据失败: {e}")
-        hs300 = bidx = None
+        src["hs300"] = src["bidx"] = None
 
-    log("[7/8] 申万一级行业价格历史(低估行业) ...")
+    log("[src 7/7] 申万一级行业价格历史(低估行业) ...")
     try:
-        sw = fetch_sw_industries()
+        src["sw"] = fetch_sw_industries()
     except Exception as e:
         log(f"    申万行业失败: {e}")
-        sw = {}
+        src["sw"] = {}
+    return src
 
-    panels = {}
 
-    # ---- 1. 风险溢价：1/PE - 10年国债 ----
+# ---------------- 综合分指标：一个指标一个函数，逻辑与原 main 逐字一致 ----------------
+def calc_rp(src):
     try:
+        pe, bond10 = src["pe"], src["bond10"]
         ep = (1.0 / pe) * 100.0  # 盈利收益率%
         j = ep.index.intersection(bond10.index)
         rp = (ep.loc[j] - bond10.loc[j]).dropna()
         rp = rp[rp.index <= TODAY]
-        p = make_panel("rp", "A股风险溢价", rp,
-                       "全A市盈率(乐咕 stock_market_pe_lg)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em)；值越高股票越便宜",
-                       reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)")
-        if p: panels["rp"] = p
+        return make_panel("rp", "A股风险溢价", rp,
+                          "全A市盈率(乐咕 stock_market_pe_lg)算盈利收益率1/PE，减10年国债收益率(东财 bond_zh_us_yield_em)；值越高股票越便宜",
+                          reverse=True, desc="股票相对债券的预期收益补偿，越高越接近底部区域(反向指标)")
     except Exception as e:
         log(f"    [rp] 计算失败: {e}")
+        return None
 
-    # ---- 2. 低估行业：申万一级行业价格分位<30%的个数 ----
+
+def calc_dgz(src):
     try:
+        sw = src["sw"]
         if sw:
             n_low_list = []
             for name, s in sw.items():
@@ -382,84 +410,139 @@ def main():
                 df = pd.concat(n_low_list, axis=1).sort_index()
                 n_low = df.sum(axis=1).dropna()
                 n_low.name = "n_low"
-                p = make_panel("dgz", "低估指数行业", n_low,
-                               "申万31个一级行业指数(akshare index_hist_sw)收盘价的全历史expanding分位，统计处于低分位(<30%)的行业个数",
-                               reverse=True, unit="个", desc="处于低估状态的申万一级行业个数越多，市场整体越低估(反向指标)")
-                if p: panels["dgz"] = p
+                return make_panel("dgz", "低估指数行业", n_low,
+                                  "申万31个一级行业指数(akshare index_hist_sw)收盘价的全历史expanding分位，统计处于低分位(<30%)的行业个数",
+                                  reverse=True, unit="个", desc="处于低估状态的申万一级行业个数越多，市场整体越低估(反向指标)")
+        return None
     except Exception as e:
         log(f"    [dgz] 计算失败: {e}")
+        return None
 
-    # ---- 3. 新基金发行：近90日滚动日均 ----
+
+def calc_fx_fe(src):
     try:
+        fi = src["fi"]
         if fi is not None:
             roll = fi.rolling("90D").mean().dropna()
             roll = roll[roll.index <= TODAY]
-            p = make_panel("fx_fe", "新基金发行", roll,
-                           "按成立日期聚合募集份额(akshare fund_new_found_em)，取近90日滚动日均发行份额(亿份)",
-                           reverse=False, unit="亿份", desc="近90日日均新基金发行份额，反映资金亢奋程度(越高越贪婪)")
-            if p: panels["fx_fe"] = p
+            return make_panel("fx_fe", "新基金发行", roll,
+                              "按成立日期聚合募集份额(akshare fund_new_found_em)，取近90日滚动日均发行份额(亿份)",
+                              reverse=False, unit="亿份", desc="近90日日均新基金发行份额，反映资金亢奋程度(越高越贪婪)")
+        return None
     except Exception as e:
         log(f"    [fx_fe] 计算失败: {e}")
+        return None
 
-    # ---- 4. 正收益偏股基金占比（代理：基金指数近1年收益率为正的滚动占比）----
+
+def calc_pgjj_zsy(src):
     try:
+        fi_idx = src["fi_idx"]
         if fi_idx is not None:
             r1y = fi_idx / fi_idx.shift(244) - 1.0  # 近1年收益
             r1y = r1y.dropna()
-            # 用近1年收益的"是否为正"做252日滚动占比
             pos = (r1y > 0).astype(float)
             ratio = pos.rolling(252, min_periods=60).mean() * 100
             ratio = ratio.dropna()
             ratio.name = "ratio"
-            p = make_panel("pgjj_zsy", "正收益偏股基金占比", ratio,
-                           "代理指标：上证基金指数(sh000011)近1年收益率为正的天数占比(252日滚动)。原站用全市场偏股基金全样本，公开源无法精确复刻",
-                           reverse=False, desc="近一年收益为正的偏股基金占比，越低越接近底部(代理指标)")
-            if p: panels["pgjj_zsy"] = p
+            return make_panel("pgjj_zsy", "正收益偏股基金占比", ratio,
+                              "代理指标：上证基金指数(sh000011)近1年收益率为正的天数占比(252日滚动)。原站用全市场偏股基金全样本，公开源无法精确复刻",
+                              reverse=False, desc="近一年收益为正的偏股基金占比，越低越接近底部(代理指标)")
+        return None
     except Exception as e:
         log(f"    [pgjj_zsy] 计算失败: {e}")
+        return None
 
-    # ---- 5. 全市场换手率：交易所权威口径 ----
+
+def calc_qschsl(src):
     try:
+        turnover = src["turnover"]
         if turnover is not None:
             t = turnover[turnover.index <= TODAY].dropna()
-            p = make_panel("qschsl", "全市场换手率", t,
-                           "交易所权威口径：(沪市成交额+深市成交额)÷(沪市总市值+深市总市值)×100%（数据源：上交所每日股票成交概况、深交所每日证券概况）；2022年前沪市无官方数据，用深市换手率×沪深稳定比例桥接",
-                           reverse=False, desc="量价维度情绪指标，换手率越高交易越火热、情绪越亢奋，逼近极值可能预示筑顶或磨底")
-            if p: panels["qschsl"] = p
+            return make_panel("qschsl", "全市场换手率", t,
+                              "交易所权威口径：(沪市成交额+深市成交额)÷(沪市总市值+深市总市值)×100%（数据源：上交所每日股票成交概况、深交所每日证券概况）；2022年前沪市无官方数据，用深市换手率×沪深稳定比例桥接",
+                              reverse=False, desc="量价维度情绪指标，换手率越高交易越火热、情绪越亢奋，逼近极值可能预示筑顶或磨底")
+        return None
     except Exception as e:
         log(f"    [qschsl] 计算失败: {e}")
+        return None
 
-    # ---- 5b. 对比面板：全程上交所官方换手率（不进综合分，仅作口径对比）----
-    compare_panel = None
+
+def calc_pcr(src):
+    try:
+        pcr = src["pcr"]
+        if pcr is not None:
+            return make_panel("pcr", "PCR", pcr,
+                              "上交所ETF期权未平仓认沽合约数÷未平仓认购合约数(akshare option_daily_stats_sse，逐交易日抓取)，综合50ETF/300ETF/500ETF/科创50ETF共5个标的",
+                              reverse=False, unit="", desc="认沽/认购持仓比。A股实证为顺周期：PCR与指数同向，处于低位时市场往往已在底部区域（后续收益更好），处高位时需谨慎。2021年以来PCR低15%分位未来60日平均+2.6%、高15%分位-3.5%")
+        return None
+    except Exception as e:
+        log(f"    [pcr] 计算失败: {e}")
+        return None
+
+
+def calc_zzpgnh(src):
+    try:
+        fi_idx = src["fi_idx"]
+        if fi_idx is not None:
+            ann = (fi_idx / fi_idx.shift(3 * 244)) ** (1 / 3) - 1.0
+            ann = ann.dropna() * 100
+            ann.name = "ann"
+            return make_panel("zzpgnh", "股基滚动年化收益", ann,
+                              "代理指标：上证基金指数(sh000011)相对3年前(756交易日)的年化收益率。原站用偏股型基金全样本，此处用基金指数代理",
+                              reverse=False, desc="往前3年买入偏股基金并持有的年化收益，向下偏离均值可能是底部")
+        return None
+    except Exception as e:
+        log(f"    [zzpgnh] 计算失败: {e}")
+        return None
+
+
+def calc_magic(src):
+    try:
+        hs300, bidx = src["hs300"], src["bidx"]
+        if hs300 is not None and bidx is not None:
+            j = hs300.index.intersection(bidx.index)
+            h = hs300.loc[j]; b = bidx.loc[j]
+            ratio = (h / h.iloc[0]) / (b / b.iloc[0])
+            ratio = ratio.dropna()
+            ratio.name = "magic"
+            return make_panel("magic", "神奇指标", ratio,
+                              "代理指标：沪深300价格指数 ÷ 中债综合财富指数(财富总值)的归一化比价。原站用沪深300全收益vs偏债基金指数，此处用可公开获取的指数代理",
+                              reverse=True, unit="", desc="股票与债券资产回报差，沪深300越贴近债券走势时越可能见底(反向指标)")
+        return None
+    except Exception as e:
+        log(f"    [magic] 计算失败: {e}")
+        return None
+
+
+# 注册表：新增综合分指标只需写一个 calc_* 并在此登记一行
+METRIC_BUILDERS = [
+    ("rp", calc_rp), ("dgz", calc_dgz), ("fx_fe", calc_fx_fe),
+    ("pgjj_zsy", calc_pgjj_zsy), ("qschsl", calc_qschsl), ("pcr", calc_pcr),
+    ("zzpgnh", calc_zzpgnh), ("magic", calc_magic),
+]
+METRIC_ORDER = [k for k, _ in METRIC_BUILDERS]
+
+
+# ---------------- 独立观察面板（均不计入综合分）----------------
+def calc_compare_panel():
+    """换手率·上交所官方口径（仅作口径对比）"""
     try:
         tss = fetch_turnover_sse()
         if tss is not None:
             tss = tss[tss.index <= TODAY].dropna()
-            compare_panel = make_panel(
+            return make_panel(
                 "qschsl_sse", "换手率·上交所官方口径", tss,
                 "上交所官方每日股票换手率字段（成交额÷市价总值×100%），2022-02 起，全程同一口径、不拼接深市、不做系数换算。用于与上方『全市场换手率』对比：上方为还原全市场量级的桥接口径，本项为原始沪市口径，数值系统性偏低但无拼接",
                 reverse=False, unit="%",
                 desc="【口径对比图】与上方全市场换手率对照：本图只用上交所官方换手率，2022年起口径统一、无深市桥接，因此2024年9月前后不出现拼接差异。数值为沪市单一市场口径，低于全市场属正常，主要用于观察形态与台阶变化，不参与综合情绪分。")
+        return None
     except Exception as e:
         log(f"    [qschsl_sse] 计算失败: {e}")
+        return None
 
-    # ---- 5c. 估值与宏观比较栏目（公开数据自算，不进综合分）----
-    macro_panels = {}
-    try:
-        er = fetch_etf_ratio()
-        if er is not None:
-            er = er[er.index <= TODAY].dropna()
-            mp = make_panel(
-                "etf300_ratio", "头部300ETF占沪深300流通市值比例", er,
-                "分子：三只上交所头部300ETF(510300/510310/510330)份额×单位净值之和(份额取上交所每日ETF规模表，净值取天天基金)；159919因深交所接口不可用未纳入。分母：沪深300流通市值(以指数点位×流通市值锚线性代理)。全程公开数据自算，不抓取乐咕成品数据",
-                reverse=False, unit="%",
-                desc="被动指数资金对沪深300的定价力量与拥挤度。2024年以来中央汇金等通过宽基ETF持续增持，头部300ETF规模快速膨胀，该比例趋势性抬升，反映被动资金对大盘核心资产边际定价权增强。该指标不含情绪方向判断，仅作市场结构观察，不参与综合情绪分。")
-            if mp: macro_panels["etf300_ratio"] = mp
-    except Exception as e:
-        log(f"    [etf300_ratio] 计算失败: {e}")
 
-    # ---- 5e. 交易拥挤度（前5%个股成交额占比，独立卡片，不进综合分）----
-    crowding_panel = None
+def calc_crowding_panel():
+    """交易拥挤度（前5%个股成交额占比），独立卡片"""
     try:
         cr = fetch_crowding()
         if cr is not None:
@@ -477,8 +560,6 @@ def main():
                 "历史经验中高拥挤常对应阶段性高低点或风格切换，但不是单独择时信号。"
                 "这是反向情绪指标，越高情绪分越高（越谨慎）。本卡片不计入综合情绪分。")
             if cp:
-                crowding_panel = cp
-                # 挂上辅助指标序列（HHI有效个股数、Top10%）供前端叠加展示
                 try:
                     cdf = pd.read_csv(DATA / "mood_crowding.csv", parse_dates=True)
                     cdf["date"] = pd.to_datetime(cdf["date"])
@@ -489,57 +570,141 @@ def main():
                             aux.append({"date": dt.strftime("%Y-%m-%d"),
                                         "top10": round(float(r["top10_ratio"]), 4),
                                         "eff_n": round(float(r["effective_n"]), 2)})
-                    crowding_panel["auxiliary"] = aux
+                    cp["auxiliary"] = aux
                 except Exception:
                     pass
+            return cp
+        return None
     except Exception as e:
         log(f"    [crowding] 计算失败: {e}")
+        return None
 
-    # ---- 6. PCR：认沽/认购持仓比（A股实证为顺周期，正向指标）----
+
+def calc_etf_ratio_panel():
+    """头部300ETF占沪深300流通市值比例"""
     try:
-        if pcr is not None:
-            p = make_panel("pcr", "PCR", pcr,
-                           "上交所ETF期权未平仓认沽合约数÷未平仓认购合约数(akshare option_daily_stats_sse，逐交易日抓取)，综合50ETF/300ETF/500ETF/科创50ETF共5个标的",
-                           reverse=False, unit="", desc="认沽/认购持仓比。A股实证为顺周期：PCR与指数同向，处于低位时市场往往已在底部区域（后续收益更好），处高位时需谨慎。2021年以来PCR低15%分位未来60日平均+2.6%、高15%分位-3.5%")
-            if p: panels["pcr"] = p
+        er = fetch_etf_ratio()
+        if er is not None:
+            er = er[er.index <= TODAY].dropna()
+            mp = make_panel(
+                "etf300_ratio", "头部300ETF占沪深300流通市值比例", er,
+                "分子：三只上交所头部300ETF(510300/510310/510330)份额×单位净值之和(份额取上交所每日ETF规模表，净值取天天基金)；159919因深交所接口不可用未纳入。分母：沪深300流通市值(以指数点位×流通市值锚线性代理)。全程公开数据自算，不抓取乐咕成品数据",
+                reverse=False, unit="%",
+                desc="被动指数资金对沪深300的定价力量与拥挤度。2024年以来中央汇金等通过宽基ETF持续增持，头部300ETF规模快速膨胀，该比例趋势性抬升，反映被动资金对大盘核心资产边际定价权增强。该指标不含情绪方向判断，仅作市场结构观察，不参与综合情绪分。")
+            if mp:
+                mp["score_label"] = "历史分位"
+                mp["score_hint"] = "（越高=被动资金占比越高）"
+            return mp
+        return None
     except Exception as e:
-        log(f"    [pcr] 计算失败: {e}")
+        log(f"    [etf300_ratio] 计算失败: {e}")
+        return None
 
-    # ---- 7. 股基滚动年化：基金指数近3年年化 ----
+
+def calc_margin_panel():
+    """两融余额 60 日增速（新建，独立卡片）"""
     try:
-        if fi_idx is not None:
-            ann = (fi_idx / fi_idx.shift(3 * 244)) ** (1 / 3) - 1.0
-            ann = ann.dropna() * 100
-            ann.name = "ann"
-            p = make_panel("zzpgnh", "股基滚动年化收益", ann,
-                           "代理指标：上证基金指数(sh000011)相对3年前(756交易日)的年化收益率。原站用偏股型基金全样本，此处用基金指数代理",
-                           reverse=False, desc="往前3年买入偏股基金并持有的年化收益，向下偏离均值可能是底部")
-            if p: panels["zzpgnh"] = p
+        d = fetch_margin()
+        if d is None or "growth_60d" not in d.columns:
+            return None
+        s = d["growth_60d"].dropna()
+        p = make_panel(
+            "margin_growth", "两融余额60日增速", s,
+            "融资余额相对 60 个交易日前的变动率(%)，取 akshare stock_margin_account_info（沪深两融账户统计，2012-09 起日更，接口一次返回全历史）。"
+            "辅助观察：融资余额绝对规模、平均维持担保比例。",
+            reverse=False, unit="%",
+            desc="杠杆资金进出速度。增速快速上行=融资加杠杆、风险偏好抬升、情绪偏亢奋；增速转负且持续走低=主动去杠杆、常对应调整或底部区域。"
+            "维持担保比例是杠杆安全垫，越低越接近强平压力区。本卡片为结构观察指标，不计入综合情绪分。")
+        if p:
+            bal = d["margin_bal"].dropna()
+            mnt = d["maintenance_ratio"].dropna()
+            p["score_label"] = "情绪分位"
+            p["score_hint"] = "（越高=杠杆资金越亢奋）"
+            p["aux_text"] = (f"辅助指标：融资余额 {bal.iloc[-1]:.0f} 亿元；"
+                             f"平均维持担保比例 {mnt.iloc[-1]:.2f}%（越高=杠杆安全垫越厚，越低越接近强平压力区）。")
+        return p
     except Exception as e:
-        log(f"    [zzpgnh] 计算失败: {e}")
+        log(f"    [margin_growth] 计算失败: {e}")
+        return None
 
-    # ---- 8. 神奇指标：沪深300全收益 ÷ 中债综合财富 ----
+
+def calc_breadth_panel():
+    """全A站上 200 日均线个股占比（新建，独立卡片）"""
     try:
-        if hs300 is not None and bidx is not None:
-            j = hs300.index.intersection(bidx.index)
-            h = hs300.loc[j]; b = bidx.loc[j]
-            # 归一到起点，取比值；比值越低=股票相对债券越弱=越接近底部
-            ratio = (h / h.iloc[0]) / (b / b.iloc[0])
-            ratio = ratio.dropna()
-            ratio.name = "magic"
-            p = make_panel("magic", "神奇指标", ratio,
-                           "代理指标：沪深300价格指数 ÷ 中债综合财富指数(财富总值)的归一化比价。原站用沪深300全收益vs偏债基金指数，此处用可公开获取的指数代理",
-                           reverse=True, unit="", desc="股票与债券资产回报差，沪深300越贴近债券走势时越可能见底(反向指标)")
-            if p: panels["magic"] = p
+        d = fetch_breadth()
+        if d is None or "pct_above_ma200" not in d.columns:
+            return None
+        s = d["pct_above_ma200"].dropna()
+        p = make_panel(
+            "breadth_ma200", "全A站上200日均线占比", s,
+            "逐日横截面：当日收盘价 > 自身200日均线的个股数 ÷ 当日有效股票数 ×100%。"
+            "全A列表取新浪实时行情，个股收盘价取新浪 stock_zh_a_hist_sina（未复权，除权跳空对横截面统计影响有限），"
+            "多进程逐只缓存到 data/breadth_prices/ 后自算。",
+            reverse=False, unit="%",
+            desc="市场宽度/趋势参与度。高（>70%）=普涨、趋势强、情绪偏热；低（<20%）=普跌、超卖，历史上常对应底部区域。"
+            "宽度背离（指数创新高但占比走低）往往提示涨势由少数权重股支撑、内部动能转弱。本卡片不计入综合情绪分。")
+        if p:
+            s60 = d["pct_above_ma60"].dropna()
+            p["score_label"] = "情绪分位"
+            p["score_hint"] = "（越高=市场越普涨）"
+            p["aux_text"] = (f"辅助指标：站上 60 日均线占比 {s60.iloc[-1]:.1f}%；"
+                             f"当日有效股票 {int(d['n_stocks'].iloc[-1])} 只（需上市满 200 个交易日才纳入统计）。")
+        return p
     except Exception as e:
-        log(f"    [magic] 计算失败: {e}")
+        log(f"    [breadth_ma200] 计算失败: {e}")
+        return None
 
-    # ---- 综合情绪分：各面板 score 等权平均 ----
+
+def calc_pb_panel():
+    """全A市净率中位数（月频，新建，独立卡片）"""
+    try:
+        d = fetch_pb()
+        if d is None or "pb_median" not in d.columns:
+            return None
+        s = d["pb_median"].dropna()
+        p = make_panel(
+            "a_pb", "全A市净率中位数（月频）", s,
+            "全A个股 PB 的中位数，取 akshare stock_a_all_pb（乐咕乐股，2005 起月频，约 263 个月点，接口一次返回全历史）。"
+            "辅助序列：等权平均 PB。注意与日频指标不同频，区间切换按数据点计。",
+            reverse=False, unit="倍",
+            desc="全市场估值中枢。PB 处于低分位=整体便宜、长期赔率较好；高分位=估值偏贵。"
+            "中位数比整体法 PB 更不易被少数超大市值股拉动，等权平均则对小盘股更敏感，两者背离可观察风格分化。"
+            "本卡片为估值结构观察，不含情绪方向判断，不计入综合情绪分。")
+        if p:
+            eq = d["pb_equal_weight"].dropna()
+            p["freq"] = "monthly"
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=估值越贵）"
+            p["aux_text"] = (f"辅助指标：等权平均 PB {eq.iloc[-1]:.2f} 倍；"
+                             f"共 {len(s)} 个月度数据点（月频，非日频）。")
+        return p
+    except Exception as e:
+        log(f"    [a_pb] 计算失败: {e}")
+        return None
+
+
+MACRO_BUILDERS = [
+    ("etf300_ratio", calc_etf_ratio_panel),
+    ("margin_growth", calc_margin_panel),
+    ("breadth_ma200", calc_breadth_panel),
+    ("a_pb", calc_pb_panel),
+]
+
+
+def build_macro_panels():
+    out = {}
+    for key, fn in MACRO_BUILDERS:
+        p = fn()
+        if p:
+            out[key] = p
+    return out
+
+
+# ---------------- 综合情绪分 ----------------
+def build_composite(panels):
+    """各面板 score 等权平均；历史按共同区间对齐后周频采样。"""
     composite_parts = {k: p["score"] for k, p in panels.items()}
     composite = round(float(np.mean(list(composite_parts.values()))), 2) if composite_parts else 50.0
-
-    # 综合情绪分历史：各面板按日 score(全历史expanding分位)对齐后等权平均。
-    # 只保留所有面板均有数据的共同区间，避免早期只有2-3个指标参与造成误导。
     try:
         score_series = {}
         starts = []
@@ -555,11 +720,8 @@ def main():
                 starts.append(s.index.min())
         df = pd.DataFrame(score_series).sort_index()
         common_start = max(starts) if starts else df.index.min()
-        # 对齐到交易日网格：用最全的面板日期作基准，其它 ffill
-        base_idx = df.index
         comp = df.ffill().mean(axis=1).dropna()
         comp = comp[comp.index >= common_start]
-        # 重采样到周频减少点数（保留每周最后一个交易日），曲线更平滑且文件更小
         comp_w = comp.resample("W-FRI").last().dropna()
         comp_hist = [
             {"date": dt.strftime("%Y-%m-%d"), "score": round(float(v), 2)}
@@ -569,7 +731,12 @@ def main():
     except Exception as e:
         log(f"    综合分历史计算失败: {e}")
         comp_hist = []
+    return composite, comp_hist
 
+
+# ---------------- 输出 ----------------
+def write_output(panels, compare_panel, macro_panels, crowding_panel,
+                 composite, comp_hist, t0):
     out = {
         "generated_at": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
         "data_date": TODAY.strftime("%Y-%m-%d"),
@@ -577,9 +744,9 @@ def main():
         "panels": panels,
         "compare_panel": compare_panel,
         "macro_panels": macro_panels,
-        "macro_order": ["etf300_ratio"],
+        "macro_order": [k for k, _ in MACRO_BUILDERS if k in macro_panels],
         "crowding_panel": crowding_panel,
-        "order": ["rp", "dgz", "fx_fe", "pgjj_zsy", "qschsl", "pcr", "zzpgnh", "magic"],
+        "order": METRIC_ORDER,
         "proxy_flags": {
             "rp": "精确", "dgz": "近似", "fx_fe": "精确", "pgjj_zsy": "代理",
             "qschsl": "精确", "pcr": "精确", "zzpgnh": "代理", "magic": "代理",
@@ -593,13 +760,35 @@ def main():
 
     log("=" * 60)
     log(f"完成，用时 {time.time() - t0:.1f} 秒")
-    log(f"生成面板 {len(panels)}/8: {', '.join(panels.keys())}")
+    log(f"生成综合分面板 {len(panels)}/8: {', '.join(panels.keys())}")
     for k in out["order"]:
         if k in panels:
             p = panels[k]
             log(f"  {p['name']:16s} 值={p['value']:>8.3f} 情绪分={p['score']:>6.2f} {p['state']} [{out['proxy_flags'][k]}] 历史{len(p['history'])}日")
+    log(f"结构观察卡片 {len(macro_panels)}/4: {', '.join(macro_panels.keys())}")
     log(f"综合情绪分: {composite} ({state_of(composite)[0]})")
     log(f"输出: {jpath.name} ({jpath.stat().st_size/1024:.0f}KB) / {jspath.name}")
+
+
+def main():
+    t0 = time.time()
+    log("=" * 60)
+    log("情绪指标面板构建（公开数据自算版）")
+    log("=" * 60)
+
+    src = load_sources()
+    panels = {}
+    for key, fn in METRIC_BUILDERS:
+        p = fn(src)
+        if p:
+            panels[key] = p
+
+    compare_panel = calc_compare_panel()
+    macro_panels = build_macro_panels()
+    crowding_panel = calc_crowding_panel()
+    composite, comp_hist = build_composite(panels)
+    write_output(panels, compare_panel, macro_panels, crowding_panel,
+                 composite, comp_hist, t0)
 
 
 if __name__ == "__main__":

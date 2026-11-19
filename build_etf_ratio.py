@@ -26,15 +26,11 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 import akshare as ak
 
+from config import (START_ETF_RATIO as START, ETF_CODES as ETFS, MV_ANCHOR_YI)
 from core import DATA, TODAY_TAG as TODAY, log, trade_dates as cal_dates_base
 
 OUT = DATA / "mood_etf_ratio.csv"
 SHARES = DATA / "mood_etf_shares_raw.csv"
-START = "20180102"
-ETFS = {"510300", "510310", "510330"}
-# 基准: 当前沪深300流通市值(亿元) / 当前点位 —— 用于把点位换算成流通市值代理
-# 当前(2026-11)沪深300流通市值约 34 万亿 = 340000 亿；点位见下方自动取最新
-MV_ANCHOR_YI = 340000.0
 
 
 def cal_dates():

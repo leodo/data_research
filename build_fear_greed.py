@@ -36,11 +36,11 @@ import numpy as np
 import pandas as pd
 import akshare as ak
 
+from config import (START_FEAR_GREED as START, FG_WINDOW as WIN,
+                    STRENGTH_MAX_LAG_DAYS, QVIX_1000_CUT)
 from core import BASE, DATA, TODAY_TAG, pct_score
 
-START = "20210101"
 END = TODAY_TAG  # 动态：抓取当日为止的最新可得数据
-WIN = 250
 
 STATES = [
     (0, 10, "极度恐惧", "#00b070"),
@@ -187,7 +187,7 @@ def fetch_qvix_1000hybrid() -> pd.Series:
     idx = idx[idx >= "2022-07-22"]
     a, b = np.polyfit(proxy.loc[idx].values.astype(float), own.loc[idx].values.astype(float), 1)
     print(f"  1000hybrid 校准: own={a:.4f}*500etf+{b:.3f} (n={len(idx)}, R²={np.corrcoef(proxy.loc[idx], own.loc[idx])[0,1]**2:.3f})", flush=True)
-    CUT = "2025-12-31"
+    CUT = QVIX_1000_CUT
     own_part = own[own.index <= CUT]
     proxy_part = (proxy * a + b)
     proxy_part = proxy_part[proxy_part.index > CUT]
@@ -278,9 +278,6 @@ def _fetch_strength_full(index_code: str, cache_path: str):
     df.to_csv(cache_path, index=False)
     print(f"  成分股缓存完成：{len(df)} 行，成功 {df['code'].nunique()} 只 ({time.time()-t0:.0f}s)", flush=True)
     return df
-
-
-STRENGTH_MAX_LAG_DAYS = 3  # 允许成分股缓存落后的最多交易日数
 
 
 def strength_lag_days(cache_last, target_date):

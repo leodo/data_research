@@ -27,9 +27,10 @@ import threading
 import time
 import webbrowser
 
+from config import PORT
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
-PORT = 8040
 DATA_JSON = os.path.join(BASE, "data", "index_data.json")
 MOOD_JSON = os.path.join(BASE, "data", "mood_data.json")
 UPDATE_STAMP = os.path.join(BASE, "data", "last_update.json")
@@ -113,6 +114,9 @@ PIPELINES = {
         ("全市场换手率", "rebuild_turnover.py"),
         ("交易拥挤度", "build_crowding.py"),
         ("300ETF占比", "build_etf_ratio.py"),
+        ("两融余额增速", "build_margin.py"),
+        ("全A PB(月频)", "build_pb.py"),
+        ("全A市场宽度", "build_breadth.py"),
         ("情绪面板(综合)", "build_mood.py"),
     ],
 }

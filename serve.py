@@ -7,8 +7,9 @@ import http.server
 import socketserver
 import os
 
+from config import PORT
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-PORT = 8040
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
