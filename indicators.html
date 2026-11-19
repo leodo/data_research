@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>恐贪指数 · 7大指数 · 投研工作台</title>
+<script src="vendor/echarts.min.js"></script>
+<script src="app.js"></script>
+<style>
+:root{
+  /* 浅色主题（默认） */
+  --brand:#ff4713;--brand-deep:#d93a0e;--brand-soft:#fff1ec;
+  --bg:#ffffff;--bg-soft:#fafafa;--bg-sidebar:#fbfcfd;--bg-card:#ffffff;
+  --ink:#111111;--text-2:#4d4d4d;--text-3:#8c8c8c;--line:#e8e8e8;
+  --mark-grad:linear-gradient(135deg,#ff4713,#e82e5c);
+  --nav-hover:#f2f3f5;--switch-bg:#f4f5f7;--switch-active:#ffffff;--switch-shadow:0 1px 4px rgba(0,0,0,.1);
+  --srcbg:#f5f6f8;
+  --tag-off-fg:#005eb8;--tag-off-bg:#eef6ff;--tag-off-bd:#d6e9ff;
+  --tag-rep-fg:#a86400;--tag-rep-bg:#fff8e8;--tag-rep-bd:#ffe6b8;
+  --pin-fg:#111111;--pin-ring:#ffffff;
+  --up:#ff4713;--down:#00875a;
+  --mask-bg:rgba(17,24,39,.5);--modal-shadow:0 20px 60px rgba(15,23,42,.25);
+  --chart-tip-bg:#ffffff;--chart-tip-bd:#e8e8e8;--chart-tip-fg:#111111;
+  --chart-legend:#4d4d4d;--chart-axis-line:#e8e8e8;--chart-axis-label:#8c8c8c;--chart-split:#f3f3f3;--chart-mark:#d4d4d4;
+  --radius:10px;--shadow:0 4px 16px rgba(0,0,0,.06);
+}
+[data-theme="dark"]{
+  /* 暗色主题 */
+  --brand:#ff5b2e;--brand-deep:#ff9b7a;--brand-soft:rgba(255,91,46,.14);
+  --bg:#0d1117;--bg-soft:#1c2128;--bg-sidebar:#0a0d12;--bg-card:#161b22;
+  --ink:#e6edf3;--text-2:#adbac7;--text-3:#7d8590;--line:#30363d;
+  --mark-grad:linear-gradient(135deg,#ff5b2e,#ff2e63);
+  --nav-hover:#1c2128;--switch-bg:#161b22;--switch-active:#30363d;--switch-shadow:0 1px 5px rgba(0,0,0,.4);
+  --srcbg:#161b22;
+  --tag-off-fg:#58a6ff;--tag-off-bg:rgba(88,166,255,.12);--tag-off-bd:rgba(88,166,255,.3);
+  --tag-rep-fg:#e3b341;--tag-rep-bg:rgba(227,179,65,.12);--tag-rep-bd:rgba(227,179,65,.3);
+  --pin-fg:#ffffff;--pin-ring:#0d1117;
+  --up:#ff6b6b;--down:#3fb950;
+  --mask-bg:rgba(0,0,0,.72);--modal-shadow:0 20px 60px rgba(0,0,0,.6);
+  --chart-tip-bg:#1c2128;--chart-tip-bd:#30363d;--chart-tip-fg:#e6edf3;
+  --chart-legend:#adbac7;--chart-axis-line:#30363d;--chart-axis-label:#7d8590;--chart-split:#21262d;--chart-mark:#484f58;
+  --shadow:0 4px 18px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+.layout{display:flex;min-height:100vh}
+/* sidebar */
+.sidebar{width:208px;flex:0 0 208px;background:var(--bg-sidebar);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;padding:2px 8px 20px}
+.logo .mark{width:26px;height:26px;border-radius:8px;background:var(--mark-grad);display:grid;place-items:center;color:#fff;font-size:13px}
+.nav-group{margin-bottom:16px}
+.nav-title{font-size:11px;color:var(--text-3);padding:6px 10px;letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;color:var(--text-2);cursor:pointer;font-size:13px}
+.nav-item:hover{background:var(--nav-hover)}
+.nav-item.active{background:var(--brand-soft);color:var(--brand-deep);font-weight:600}
+.nav-item .ico{width:16px;text-align:center;font-size:14px}
+/* main */
+.main{flex:1;min-width:0}
+.topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--bg);position:sticky;top:0;z-index:20}
+.topbar .crumb{color:var(--text-3);font-size:13px}
+.topbar .crumb b{color:var(--ink)}
+.topbar .right{display:flex;align-items:center;gap:18px;color:var(--text-2);font-size:12px}
+.theme-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;transition:.18s;white-space:nowrap}
+.theme-toggle:hover{border-color:var(--brand);color:var(--brand)}
+.theme-toggle .tt-ico{font-size:14px;line-height:1}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 26px 60px}
+/* subnav */
+.subnav{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:22px;flex-wrap:wrap}
+.subnav button{border:0;background:none;padding:10px 14px;font-size:14px;color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subnav button.active{color:var(--brand);font-weight:700;border-bottom-color:var(--brand)}
+/* index switch */
+.switch{display:inline-flex;flex-wrap:wrap;background:var(--switch-bg);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;margin-bottom:20px;max-width:100%}
+.switch button{border:0;background:none;padding:8px 14px;border-radius:8px;font-size:13px;color:var(--text-2);cursor:pointer;font-weight:600;white-space:nowrap}
+.switch button.active{background:var(--switch-active);color:var(--brand-deep);box-shadow:var(--switch-shadow)}
+.switch .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.hd h1{font-size:19px;margin:0}
+.hd .sub{color:var(--text-3);font-size:12px}
+.src-note-line{font-size:12px;color:var(--text-3);background:var(--srcbg);border-left:3px solid var(--brand);padding:6px 10px;border-radius:4px;margin:2px 0 12px;line-height:1.5}
+.src-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);background:var(--srcbg);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.src-tag.official{color:var(--tag-off-fg);background:var(--tag-off-bg);border-color:var(--tag-off-bd)}
+.src-tag.repl{color:var(--tag-rep-fg);background:var(--tag-rep-bg);border-color:var(--tag-rep-bd)}
+/* cards */
+.card{background:var(--bg-card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.hero{display:flex;gap:28px;flex-wrap:wrap;align-items:center}
+.hero-left{min-width:210px}
+.big-num{font-size:58px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.badge{display:inline-block;color:#fff;font-size:12px;padding:4px 14px;border-radius:999px;font-weight:600;margin-top:12px}
+.date-line{color:var(--text-3);font-size:12px;margin-top:10px}
+.hero-mid{flex:1;min-width:260px}
+.scale{height:12px;border-radius:6px;background:linear-gradient(90deg,#00b070 0%,#5fb87a 20%,#f4c430 50%,#f97316 80%,#ef4444 100%);position:relative;margin:26px 0 6px}
+.scale .pin{position:absolute;top:-7px;width:3px;height:26px;background:var(--pin-fg);border-radius:2px;box-shadow:0 0 0 2px var(--pin-ring)}
+.scale .pin:after{content:"";position:absolute;top:-4px;left:-3px;border-left:4.5px solid transparent;border-right:4.5px solid transparent;border-top:6px solid var(--pin-fg)}
+.scale-labels{display:flex;justify-content:space-between;color:var(--text-3);font-size:11px}
+.changes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px}
+.change{background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.change .k{color:var(--text-3);font-size:11px}
+.change .v{font-size:17px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--text-2)}
+.how{display:inline-flex;align-items:center;gap:7px;color:var(--brand-deep);font-size:13px;font-weight:600;cursor:pointer;margin-top:16px}
+.how .q{width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+/* chart */
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.sec-title{font-size:15px;font-weight:700}
+.ranges{display:flex;gap:6px}
+.ranges button{border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2);border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer}
+.ranges button.active{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.chart{width:100%;height:360px}
+.factor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.factor{border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 6px;background:var(--bg-card)}
+.factor .fname{font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:4px}
+.factor .fchart{height:170px}
+.factor .fdesc{font-size:12px;line-height:1.7;color:var(--text-2);margin:8px 2px 6px;padding-top:8px;border-top:1px dashed var(--line)}
+.factor .fval{font-size:12px;color:var(--text-3)}
+.note{font-size:12px;color:var(--text-3);line-height:1.8;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.note b{color:var(--text-2)}
+/* modal */
+.mask{position:fixed;inset:0;background:var(--mask-bg);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.mask.show{display:flex}
+.modal{width:100%;max-width:660px;max-height:82vh;background:var(--bg-card);border-radius:14px;box-shadow:var(--modal-shadow);display:flex;flex-direction:column;overflow:hidden}
+.modal-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);font-weight:700}
+.modal-h button{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text-3);line-height:1}
+.modal-b{padding:18px 22px 26px;overflow:auto;font-size:13px;line-height:1.85;color:var(--text-2)}
+.modal-b p{margin:0 0 12px}
+.modal-b ul{padding-left:20px;margin:0 0 12px}
+.modal-b li{margin-bottom:7px}
+.modal-b .note-inline{color:var(--text-3);font-size:12px;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px}
+.loading{padding:60px;text-align:center;color:var(--text-3)}
+@media(max-width:820px){.sidebar{display:none}.factor-grid{grid-template-columns:1fr}.changes{grid-template-columns:repeat(2,1fr)}.wrap{padding:16px}.big-num{font-size:46px}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><span class="mark">韭</span> 投研工作台</div>
+    <div class="nav-group">
+      <div class="nav-title">工作台</div>
+      <a class="nav-item" href="index.html"><span class="ico">◈</span> 首页</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-title">工具指标</div>
+      <a class="nav-item active" href="indicators.html"><span class="ico">⚑</span> 恐贪指数</a>
+      <a class="nav-item" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">工具指标 / <b>恐贪指数</b></div>
+      <div class="right"><span>数据每日更新</span><span>行为金融 · 市场情绪</span><button class="theme-toggle" id="themeToggle" title="切换主题"><span class="tt-ico">◐</span><span class="tt-label">暗色</span></button></div>
+    </div>
+    <div class="wrap">
+      <div class="subnav">
+        <a href="index.html"><button>首页</button></a>
+        <a href="indicators.html"><button class="active">恐贪指数</button></a>
+        <a href="mood.html"><button>情绪面板</button></a>
+      </div>
+
+      <div id="app" class="loading">数据加载中…</div>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <div class="modal-h"><span>如何计算恐贪指数</span><button id="closeModal" aria-label="关闭">×</button></div>
+    <div class="modal-b">
+      <p>金融市场的投资决策受到两种情绪的驱动，恐惧和贪婪。过度贪婪会让投资者把股价哄抬过高，过度恐惧会让股价跌破其应有的水平。</p>
+      <p>那么现在市场由哪种情绪主导？恐惧贪婪指数可以帮助你快速识别，我们观察 6 大指标。</p>
+      <ul>
+        <li><b>市场波动率。</b>期权波动率，利用期权市场的特性来反应股票市场情绪的一个指标。</li>
+        <li><b>外资对A股的认可度。</b>陆股通累计买入成交净额，偏离20日均线的程度。（因数据延迟，暂未纳入）</li>
+        <li><b>两市成交量。</b>两市成交量，偏离20日均线程度。</li>
+        <li><b>股指期货年化升贴水率。</b>沪深300采用 IF、中证500采用 IC、中证1000采用 IM 主力（10日平均）年化升贴水率。</li>
+        <li><b>股价强度。</b>创过去一年股价新高的股票个数占比。</li>
+        <li><b>避险需求。</b>过去20个交易日中，股票回报率与债券回报率的差值（指数回报率 − 国债净价指数回报率）。</li>
+        <li><b>中期趋势乖离。</b>各指数收盘价相对 150 日均线的乖离率；深度负乖离代表价格远低于中期成本线、杀跌惨烈。</li>
+        <li><b>杠杆率。</b>A股融资买入金额占总成交金额的占比。（由于数据获取延迟，暂时不纳入统计）</li>
+      </ul>
+      <p>针对每个指标，我们观察相对于其平均水平的偏离程度，并赋予 0-100 的分值，分值越高代表投资者越贪婪，50 为中立。本页 7 个指数各自独立计算，均以<b>隐含波动率（45%）与 150 日乖离率（45%）</b>为核心恐慌指标（合计90%），其余因子分摊剩余10%（有股指期货的指数另含升贴水因子）。之所以对核心指标给高权重，是因为隐波飙升与价格深跌是市场恐慌最直接、最敏锐的度量。</p>
+      <p class="note-inline">注：由于随着时间推移，观察的时间区间会发生改变，从而影响观察日每个指标对应时间区间历史均值的计算，因此每天回看历史的数据会与当时的数值有一定的差距，但并不影响该指标对当下市场情绪的刻画。</p>
+      <p class="note-inline"><b>本页说明：</b>全部 7 个指数均为依照韭圈儿公开方法论的<b>透明复刻实现</b>，不是官方数值，因子数据来自 akshare（新浪财经、中债估值）。各指数尽量使用专属隐波：中证1000在2026-03前用其专属股指期权波指、停更后用500ETF波指校准衔接；其余无专属隐波的采用合理代理（中证500用500ETF波指、中证2000用100ETF波指、全市场用50/300/500ETF波指合成、中证2000价格用ETF代理）。每个指数顶部的「i」标签与下方数据口径说明标注了具体代理来源。</p>
+    </div>
+  </div>
+</div>
+
+<script src="data/index_data.js"></script>
+<script>
+(function(){
+  "use strict";
+  var app = document.getElementById("app");
+  if(!window.FG_DATA){ app.innerHTML = '<div class="loading">未找到数据文件 data/index_data.js，请先运行 python build_fear_greed.py</div>'; return; }
+  var IDX = window.FG_DATA.indices;
+  var META_IN = window.FG_DATA.meta || {};
+  var order = ["allmarket","hs300","zz500","zz1000","zz2000","cyb","kcb"];
+  // 指数专属色：暗色主题下整体提亮，保证深背景可读
+  var colorsLight = {allmarket:"#6b4fd6",hs300:"#ff4713",zz500:"#8b5cf6",zz1000:"#0b6fc4",zz2000:"#008f8f",cyb:"#d97706",kcb:"#c2185b"};
+  var colorsDark  = {allmarket:"#a78bfa",hs300:"#ff6b4a",zz500:"#b08cff",zz1000:"#4fa8ff",zz2000:"#2dd4bf",cyb:"#fbbf24",kcb:"#ff6ba8"};
+  var current = "hs300";
+  var range = "y1";
+  var charts = [];
+  var theme = (function(){ try{ return localStorage.getItem("fg_theme")||"light"; }catch(e){ return "light"; } })();
+  // cssVar / crossPointer 已迁至 app.js（与 mood.html 共用）
+
+  var META = {};
+  function syncColors(){
+    var cs = theme==="dark" ? colorsDark : colorsLight;
+    order.forEach(function(k){
+      var m = META_IN[k] || {};
+      META[k] = {name:m.name||k, code:m.code||"", desc:"透明复刻实现", official:false, color:cs[k]||"#888"};
+    });
+  }
+  function applyTheme(t){
+    theme = t;
+    document.documentElement.setAttribute("data-theme", t==="dark"?"dark":"light");
+    try{ localStorage.setItem("fg_theme", t); }catch(e){}
+    var btn = document.getElementById("themeToggle");
+    if(btn){ btn.querySelector(".tt-ico").textContent = t==="dark"?"☀":"◐"; btn.querySelector(".tt-label").textContent = t==="dark"?"浅色":"暗色"; }
+    syncColors();
+  }
+  applyTheme(theme);
+
+  function fmt(v, n){ return Number(v).toFixed(n===undefined?2:n); }
+  function cls(v){ return v>0?"up":(v<0?"down":"flat"); }
+  function signed(v,n){ return (v>0?"+":"")+fmt(v,n); }
+
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  // 由历史序列计算相对变化（交易日回溯：1日/1周≈5/1月≈22/1年≈244）
+  function calcChanges(hist){
+    var out = {deltas:{},changes:{}};
+    if(!hist || !hist.length) return out;
+    var cur = hist[hist.length-1].value;
+    var offs = {one_day:1,one_week:5,one_month:22,one_year:244};
+    Object.keys(offs).forEach(function(k){
+      var i = Math.max(0, hist.length-1-offs[k]);
+      var prev = hist[i].value;
+      var delta = cur - prev;
+      out.deltas[k] = delta;
+      out.changes[k] = prev ? delta/prev*100 : 0;
+    });
+    return out;
+  }
+
+  function render(){
+    var d = IDX[current];
+    var m = META[current];
+    var tagCls = "repl";
+    var tagTxt = "● 复刻实现 非官方数值";
+    var ch = calcChanges(d.history);
+
+    var html = '';
+    html += '<div class="switch">';
+    order.forEach(function(k){
+      if(!IDX[k]) return;
+      html += '<button data-idx="'+k+'" class="'+(current===k?"active":"")+'"><span class="dot" style="background:'+META[k].color+'"></span>'+META[k].name+'</button>';
+    });
+    html += '</div>';
+
+    html += '<div class="hd"><h1>'+m.name+' 恐惧贪婪指数</h1><span class="sub">'+m.code+' · '+m.desc+'</span><span class="src-tag '+tagCls+'">'+tagTxt+'</span></div>';
+    if(META_IN[current] && META_IN[current].note){
+      html += '<div class="src-note-line">ⓘ '+esc(META_IN[current].note)+'</div>';
+    }
+
+    html += '<div class="card"><div class="hero">';
+    html += '<div class="hero-left"><div class="big-num" style="color:'+d.color+'">'+fmt(d.value)+'</div>';
+    html += '<div class="badge" style="background:'+d.color+'">'+d.desc+'</div>';
+    html += '<div class="date-line">数据日期：'+d.date+' · 更新于 '+esc(window.FG_DATA.generated_at)+'</div></div>';
+    html += '<div class="hero-mid"><div class="scale"><div class="pin" style="left:'+Math.max(0,Math.min(100,d.value))+'%"></div></div>';
+    html += '<div class="scale-labels"><span>0 极度恐惧</span><span>30</span><span>50 中立</span><span>70</span><span>100 极度贪婪</span></div>';
+    html += '<div class="changes">';
+    html += changeCell("较前一日",ch.deltas.one_day,ch.changes.one_day);
+    html += changeCell("较前一周",ch.deltas.one_week,ch.changes.one_week);
+    html += changeCell("较前一月",ch.deltas.one_month,ch.changes.one_month);
+    html += changeCell("较前一年",ch.deltas.one_year,ch.changes.one_year);
+    html += '</div></div></div>';
+    html += '<div class="how" id="howBtn"><span class="q">?</span> 如何计算恐贪指数 <span>›</span></div>';
+    html += '</div>';
+
+    html += '<div class="card"><div class="sec-head"><div class="sec-title">恐贪指数走势</div><div class="ranges">';
+    html += '<button data-range="y1" class="'+(range==="y1"?"active":"")+'">近1年</button>';
+    html += '<button data-range="y2" class="'+(range==="y2"?"active":"")+'">近两年</button>';
+    html += '<button data-range="all" class="'+(range==="all"?"active":"")+'">全部</button>';
+    html += '</div></div><div id="mainChart" class="chart"></div></div>';
+
+    var hasFut = (current==="hs300" || current==="zz500" || current==="zz1000");
+    var synthTxt = '构成因子（隐波45% + 乖离45% + 其余共10%）';
+    html += '<div class="card"><div class="sec-head"><div class="sec-title">'+synthTxt+'</div><span class="src-tag '+tagCls+'">'+tagTxt+'</span></div>';
+    html += '<div class="factor-grid" id="factorGrid"></div></div>';
+
+    html += '<div class="note"><b>数据口径与局限：</b>'+esc(d.source_note)+' 该指标刻画短期情绪，算法未完全公开，不宜作为独立交易系统；极端行情下可能长期钝化。本页仅供研究参考，不构成投资建议。</div>';
+
+    app.innerHTML = html;
+    charts = [];
+    bind();
+    drawMain(d);
+    drawFactors(d);
+  }
+
+  function changeCell(label, delta, pct){
+    var sign = delta>0?"up":(delta<0?"down":"flat");
+    return '<div class="change"><div class="k">'+label+'</div><div class="v '+sign+'">'+signed(delta)+' <span style="font-size:11px">('+signed(pct,1)+'%)</span></div></div>';
+  }
+
+  function bind(){
+    var bs = app.querySelectorAll("[data-idx]");
+    bs.forEach(function(b){ b.addEventListener("click",function(){ current=b.getAttribute("data-idx"); render(); }); });
+    var rs = app.querySelectorAll("[data-range]");
+    rs.forEach(function(b){ b.addEventListener("click",function(){ range=b.getAttribute("data-range"); render(); }); });
+    var how = document.getElementById("howBtn");
+    if(how) how.addEventListener("click",function(){ document.getElementById("mask").classList.add("show"); });
+    var tt = document.getElementById("themeToggle");
+    if(tt) tt.addEventListener("click",function(){
+      applyTheme(theme==="dark"?"light":"dark");
+      charts.forEach(function(c){ try{c.dispose();}catch(e){} }); charts=[];
+      render();
+    });
+  }
+
+  function filterHistory(hist){
+    if(range==="all") return hist;
+    if(!hist.length) return hist;
+    var last = new Date(hist[hist.length-1].date+"T00:00:00");
+    var years = range==="y1"?1:2;
+    var from = new Date(last); from.setFullYear(from.getFullYear()-years);
+    var out = hist.filter(function(x){ return new Date(x.date+"T00:00:00")>=from; });
+    return out.length?out:hist;
+  }
+
+  function drawMain(d){
+    var el = document.getElementById("mainChart");
+    if(!el || typeof echarts==="undefined"){ if(el) el.innerHTML="<div class='loading'>图表库加载失败，请检查网络。</div>"; return; }
+    var h = filterHistory(d.history);
+    var dates = h.map(function(x){return x.date;});
+    var vals = h.map(function(x){return x.value;});
+    var ma = vals.map(function(_,i){ if(i<19) return null; var s=0; for(var j=i-19;j<=i;j++) s+=vals[j]; return Number((s/20).toFixed(2)); });
+    var chart = echarts.init(el);
+    chart.setOption({
+      animation:false,
+      tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:cssVar("--chart-tip-bg"),borderColor:cssVar("--chart-tip-bd"),textStyle:{color:cssVar("--chart-tip-fg"),fontSize:12}},
+      legend:{data:["恐贪指数","MA20"],top:2,right:10,icon:"roundRect",itemWidth:12,itemHeight:8,textStyle:{color:cssVar("--chart-legend")}},
+      grid:{left:46,right:18,top:36,bottom:34},
+      xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:cssVar("--chart-axis-line")}},axisLabel:{color:cssVar("--chart-axis-label"),fontSize:11}},
+      yAxis:{type:"value",min:0,max:100,interval:20,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:11},splitLine:{lineStyle:{color:cssVar("--chart-split")}}},
+      series:[
+        {name:"恐贪指数",type:"line",data:vals,showSymbol:false,smooth:true,lineStyle:{width:2,color:META[current].color},itemStyle:{color:META[current].color},
+         areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:META[current].color+"44"},{offset:1,color:META[current].color+"05"}])},
+         markArea:{silent:true,itemStyle:{color:"rgba(245,158,11,0.05)"},data:[[{yAxis:30},{yAxis:70}]]}},
+        {name:"MA20",type:"line",data:ma,showSymbol:false,smooth:true,lineStyle:{width:1.5,type:"dashed",color:"#f4c430"},itemStyle:{color:"#f4c430"}}
+      ]
+    });
+    charts.push(chart);
+  }
+
+  function drawFactors(d){
+    var grid = document.getElementById("factorGrid");
+    if(!grid) return;
+    grid.innerHTML = (d.factors||[]).map(function(f,i){
+      var last=f.series[f.series.length-1];
+      var w = (f.weight!=null) ? ' <span style="float:right;font-size:11px;font-weight:600;color:#fff;background:'+META[current].color+';border-radius:9px;padding:1px 7px">权重'+f.weight+'%</span>' : '';
+      return '<div class="factor"><div class="fname">'+esc(f.name)+w+'</div><div class="fchart" id="fc'+i+'"></div>'+
+             '<div class="fval">最新原始值：<b>'+fmt(last.value)+esc(f.unit||"")+'</b> · 情绪分 '+fmt(last.pct_all,1)+'（高分=贪婪）</div>'+
+             '<div class="fdesc">'+esc(f.analysis)+'</div></div>';
+    }).join("");
+    if(typeof echarts==="undefined") return;
+    (d.factors||[]).forEach(function(f,i){
+      var el = document.getElementById("fc"+i);
+      if(!el) return;
+      var s = f.series;
+      var dates = s.map(function(x){return x.date;});
+      var pcts = s.map(function(x){return x.pct_all;});
+      var c = echarts.init(el);
+      c.setOption({
+        animation:false,
+        tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:cssVar("--chart-tip-bg"),borderColor:cssVar("--chart-tip-bd"),textStyle:{color:cssVar("--chart-tip-fg"),fontSize:11},formatter:function(ps){var p=ps[0];return p.axisValue+"<br/>情绪分位：<b>"+fmt(p.value,1)+"</b>";}},
+        grid:{left:34,right:10,top:12,bottom:22},
+        xAxis:{type:"category",data:dates,boundaryGap:false,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:9,interval:Math.max(0,Math.floor(dates.length/4))},axisLine:{lineStyle:{color:cssVar("--chart-axis-line")}}},
+        yAxis:{type:"value",min:0,max:100,interval:50,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:9},splitLine:{lineStyle:{color:cssVar("--chart-split")}}},
+        series:[{type:"line",data:pcts,showSymbol:false,smooth:true,lineStyle:{width:1.8,color:META[current].color},itemStyle:{color:META[current].color},areaStyle:{color:META[current].color+"22"},
+          markLine:{silent:true,symbol:"none",label:{show:false},lineStyle:{color:cssVar("--chart-mark"),type:"dashed",width:1},data:[{yAxis:50}]}}]
+      });
+      charts.push(c);
+    });
+  }
+
+  window.addEventListener("resize",function(){ charts.forEach(function(c){try{c.resize();}catch(e){}}); });
+  document.getElementById("closeModal").addEventListener("click",function(){ document.getElementById("mask").classList.remove("show"); });
+  document.getElementById("mask").addEventListener("click",function(e){ if(e.target.id==="mask") this.classList.remove("show"); });
+
+  render();
+})();
+</script>
+</body>
+</html>

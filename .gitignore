@@ -1,0 +1,24 @@
+# 派生产物：全部由构建脚本生成（约 400MB，不入库）
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 运行状态
+serve.log
+last_update.json
+
+# 旧版备份：只排除根目录；archive/ 内的历史快照仍纳入版本控制
+/*.bak*
+
+# 本地助手数据（会话记忆，非项目代码）
+.workbuddy/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

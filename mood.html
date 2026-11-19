@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>情绪面板 · 8大指标 · 投研工作台</title>
+<script src="vendor/echarts.min.js"></script>
+<script src="app.js"></script>
+<style>
+:root{
+  --brand:#ff4713;--brand-deep:#d93a0e;--brand-soft:#fff1ec;
+  --bg:#ffffff;--bg-soft:#fafafa;--bg-sidebar:#fbfcfd;--bg-card:#ffffff;
+  --ink:#111111;--text-2:#4d4d4d;--text-3:#8c8c8c;--line:#e8e8e8;
+  --mark-grad:linear-gradient(135deg,#ff4713,#e82e5c);
+  --nav-hover:#f2f3f5;--switch-bg:#f4f5f7;--switch-active:#ffffff;--switch-shadow:0 1px 4px rgba(0,0,0,.1);
+  --srcbg:#f5f6f8;
+  --tag-off-fg:#005eb8;--tag-off-bg:#eef6ff;--tag-off-bd:#d6e9ff;
+  --tag-rep-fg:#a86400;--tag-rep-bg:#fff8e8;--tag-rep-bd:#ffe6b8;
+  --pin-fg:#111111;--pin-ring:#ffffff;
+  --up:#ff4713;--down:#00875a;
+  --pos:#11b66e;--pos-bg:rgba(17,182,110,.12);
+  --neu:#1e88ff;--neu-bg:rgba(30,136,255,.12);
+  --cau:#ff2525;--cau-bg:rgba(255,37,37,.12);
+  --mask-bg:rgba(17,24,39,.5);--modal-shadow:0 20px 60px rgba(15,23,42,.25);
+  --chart-tip-bg:#ffffff;--chart-tip-bd:#e8e8e8;--chart-tip-fg:#111111;
+  --chart-legend:#4d4d4d;--chart-axis-line:#e8e8e8;--chart-axis-label:#8c8c8c;--chart-split:#f3f3f3;--chart-mark:#d4d4d4;
+  --radius:10px;--shadow:0 4px 16px rgba(0,0,0,.06);
+}
+[data-theme="dark"]{
+  --brand:#ff5b2e;--brand-deep:#ff9b7a;--brand-soft:rgba(255,91,46,.14);
+  --bg:#0d1117;--bg-soft:#1c2128;--bg-sidebar:#0a0d12;--bg-card:#161b22;
+  --ink:#e6edf3;--text-2:#adbac7;--text-3:#7d8590;--line:#30363d;
+  --mark-grad:linear-gradient(135deg,#ff5b2e,#ff2e63);
+  --nav-hover:#1c2128;--switch-bg:#161b22;--switch-active:#30363d;--switch-shadow:0 1px 5px rgba(0,0,0,.4);
+  --srcbg:#161b22;
+  --tag-off-fg:#58a6ff;--tag-off-bg:rgba(88,166,255,.12);--tag-off-bd:rgba(88,166,255,.3);
+  --tag-rep-fg:#e3b341;--tag-rep-bg:rgba(227,179,65,.12);--tag-rep-bd:rgba(227,179,65,.3);
+  --pin-fg:#ffffff;--pin-ring:#0d1117;
+  --up:#ff6b6b;--down:#3fb950;
+  --pos:#3fb950;--pos-bg:rgba(63,185,80,.14);
+  --neu:#58a6ff;--neu-bg:rgba(88,166,255,.14);
+  --cau:#ff6b6b;--cau-bg:rgba(255,107,107,.14);
+  --mask-bg:rgba(0,0,0,.72);--modal-shadow:0 20px 60px rgba(0,0,0,.6);
+  --chart-tip-bg:#1c2128;--chart-tip-bd:#30363d;--chart-tip-fg:#e6edf3;
+  --chart-legend:#adbac7;--chart-axis-line:#30363d;--chart-axis-label:#7d8590;--chart-split:#21262d;--chart-mark:#484f58;
+  --shadow:0 4px 18px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:208px;flex:0 0 208px;background:var(--bg-sidebar);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;padding:2px 8px 20px}
+.logo .mark{width:26px;height:26px;border-radius:8px;background:var(--mark-grad);display:grid;place-items:center;color:#fff;font-size:13px}
+.nav-group{margin-bottom:16px}
+.nav-title{font-size:11px;color:var(--text-3);padding:6px 10px;letter-spacing:.5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;color:var(--text-2);cursor:pointer;font-size:13px}
+.nav-item:hover{background:var(--nav-hover)}
+.nav-item.active{background:var(--brand-soft);color:var(--brand-deep);font-weight:600}
+.nav-item .ico{width:16px;text-align:center;font-size:14px}
+.main{flex:1;min-width:0}
+.topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--bg);position:sticky;top:0;z-index:20}
+.topbar .crumb{color:var(--text-3);font-size:13px}
+.topbar .crumb b{color:var(--ink)}
+.topbar .right{display:flex;align-items:center;gap:18px;color:var(--text-2);font-size:12px}
+.theme-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;transition:.18s;white-space:nowrap}
+.theme-toggle:hover{border-color:var(--brand);color:var(--brand)}
+.theme-toggle .tt-ico{font-size:14px;line-height:1}
+.wrap{max-width:1240px;margin:0 auto;padding:22px 26px 60px}
+.subnav{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:22px;flex-wrap:wrap}
+.subnav button{border:0;background:none;padding:10px 14px;font-size:14px;color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subnav button.active{color:var(--brand);font-weight:700;border-bottom-color:var(--brand)}
+.card{background:var(--bg-card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.hero{display:flex;gap:28px;flex-wrap:wrap;align-items:center}
+.hero-left{min-width:210px}
+.big-num{font-size:58px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.badge{display:inline-block;color:#fff;font-size:12px;padding:4px 14px;border-radius:999px;font-weight:600;margin-top:12px}
+.date-line{color:var(--text-3);font-size:12px;margin-top:10px}
+.hero-mid{flex:1;min-width:260px}
+.scale{height:12px;border-radius:6px;background:linear-gradient(90deg,#00b070 0%,#5fb87a 20%,#f4c430 50%,#f97316 80%,#ef4444 100%);position:relative;margin:26px 0 6px}
+.scale .pin{position:absolute;top:-7px;width:3px;height:26px;background:var(--pin-fg);border-radius:2px;box-shadow:0 0 0 2px var(--pin-ring)}
+.scale-labels{display:flex;justify-content:space-between;color:var(--text-3);font-size:11px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.sec-title{font-size:15px;font-weight:700}
+.chart{width:100%;height:340px}
+/* range switcher */
+.range-card{padding:14px 20px;margin-bottom:18px}
+.range-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.range-label{font-size:13px;font-weight:700;color:var(--text-2)}
+.ranges{display:flex;gap:6px;flex-wrap:wrap}
+.ranges button{border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2);border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;transition:.15s}
+.ranges button:hover{border-color:var(--brand);color:var(--brand)}
+.ranges button.active{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+.range-hint{font-size:11.5px;color:var(--text-3);margin-left:auto}
+/* panels: full width, large chart */
+.panel-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.panel{border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;background:var(--bg-card);display:flex;flex-direction:column}
+.panel-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.panel-name{font-size:16px;font-weight:700}
+.panel-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.ptag{font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600}
+.ptag.proxy{color:var(--tag-rep-fg);background:var(--tag-rep-bg);border:1px solid var(--tag-rep-bd)}
+.ptag.exact{color:var(--tag-off-fg);background:var(--tag-off-bg);border:1px solid var(--tag-off-bd)}
+.pstate{font-size:12px;padding:3px 11px;border-radius:999px;font-weight:700;white-space:nowrap}
+.pstate.s1{color:var(--pos);background:var(--pos-bg)}
+.pstate.s2{color:var(--neu);background:var(--neu-bg)}
+.pstate.s3{color:var(--cau);background:var(--cau-bg)}
+.panel-body{display:flex;gap:20px;align-items:center;margin:14px 0 8px;flex-wrap:wrap}
+.panel-val{min-width:180px}
+.panel-val .v{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.panel-val .u{font-size:13px;color:var(--text-3);margin-left:4px}
+.panel-val .score-line{font-size:12px;color:var(--text-2);margin-top:6px}
+.panel-val .score-line b{font-size:16px}
+.pchart{width:100%;height:260px;margin-top:2px}
+.panel-pcts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1;min-width:280px;margin-top:6px}
+.ppct{background:var(--bg-soft);border:1px solid var(--line);border-radius:7px;padding:8px 10px;text-align:center}
+.ppct .k{color:var(--text-3);font-size:10px}
+.ppct .v{font-size:15px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
+.panel-interp{font-size:12.5px;line-height:1.75;color:var(--text-2);background:var(--srcbg);border-left:3px solid var(--brand);border-radius:0 6px 6px 0;padding:9px 12px;margin-top:10px}
+.panel-interp b{color:var(--ink)}
+.panel-desc{font-size:12px;line-height:1.7;color:var(--text-2);margin-top:11px;padding-top:9px;border-top:1px dashed var(--line)}
+.panel-src{font-size:11px;line-height:1.6;color:var(--text-3);margin-top:7px}
+.note{font-size:12px;color:var(--text-3);line-height:1.8;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.note b{color:var(--text-2)}
+.mask{position:fixed;inset:0;background:var(--mask-bg);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.mask.show{display:flex}
+.modal{width:100%;max-width:720px;max-height:82vh;background:var(--bg-card);border-radius:14px;box-shadow:var(--modal-shadow);display:flex;flex-direction:column;overflow:hidden}
+.modal-h{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);font-weight:700}
+.modal-h button{border:0;background:none;font-size:22px;cursor:pointer;color:var(--text-3);line-height:1}
+.modal-b{padding:18px 22px 26px;overflow:auto;font-size:13px;line-height:1.85;color:var(--text-2)}
+.modal-b p{margin:0 0 12px}
+.modal-b ul{padding-left:20px;margin:0 0 12px}
+.modal-b li{margin-bottom:8px}
+.modal-b .note-inline{color:var(--text-3);font-size:12px;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px}
+.how{display:inline-flex;align-items:center;gap:7px;color:var(--brand-deep);font-size:13px;font-weight:600;cursor:pointer}
+.how .q{width:18px;height:18px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.loading{padding:60px;text-align:center;color:var(--text-3)}
+@media(max-width:900px){.sidebar{display:none}.panel-grid{grid-template-columns:1fr}.wrap{padding:16px}.big-num{font-size:46px}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><span class="mark">韭</span> 投研工作台</div>
+    <div class="nav-group">
+      <div class="nav-title">工作台</div>
+      <a class="nav-item" href="index.html"><span class="ico">◈</span> 首页</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-title">工具指标</div>
+      <a class="nav-item" href="indicators.html"><span class="ico">⚑</span> 恐贪指数</a>
+      <a class="nav-item active" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">工具指标 / <b>情绪面板</b></div>
+      <div class="right"><span>公开数据自算</span><span>市场情绪 · 8大指标</span><button class="theme-toggle" id="themeToggle" title="切换主题"><span class="tt-ico">◐</span><span class="tt-label">暗色</span></button></div>
+    </div>
+    <div class="wrap">
+      <div class="subnav">
+        <a href="index.html"><button>首页</button></a>
+        <a href="indicators.html"><button>恐贪指数</button></a>
+        <a href="mood.html"><button class="active">情绪面板</button></a>
+      </div>
+
+      <div id="app" class="loading">数据加载中…</div>
+    </div>
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <div class="modal-h"><span>关于情绪面板 · 计算口径</span><button id="closeModal" aria-label="关闭">×</button></div>
+    <div class="modal-b">
+      <p>本页仿照 funddb.cn「情绪指标」面板，用<b>公开市场数据自行计算</b> 8 个情绪指标，不取用原站任何专有或会员数据。每个指标按其历史分位赋 0-100 分，<b>高分代表情绪乐观/亢奋，低分代表悲观/冰点</b>，50 为中立。</p>
+      <ul>
+        <li><b>A股风险溢价。</b>全A盈利收益率(1/PE) − 10年国债收益率。越高说明股票相对债券越便宜、越接近底部。（反向指标）</li>
+        <li><b>低估指数行业。</b>申万31个一级行业中，价格处于历史低分位的行业个数。越多说明市场整体越低估。（反向指标，价格分位近似估值分位）</li>
+        <li><b>新基金发行。</b>近90日滚动日均发行份额，反映资金亢奋程度，越高越贪婪。（精确自算）</li>
+        <li><b>正收益偏股基金占比。</b>近一年收益为正的偏股基金占比，越低越接近底部。<b>代理</b>：用上证基金指数近1年收益为正的滚动占比。</li>
+        <li><b>全市场换手率。</b>交易所权威口径的成交额 ÷ 总市值：2015–2021 用深交所、2022 起用上交所官方数据，并按市值权重换算到全市场量级。越高交易越火热，情绪越亢奋。<b>2024/9 前后存在真实放量台阶</b>（沪市官方 0.58%→1.55%，非拼接错误），绝对数值跨时代不可直接比；图内叠加<b>紫色「历史水位(分位)」线（右轴 0–100）</b>，为全历史 expanding 排名，尺度无关，可跨时代直接对比。</li>
+        <li><b>PCR。</b>上交所ETF期权未平仓认沽/认购持仓比（综合50/300/500/科创50ETF）。与美股的反向解读不同，A股持仓 PCR 实证为<b>顺周期</b>：PCR 低位往往对应市场已在底部（此后收益更好），高位对应情绪偏热。本面板按此设定方向。</li>
+        <li><b>股基滚动年化收益。</b>往前3年买入偏股基金的持有年化收益，向下偏离均值可能是底部。<b>代理</b>：上证基金指数3年年化。</li>
+        <li><b>神奇指标。</b>股票与债券资产回报差，沪深300越贴近债券走势越可能见底。<b>代理</b>：沪深300 ÷ 中债综合财富指数归一化比价。（反向指标）</li>
+        <li><b>交易拥挤度（独立卡片，不计入综合分）。</b>全A按每日成交额排序，前5%个股成交额之和 ÷ 全A总成交额。越低越分散（&lt;40%健康），越高越抱团（&gt;50%结构风险）。反向情绪指标：越高情绪分越高（越谨慎）。附 Top10% 占比与 HHI 有效个股数作辅助。全A个股成交额取新浪公开接口逐日横截面自算。</li>
+        <li><b>头部300ETF占沪深300流通市值比例（估值与宏观栏目）。</b>被动资金定价力量观察指标，公开数据自算，不含情绪方向判断，不计入综合分。</li>
+      </ul>
+      <p>综合情绪分为 8 个指标情绪分的等权平均（交易拥挤度与300ETF占比为独立观察卡片，不计入）。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。</p>
+      <p class="note-inline"><b>数据来源：</b>akshare（乐咕估值、东方财富、新浪财经、中债估值、上交所期权）。分位采用全历史 expanding 口径，每个指标卡片下方标注了具体来源。本页面为透明复刻实现，非官方数值，仅供研究参考，不构成投资建议。</p>
+    </div>
+  </div>
+</div>
+
+<script src="data/mood_data.js"></script>
+<script>
+(function(){
+  "use strict";
+  var app = document.getElementById("app");
+  if(!window.MOOD_DATA){ app.innerHTML = '<div class="loading">未找到数据文件 data/mood_data.js，请先运行 python build_mood.py</div>'; return; }
+  var D = window.MOOD_DATA;
+  var panels = D.panels || {};
+  var order = D.order || Object.keys(panels);
+  var flags = D.proxy_flags || {};
+  var charts = [];
+  var range = "all";  // 3y / 5y / 10y / all
+  var RANGES = [["3y","近3年"],["5y","近5年"],["10y","近10年"],["all","全部"]];
+  // 各指标在高/低/中情绪分时的解读文案（score 高=乐观）
+  var MEANING = {
+    rp:         {low:"风险补偿被压缩，权益相对债券性价比偏低、情绪偏乐观。", high:"股票相对债券的补偿充分，往往对应底部区域。", mid:"股债性价比处于历史中枢附近。"},
+    dgz:        {low:"处于低估状态的行业偏少，市场整体估值偏高。", high:"低估行业众多，市场整体处于低位区域。", mid:"低估行业数量中性。"},
+    fx_fe:      {low:"新基金发行清淡，资金入场意愿弱，常对应市场底部。", high:"新基金发行火爆，资金亢奋，需警惕过热。", mid:"新基金发行处于常态水平。"},
+    pgjj_zsy:   {low:"正收益基金占比低，基民普遍浮亏，常对应底部。", high:"正收益基金占比高，赚钱效应强、情绪偏热。", mid:"基金赚钱效应中性。"},
+    qschsl:     {low:"换手率低迷、交投清淡，量能处于冰点。", high:"换手率高企、交易火热，需警惕过热。", mid:"换手率处于常态区间。"},
+    qschsl_sse: {low:"沪市官方换手率低迷、交投清淡。", high:"沪市官方换手率高企、交易火热。", mid:"沪市官方换手率处于常态区间。"},
+    pcr:        {low:"PCR 处于低位。A股持仓 PCR 为顺周期指标：低位往往对应市场已在底部区域、情绪悲观，历史上此后60日平均收益更好，偏布局机会。", high:"PCR 处于高位，市场情绪偏热、位置偏高，历史上此后60日平均收益偏弱，需谨慎。", mid:"PCR 处于常态区间。"},
+    zzpgnh:     {low:"持有偏股基金的回报低迷，常对应中长期底部。", high:"持有回报丰厚，情绪偏乐观。", mid:"持有回报处于历史中枢。"},
+    magic:      {low:"股票相对债券的表现偏弱，历史上常对应底部区域。", high:"股票显著强于债券，需警惕拥挤与过热。", mid:"股债比价处于均衡区间。"},
+    etf300_ratio:{low:"头部300ETF占沪深300流通市值比例偏低，被动资金定价力量较弱。", high:"头部300ETF占比处于高位，被动资金定价力量与拥挤度上升，反映汇金等资金增持宽基ETF。", mid:"头部300ETF占比处于历史中枢。"},
+    crowding:   {low:"成交相对分散、微观结构较健康（低位区间），交易拥挤风险小。", high:"成交明显集中于少数头部个股（高位区间，尤其>50%时为结构风险信号），抱团拥挤、结构脆弱，历史上常对应阶段性高低点或风格切换，需警惕。", mid:"成交集中度处于上升趋势中（40~50% 附近），需关注局部过热。"}
+  };
+  function interpretation(k,p){
+    var s=Number(p.score)||50;
+    var lvl = s<35?"low":(s>65?"high":"mid");
+    var m = (MEANING[k]||{})[lvl] || "该指标处于历史中性区间。";
+    var srcHint = (flags[k]&&flags[k]!=="精确") ? "（"+flags[k]+"口径，仅作方向参考）" : "";
+    // 结构指标(如300ETF占比)不带情绪分语义，改用历史分位表述
+    if(k==="etf300_ratio"){
+      var pf=Number(p.pct_all)||0;
+      var lv2 = pf<35?"low":(pf>65?"high":"mid");
+      var m2=(MEANING[k]||{})[lv2]||"";
+      return "当前值 <b>"+fmt(p.value,2)+esc(p.unit||"")+"</b>，处于历史 <b>"+fmt(pf,0)+"</b> 分位。"+m2;
+    }
+    return "当前值 <b>"+fmt(p.value, p.unit==="个"?0:2)+esc(p.unit||"")+"</b>，情绪分 <b>"+fmt(s,1)+"</b>（"+esc(p.state||"")+"）。"+m+srcHint;
+  }
+  function rangeData(h){
+    if(!h || !h.length) return [];
+    if(range==="all") return h;
+    var yrs={"3y":3,"5y":5,"10y":10}[range];
+    if(!yrs) return h;
+    var base=new Date((D.data_date||h[h.length-1].date)+"T00:00:00");
+    base.setFullYear(base.getFullYear()-yrs);
+    var cut=base.toISOString().slice(0,10);
+    var out=h.filter(function(x){ return x.date>=cut; });
+    return out.length>=5?out:h;
+  }
+  var theme = (function(){ try{ return localStorage.getItem("mood_theme")||localStorage.getItem("fg_theme")||"light"; }catch(e){ return "light"; } })();
+  function applyTheme(t){
+    theme = t;
+    document.documentElement.setAttribute("data-theme", t==="dark"?"dark":"light");
+    try{ localStorage.setItem("mood_theme", t); localStorage.setItem("fg_theme", t); }catch(e){}
+    var btn = document.getElementById("themeToggle");
+    if(btn){ btn.querySelector(".tt-ico").textContent = t==="dark"?"☀":"◐"; btn.querySelector(".tt-label").textContent = t==="dark"?"浅色":"暗色"; }
+    if(charts.length){ charts.forEach(function(c){ try{ c.dispose(); }catch(e){} }); charts=[]; renderCharts(); }
+  }
+  applyTheme(theme);
+
+  function fmt(v,n){ var x=Number(v); if(!isFinite(x)) return "—"; return x.toFixed(n===undefined?2:n); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+  function stateCls(st){ return st==="积极"?"s1":(st==="谨慎"?"s3":"s2"); }
+  // 各指标数据源发布节奏不同，标注真实末日；滞后超过3天用警示色提示，避免误读为最新
+  function staleTag(p){
+    if(!p || !p.history || !p.history.length) return "";
+    var last = p.history[p.history.length-1].date;
+    var base = D.data_date || last;
+    var lag = Math.round((new Date(base+"T00:00:00") - new Date(last+"T00:00:00"))/86400000);
+    if(lag > 3){
+      return '<span class="ptag" style="background:var(--cau-bg);color:var(--cau);margin-left:6px" title="该数据源发布较慢，末日 '+esc(last)+'">数据至 '+esc(last)+' · 滞后'+lag+'天</span>';
+    }
+    return '<span style="color:var(--text-3);font-size:11px;margin-left:6px">数据至 '+esc(last)+'</span>';
+  }
+  function stateColor(st){ return st==="积极"?cssVar("--pos"):(st==="谨慎"?cssVar("--cau"):cssVar("--neu")); }
+
+  function render(){
+    var html = "";
+    // Hero 综合情绪分
+    var comp = D.composite || {score:50,state:"中立",history:[]};
+    var cs = Number(comp.score)||50;
+    var cst = comp.state || (cs<=30?"积极":(cs>=70?"谨慎":"中立"));
+    html += '<div class="card"><div class="hero">';
+    html += '<div class="hero-left"><div style="color:var(--text-3);font-size:13px;margin-bottom:6px">市场综合情绪分</div>';
+    html += '<div class="big-num" style="color:'+stateColor(cst)+'">'+fmt(cs,1)+'</div>';
+    html += '<span class="badge" style="background:'+stateColor(cst)+'">'+esc(cst)+'</span>';
+    html += '<div class="date-line">数据截至 '+(D.data_date||"—")+'</div></div>';
+    html += '<div class="hero-mid"><div style="color:var(--text-2);font-size:13px;line-height:1.8">';
+    html += '综合情绪分由 8 个指标的<b>情绪分位</b>等权平均得到。分数越低代表市场情绪越悲观（往往对应底部区域），越高代表越亢奋（往往对应顶部区域）。';
+    html += '</div><div class="scale"><div class="pin" style="left:calc('+cs+'% - 1.5px)"></div></div>';
+    html += '<div class="scale-labels"><span>0 极度悲观/冰点</span><span>50 中立</span><span>100 极度乐观/亢奋</span></div>';
+    html += '<div style="margin-top:14px;color:var(--text-3);font-size:11.5px">共 '+order.length+' 个指标 · '+Object.keys(panels).length+' 个有效 · <span class="how" id="howBtn"><span class="q">?</span>查看计算口径</span></div>';
+    html += '</div></div></div>';
+
+    // 时间范围切换（作用于全部分项）
+    html += '<div class="card range-card"><div class="range-row"><span class="range-label">查看区间</span><div class="ranges" id="rangeBtns">';
+    RANGES.forEach(function(r){ html += '<button data-range="'+r[0]+'"'+(r[0]===range?' class="active"':'')+'>'+r[1]+'</button>'; });
+    html += '</div><span class="range-hint">切换区间后，曲线支持鼠标拖拽平移、滚轮缩放细节</span></div></div>';
+
+    // 综合情绪分走势
+    html += '<div class="card"><div class="sec-head"><span class="sec-title">综合情绪分 · 历史走势</span><span style="color:var(--text-3);font-size:12px">鼠标拖拽平移 · 滚轮缩放 · 双击复位</span></div><div id="compChart" class="chart"></div></div>';
+
+    // 8个指标卡片
+    html += '<div class="sec-head" style="margin-top:6px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
+    html += '<div class="panel-grid">';
+    order.forEach(function(k){
+      var p = panels[k];
+      if(!p) return;
+      var flag = flags[k] || "精确";
+      var flagCls = (flag==="精确") ? "exact" : "proxy";
+      html += '<div class="panel">';
+      html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag '+flagCls+'">'+esc(flag)+'自算</span>'+staleTag(p)+'</div></div>';
+      html += '<span class="pstate '+stateCls(p.state)+'">'+esc(p.state)+'</span></div>';
+      html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value, p.unit==="个"?0:2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
+      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(p.state)+'">'+fmt(p.score,1)+'</b> / 100</div></div>';
+      html += '<div class="panel-pcts">';
+      [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
+        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+      });
+      html += '</div></div>';
+      html += '<div class="pchart" id="pc_'+k+'"></div>';
+      html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+      // 换手率：主图内叠加"上交所官方口径"虚线供对比
+      if(k==="qschsl" && D.compare_panel){
+        var cp=D.compare_panel;
+        html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px"><b>口径对比与历史可比性：</b>图中<b>蓝虚线</b>为「上交所官方换手率」（2022起、全程同一口径不拼接），当前 <b>'+fmt(cp.value,2)+'%</b>；<b>红实线</b>为还原全市场量级的桥接口径。两者在 2024 年 9 月<b>同步跳升</b>（沪市官方 0.58%→1.55%），已核验为真实放量、非拼接错误。因此绝对换手率在不同「量能时代」间不宜直接比高低——请看<b>紫色点线「历史水位(分位)」（右轴 0–100）</b>：它是全历史 expanding 排名，尺度无关，2018 年 0.65%（水位 7）与 2026 年 1.41%（水位 72）可直接比较。鼠标悬停会出现十字线，横线即为该日历史水位。</div>';
+      }
+      html += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
+      html += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // 交易拥挤度（独立情绪指标卡片，不计入综合分）
+    var cd = D.crowding_panel;
+    if(cd){
+      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">交易拥挤度</span><span style="color:var(--text-3);font-size:12px">市场微观结构观察 · 反向情绪指标 · 不计入综合情绪分</span></div>';
+      html += '<div class="panel-grid">';
+      html += '<div class="panel">';
+      html += '<div class="panel-hd"><div><div class="panel-name">'+esc(cd.name)+'</div><div class="panel-tags"><span class="ptag exact">精确自算</span><span class="ptag proxy" style="margin-left:6px">反向指标</span></div></div>';
+      html += '<span class="pstate '+stateCls(cd.state)+'">'+esc(cd.state)+'</span></div>';
+      html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(cd.value,2)+'<span class="u">'+esc(cd.unit||"")+'</span></div>';
+      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(cd.state)+'">'+fmt(cd.score,1)+'</b> / 100（越高=越拥挤越需警惕）</div></div>';
+      html += '<div class="panel-pcts">';
+      [["近3年",cd.pct_3y],["近5年",cd.pct_5y],["近10年",cd.pct_10y],["全历史",cd.pct_all]].forEach(function(it){
+        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+      });
+      html += '</div></div>';
+      html += '<div class="pchart" id="pc_crowding" style="height:340px"></div>';
+      html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation("crowding",cd)+'</div>';
+      // 辅助指标摘要
+      if(cd.auxiliary && cd.auxiliary.length){
+        var ax = cd.auxiliary[cd.auxiliary.length-1];
+        html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px"><b>辅助指标：</b>图中<b>虚线</b>为 Top10% 个股成交额占比（当前 '+fmt(ax.top10,1)+'%）；当日 HHI 有效交易个股数约 <b>'+fmt(ax.eff_n,0)+'</b> 只（越少=成交越集中于少数个股）。HHI 与 Top10% 是全分布集中度视角，比单一 5% 切点更稳健。</div>';
+      }
+      html += '<div class="panel-desc">'+esc(cd.desc||"")+'</div>';
+      html += '<div class="panel-src">数据源：'+esc(cd.source||"")+'</div>';
+      html += '</div>';
+      html += '</div>';
+    }
+
+    // 估值与宏观比较栏目（公开数据自算，非情绪指标，不进综合分）
+    var mp = D.macro_panels || {};
+    var mo = D.macro_order || Object.keys(mp);
+    if(mo.length){
+      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">估值与宏观比较</span><span style="color:var(--text-3);font-size:12px">市场结构观察指标 · 不含情绪方向判断 · 不计入综合情绪分</span></div>';
+      html += '<div class="panel-grid">';
+      mo.forEach(function(k){
+        var p = mp[k]; if(!p) return;
+        html += '<div class="panel" style="border-style:dashed">';
+        html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">结构指标</span></div></div>';
+        html += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">市场结构</span></div>';
+        html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
+        html += '<div class="score-line">历史分位 <b style="color:var(--text)">'+fmt(p.pct_all,0)+'</b> / 100（越高=被动资金占比越高）</div></div>';
+        html += '<div class="panel-pcts">';
+        [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
+          html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+        });
+        html += '</div></div>';
+        html += '<div class="pchart" id="pc_'+k+'"></div>';
+        html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+        html += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
+        html += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div class="note" style="margin-top:18px"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
+    html += '<div class="note" style="margin-top:12px"><b>注意事项：</b>① 各指标历史起点不同（新基金发行约 2013 起、PCR 2021 起、风险溢价 2019 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度（前5%成交额占比，2015 起）与头部300ETF占比为独立观察卡片，不计入综合分；拥挤度基于新浪全A个股历史成交额逐日横截面自算，与乐咕/中金研报口径一致，可作为结构风险参考但非择时信号。</div>';
+
+    app.innerHTML = html;
+
+    var how = document.getElementById("howBtn");
+    if(how) how.addEventListener("click", function(){ document.getElementById("mask").classList.add("show"); });
+    var rb = document.getElementById("rangeBtns");
+    if(rb) rb.addEventListener("click", function(e){
+      var b = e.target.closest ? e.target.closest("button[data-range]") : null;
+      if(!b) return;
+      range = b.getAttribute("data-range");
+      rb.querySelectorAll("button").forEach(function(x){ x.classList.toggle("active", x===b); });
+      redrawCharts();
+    });
+  }
+
+  // 通用 dataZoom：内部滚轮缩放+拖拽平移 + 底部滑块
+  // filterMode:'filter' 让纵轴随窗口内数据自动重算(yAxis 需 scale/auto)；
+  // 'none' 则纵轴锁定全量范围(用于固定 0-100 的情绪分图)。
+  function dataZoomOpt(cfg){
+    cfg = cfg || {};
+    var fm = cfg.filterMode || "filter";
+    var start = (cfg.start===undefined) ? 0 : cfg.start;
+    var slider = cssVar("--chart-axis-line")||"#e8e8e8";
+    var handle = cssVar("--brand")||"#ff4713";
+    var txt = cssVar("--chart-axis-label")||"#8c8c8c";
+    return [
+      {type:"inside", xAxisIndex:0, filterMode:fm, start:start, zoomOnMouseWheel:true, moveOnMouseMove:true, moveOnMouseWheel:false},
+      {type:"slider", xAxisIndex:0, filterMode:fm, start:start, height:18, bottom:cfg.bottom||8, borderColor:slider,
+       backgroundColor:"transparent", fillerColor:(handle+"22"), handleStyle:{color:handle},
+       dataBackground:{lineStyle:{color:slider,opacity:.6},areaStyle:{color:slider,opacity:.15}},
+       selectedDataBackground:{lineStyle:{color:handle},areaStyle:{color:handle+"33"}},
+       textStyle:{color:txt,fontSize:10}, brushSelect:false}
+    ];
+  }
+
+  function renderCharts(){
+    var axisLine = cssVar("--chart-axis-line")||"#e8e8e8";
+    var axisLabel = cssVar("--chart-axis-label")||"#8c8c8c";
+    var splitLine = cssVar("--chart-split")||"#f3f3f3";
+    var tipBg = cssVar("--chart-tip-bg")||"#fff";
+    var tipBd = cssVar("--chart-tip-bd")||"#e8e8e8";
+    var tipFg = cssVar("--chart-tip-fg")||"#111";
+    // 综合情绪分走势
+    var cc = document.getElementById("compChart");
+    if(cc){
+      var ch = rangeData((D.composite && D.composite.history) ? D.composite.history : []);
+      var dates = ch.map(function(x){return x.date;});
+      var vals = ch.map(function(x){return x.score;});
+      var chart = echarts.init(cc);
+      chart.setOption({
+        tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:tipBg,borderColor:tipBd,textStyle:{color:tipFg,fontSize:12}},
+        grid:{left:42,right:18,top:18,bottom:56},
+        xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:11}},
+        yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:11},splitLine:{lineStyle:{color:splitLine}}},
+        dataZoom:dataZoomOpt({bottom:10,filterMode:"none"}),
+        series:[{
+          type:"line",data:vals,showSymbol:false,smooth:true,
+          lineStyle:{width:2,color:cssVar("--brand")||"#ff4713"},
+          areaStyle:{color:(cssVar("--brand")||"#ff4713")+"22"},
+          markLine:{silent:true,symbol:"none",label:{show:false},lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1},data:[{yAxis:50}]}
+        }]
+      });
+      charts.push(chart);
+    }
+    // 各指标大图（原始值走势，可拖拽/缩放）；key 决定是否在图内叠加对比线
+    function renderOneChart(key, id, p){
+      var el = document.getElementById(id);
+      if(!p || !el || !p.history) return;
+      var h = rangeData(p.history);
+      // 保留足够多点以支持滚轮缩放看细节（上限 3000，避免极端长历史拖慢渲染）
+      var step = Math.max(1, Math.ceil(h.length/3000));
+      var dates=[], vals=[], pcts=[];
+      for(var i=0;i<h.length;i+=step){ dates.push(h[i].date); vals.push(h[i].value); pcts.push(h[i].pct); }
+      if(!dates.length) return;
+      var ch2 = echarts.init(el);
+      var col = stateColor(p.state);
+      var unit = p.unit || "";
+      var series = [{name:"全市场口径",type:"line",data:vals,showSymbol:false,smooth:true,lineStyle:{width:2,color:col},areaStyle:{color:col+"20"}}];
+      var hasLegend=false;
+      // 换手率：叠加"上交所官方口径"虚线（同一坐标系对比）
+      if(key==="qschsl" && D.compare_panel && D.compare_panel.history){
+        var cmpMap={}; D.compare_panel.history.forEach(function(x){cmpMap[x.date]=x.value;});
+        var cmpVals=dates.map(function(d){return cmpMap[d]!=null?cmpMap[d]:null;});
+        var cmpColor="#5b8ff9";
+        series.push({name:"上交所官方口径",type:"line",data:cmpVals,showSymbol:false,smooth:true,
+                     lineStyle:{width:1.8,color:cmpColor,type:"dashed"},itemStyle:{color:cmpColor},connectNulls:true});
+        hasLegend=true;
+      }
+      // 换手率：叠加"历史水位(分位)"——全历史 expanding 分位，尺度无关，可跨越24/9放量台阶直接对比历史
+      if(key==="qschsl"){
+        series.push({name:"历史水位(分位)",type:"line",yAxisIndex:1,data:pcts,showSymbol:false,smooth:true,
+                     lineStyle:{width:1.6,color:"#8b5cf6",type:"dotted"},itemStyle:{color:"#8b5cf6"},connectNulls:true});
+        hasLegend=true;
+      }
+      // 交易拥挤度：叠加 Top10% 辅助线 + 40/50% 阈值参考线
+      if(key==="crowding" && p.auxiliary && p.auxiliary.length){
+        var auxMap={}; p.auxiliary.forEach(function(x){auxMap[x.date]=x.top10;});
+        var auxVals=dates.map(function(d){return auxMap[d]!=null?auxMap[d]:null;});
+        var auxColor="#5b8ff9";
+        series.push({name:"Top10%占比",type:"line",data:auxVals,showSymbol:false,smooth:true,
+                     lineStyle:{width:1.6,color:auxColor,type:"dashed"},itemStyle:{color:auxColor},connectNulls:true});
+        // 50% 结构风险阈值线画在主系列上
+        series[0].markLine={silent:true,symbol:"none",label:{show:true,formatter:"50% 风险线",color:axisLabel,fontSize:10,position:"insideEndTop"},
+          lineStyle:{color:"#e8633a",type:"dashed",width:1,opacity:.7},data:[{yAxis:50}]};
+        hasLegend=true;
+      }
+      // "全部"区间默认聚焦近5年，避免远古极值(如2007年85%)把当前曲线压平；
+      // 用户可拖动滑块/滚轮查看更早数据，纵轴会随窗口自适应。
+      var startPct = 0;
+      if(range==="all" && dates.length>1250){ startPct = (dates.length-1250)/dates.length*100; }
+      var isQschsl = (key==="qschsl");
+      // 换手率用双纵轴：左轴换手率%，右轴历史水位分位0-100
+      var yAxisCfg = {type:"value",scale:true,axisLabel:{color:axisLabel,fontSize:10,formatter:function(v){return v+" "+esc(unit);}},splitLine:{lineStyle:{color:splitLine}}};
+      if(isQschsl){
+        yAxisCfg = [
+          Object.assign({},yAxisCfg,{name:"换手率",nameTextStyle:{color:axisLabel,fontSize:10}}),
+          {type:"value",min:0,max:100,interval:25,position:"right",axisLabel:{color:"#8b5cf6",fontSize:10,formatter:"{value}"},
+           name:"水位",nameTextStyle:{color:"#8b5cf6",fontSize:10},splitLine:{show:false}}
+        ];
+      }
+      ch2.setOption({
+        tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:tipBg,borderColor:tipBd,textStyle:{color:tipFg,fontSize:11},
+                 formatter:function(ps){
+                   var s=ps[0].axisValue;
+                   ps.forEach(function(q){
+                     if(q.value==null) return;
+                     if(q.seriesName==="历史水位(分位)"){ s+="<br/>"+q.marker+q.seriesName+"：<b>"+Number(q.value).toFixed(1)+"</b> / 100"; }
+                     else { s+="<br/>"+q.marker+q.seriesName+"：<b>"+q.value+"</b> "+esc(unit); }
+                   });
+                   return s;
+                 }},
+        legend: hasLegend?{show:true,top:0,right:8,itemWidth:16,itemHeight:8,textStyle:{color:axisLabel,fontSize:10}}:undefined,
+        grid:{left:48,right:isQschsl?44:18,top:hasLegend?26:14,bottom:52},
+        xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:10,hideOverlap:true}},
+        yAxis:yAxisCfg,
+        dataZoom:dataZoomOpt({bottom:8,start:startPct}),
+        series:series
+      });
+      charts.push(ch2);
+    }
+    order.forEach(function(k){ renderOneChart(k, "pc_"+k, panels[k]); });
+    // 交易拥挤度（独立卡片）
+    if(D.crowding_panel) renderOneChart("crowding", "pc_crowding", D.crowding_panel);
+    // 估值与宏观比较栏目
+    var mp=D.macro_panels||{}, mo=D.macro_order||Object.keys(mp);
+    mo.forEach(function(k){ renderOneChart(k, "pc_"+k, mp[k]); });
+  }
+
+  function redrawCharts(){
+    charts.forEach(function(c){ try{ c.dispose(); }catch(e){} });
+    charts=[];
+    renderCharts();
+  }
+
+  var tb = document.getElementById("themeToggle");
+  if(tb) tb.addEventListener("click", function(){ applyTheme(theme==="dark"?"light":"dark"); });
+  var cm = document.getElementById("closeModal");
+  if(cm) cm.addEventListener("click", function(){ document.getElementById("mask").classList.remove("show"); });
+  var mask = document.getElementById("mask");
+  if(mask) mask.addEventListener("click", function(e){ if(e.target===mask) mask.classList.remove("show"); });
+  window.addEventListener("resize", function(){ charts.forEach(function(c){ try{ c.resize(); }catch(e){} }); });
+
+  render();
+  renderCharts();
+})();
+</script>
+</body>
+</html>

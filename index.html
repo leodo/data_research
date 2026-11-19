@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>投研指标工作台</title>
+<style>
+:root{
+  --bg:#ffffff;--bg-soft:#fafafa;--bg-sidebar:#fbfcfd;--bg-card:#ffffff;
+  --ink:#111111;--text-2:#4d4d4d;--text-3:#8c8c8c;--line:#e8e8e8;
+  --brand:#ff4713;--brand-deep:#d93a0e;--brand-soft:#fff1ec;
+  --mark-grad:linear-gradient(135deg,#ff4713,#e82e5c);
+  --nav-hover:#f2f3f5;--shadow:0 4px 16px rgba(0,0,0,.06);
+  --pos:#11b66e;--neu:#1e88ff;--cau:#ff2525;
+}
+[data-theme="dark"]{
+  --bg:#0d1117;--bg-soft:#1c2128;--bg-sidebar:#0a0d12;--bg-card:#161b22;
+  --ink:#e6edf3;--text-2:#adbac7;--text-3:#7d8590;--line:#30363d;
+  --brand:#ff5b2e;--brand-deep:#ff9b7a;--brand-soft:rgba(255,91,46,.14);
+  --mark-grad:linear-gradient(135deg,#ff5b2e,#ff2e63);
+  --nav-hover:#1c2128;--shadow:0 4px 18px rgba(0,0,0,.45);
+  --pos:#3fb950;--neu:#58a6ff;--cau:#ff6b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:208px;flex:0 0 208px;background:var(--bg-sidebar);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;padding:2px 8px 20px}
+.logo .mark{width:26px;height:26px;border-radius:8px;background:var(--mark-grad);display:grid;place-items:center;color:#fff;font-size:13px}
+.nav-title{font-size:11px;color:var(--text-3);padding:6px 10px;letter-spacing:.5px;margin-bottom:8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;color:var(--text-2);font-size:13px}
+.nav-item .ico{width:16px;text-align:center;font-size:14px}
+.main{flex:1;min-width:0}
+.topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:var(--bg);position:sticky;top:0;z-index:20}
+.topbar .crumb{color:var(--text-3);font-size:13px}
+.topbar .crumb b{color:var(--ink)}
+.theme-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
+.wrap{max-width:1080px;margin:0 auto;padding:36px 26px 60px}
+.hero-title{font-size:26px;font-weight:800;margin:0 0 6px}
+.hero-sub{color:var(--text-3);font-size:13px;margin-bottom:30px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.card{background:var(--bg-card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:26px;transition:.18s;display:block}
+.card:hover{transform:translateY(-3px);border-color:var(--brand);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.card .ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:22px;margin-bottom:16px}
+.card h2{font-size:19px;margin:0 0 8px}
+.card p{color:var(--text-2);font-size:13px;line-height:1.7;margin:0 0 14px}
+.card .stats{display:flex;gap:18px;flex-wrap:wrap}
+.card .stat .k{color:var(--text-3);font-size:11px}
+.card .stat .v{font-size:18px;font-weight:800;margin-top:2px}
+.card .arrow{color:var(--brand);font-weight:700;font-size:13px;margin-top:16px;display:inline-block}
+.foot{color:var(--text-3);font-size:11.5px;line-height:1.8;margin-top:32px;padding-top:16px;border-top:1px solid var(--line)}
+@media(max-width:760px){.sidebar{display:none}.grid{grid-template-columns:1fr}.wrap{padding:20px 16px}}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><span class="mark">韭</span> 投研工作台</div>
+    <div class="nav-title">工具指标</div>
+    <a class="nav-item" href="indicators.html"><span class="ico">⚑</span> 恐贪指数</a>
+    <a class="nav-item" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
+  </aside>
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">投研工作台 / <b>首页</b></div>
+      <button class="theme-toggle" id="themeToggle"><span class="tt-ico">◐</span><span class="tt-label">暗色</span></button>
+    </div>
+    <div class="wrap">
+      <h1 class="hero-title">投研指标工作台</h1>
+      <div class="hero-sub">基于公开市场数据自算的市场情绪工具集 · 数据每日更新</div>
+      <div class="grid">
+        <a class="card" href="indicators.html">
+          <div class="ic" style="background:rgba(255,71,19,.12);color:var(--brand)">⚑</div>
+          <h2>恐贪指数</h2>
+          <p>7 大指数（全市场 / 沪深300 / 中证500 / 中证1000 / 中证2000 / 创业板 / 科创50）各自的恐惧贪婪指数，以隐含波动率与 150 日乖离率为核心。</p>
+          <div class="stats" id="fgStats"><div class="stat"><div class="k">读取中</div><div class="v">—</div></div></div>
+          <span class="arrow">查看指数 →</span>
+        </a>
+        <a class="card" href="mood.html">
+          <div class="ic" style="background:rgba(30,136,255,.12);color:var(--neu)">◉</div>
+          <h2>情绪面板</h2>
+          <p>8 大市场情绪指标（风险溢价 / 低估行业 / 新基金发行 / 正收益基金占比 / 换手率 / PCR / 股基年化 / 神奇指标），全部用公开数据自算。</p>
+          <div class="stats" id="moodStats"><div class="stat"><div class="k">读取中</div><div class="v">—</div></div></div>
+          <span class="arrow">查看面板 →</span>
+        </a>
+      </div>
+      <div class="foot">本页面所有指标为依照公开方法论的透明复刻实现，非官方数值，仅用于研究参考，不构成投资建议。</div>
+    </div>
+  </div>
+</div>
+<script src="data/index_data.js"></script>
+<script src="data/mood_data.js"></script>
+<script>
+(function(){
+  var theme=(function(){try{return localStorage.getItem('fg_theme')||'light';}catch(e){return 'light';}})();
+  function apply(t){theme=t;document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');
+    try{localStorage.setItem('fg_theme',t);}catch(e){}
+    var b=document.getElementById('themeToggle');
+    if(b){b.querySelector('.tt-ico').textContent=t==='dark'?'☀':'◐';b.querySelector('.tt-label').textContent=t==='dark'?'浅色':'暗色';}}
+  apply(theme);
+  document.getElementById('themeToggle').addEventListener('click',function(){apply(theme==='dark'?'light':'dark');});
+  function esc(s){return String(s==null?'':s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+  try{
+    if(window.FG_DATA){
+      var idx=window.FG_DATA.indices, ks=Object.keys(idx), worst=null;
+      ks.forEach(function(k){var v=idx[k];if(!worst||v.value<worst[1])worst=[k,v.value];});
+      document.getElementById('fgStats').innerHTML='<div class="stat"><div class="k">指数数量</div><div class="v">'+ks.length+'</div></div>'+
+        '<div class="stat"><div class="k">最悲观指数</div><div class="v" style="color:var(--cau)">'+(worst?esc((window.FG_DATA.meta[worst[0]]||{}).name||worst[0]):'—')+' '+Number(worst[1]).toFixed(1)+'</div></div>';
+    }
+  }catch(e){}
+  try{
+    if(window.MOOD_DATA){
+      var c=window.MOOD_DATA.composite||{};
+      document.getElementById('moodStats').innerHTML='<div class="stat"><div class="k">综合情绪分</div><div class="v" style="color:var(--neu)">'+Number(c.score||0).toFixed(1)+'</div></div>'+
+        '<div class="stat"><div class="k">指标数量</div><div class="v">'+Object.keys(window.MOOD_DATA.panels||{}).length+'</div></div>';
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

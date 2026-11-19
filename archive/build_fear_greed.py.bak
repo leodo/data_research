@@ -1,0 +1,334 @@
+# -*- coding: utf-8 -*-
+"""
+恐贪指数构建引擎
+================
+沪深300：直接使用韭圈儿(funddb.cn)官方 API 的真实数据（保真复刻）。
+中证1000：按官方公布的同一套方法论（5 大因子 → 各自 0-100 打分 → 等权平均）
+         用中证1000专属数据独立计算，属于"透明复刻实现"，非官方数值。
+
+因子（官方实际统计 5 项，杠杆率/外资因数据延迟未纳入）：
+  volatility 波动率      : 300=50ETF期权波动率(官方) ; 1000=中证1000 20日实现波动率(年化)
+  bx         避险需求    : 300=沪深300(官方)       ; 1000=中证1000 20日收益 - 国债净价指数20日收益
+  premium    股指升贴水  : 300=IF(官方)            ; 1000=IM 次月主力年化升贴水率10日均值
+  wz         两市成交额  : 市场共用，偏离20日均线程度
+  strength   股价强度    : 300=全市场(官方)        ; 1000=中证1000成分股创250日新高占比
+
+打分：因子原始值在滚动 250 交易日窗口内的分位（0-100），方向统一为"高分=贪婪"。
+合成：5 因子等权平均。
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+warnings.filterwarnings("ignore")
+import numpy as np
+import pandas as pd
+import akshare as ak
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+DATA = os.path.join(BASE, "data")
+os.makedirs(DATA, exist_ok=True)
+
+START = "20210101"
+END = "20261118"
+WIN = 250  # 滚动分位窗口
+
+STATES = [
+    (0, 10, "极度恐惧", "#00b070"),
+    (10, 30, "恐惧", "#5fb87a"),
+    (30, 70, "中立", "#f4c430"),
+    (70, 90, "贪婪", "#f97316"),
+    (90, 100.0001, "极度贪婪", "#ef4444"),
+]
+
+
+def state_of(v: float):
+    for lo, hi, name, color in STATES:
+        if lo <= v < hi:
+            return name, color
+    return "中立", "#f4c430"
+
+
+# ---------------------------------------------------------------- 数据获取
+def fetch_index(code: str) -> pd.DataFrame:
+    """新浪指数日线 -> DataFrame(index=date)"""
+    df = ak.index_zh_daily_sina(symbol=code)
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+    return df.set_index("date").sort_index()
+
+
+def fetch_futures(symbol: str) -> pd.Series:
+    df = ak.futures_main_sina(symbol=symbol, start_date=START, end_date=END)
+    df["日期"] = pd.to_datetime(df["日期"]).dt.strftime("%Y-%m-%d")
+    s = df.set_index("日期")["收盘价"]
+    s.name = "fut"
+    return s
+
+
+def fetch_bond() -> pd.Series:
+    """中债国债净价指数"""
+    df = ak.bond_treasury_index_cbond()
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+    s = df.set_index("date")["value"]
+    s.name = "bond"
+    return s
+
+
+def fetch_turnover() -> pd.Series:
+    """两市成交量（沪综指+深成指成交量之和，单位：股）"""
+    sh = fetch_index("sh000001")["volume"]
+    sz = fetch_index("sz399001")["volume"]
+    s = (sh + sz).dropna()
+    s.name = "turnover"
+    return s
+
+
+def fetch_constituents(index_code: str) -> list[str]:
+    df = ak.index_stock_cons_csindex(symbol=index_code)
+    codes = []
+    for c in df["成分券代码"].astype(str).tolist():
+        c = c.zfill(6)
+        prefix = "sh" if c.startswith(("5", "6", "9")) else "sz"
+        codes.append(prefix + c)
+    return sorted(set(codes))
+
+
+def fetch_one_stock(args):
+    code, start = args
+    try:
+        df = ak.stock_zh_a_hist_sina(symbol=code)
+        df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+        df = df[df["date"] >= start]
+        if df.empty:
+            return code, None
+        # 创250日新高：当日最高价 >= 过去250交易日最高价的最大值
+        hi = df["high"].astype(float)
+        roll_max = hi.shift(1).rolling(250, min_periods=120).max()
+        newhigh = (hi >= roll_max) & roll_max.notna()
+        out = pd.DataFrame({"code": code, "date": df["date"].astype(str), "nh": newhigh.astype(int)})
+        return code, out
+    except Exception:
+        return code, None
+
+
+def fetch_strength(index_code: str, cache_path: str) -> pd.Series:
+    """成分股创250日新高占比；带本地缓存"""
+    if os.path.exists(cache_path):
+        df = pd.read_csv(cache_path)
+    else:
+        codes = fetch_constituents(index_code)
+        print(f"  成分股 {len(codes)} 只，开始并发抓取历史行情 ...", flush=True)
+        frames, done = [], 0
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=16) as ex:
+            futs = {ex.submit(fetch_one_stock, (c, "2021-01-01")): c for c in codes}
+            for fu in as_completed(futs):
+                try:
+                    _, out = fu.result()
+                    if out is not None:
+                        frames.append(out)
+                except Exception:
+                    pass
+                done += 1
+                if done % 200 == 0:
+                    print(f"    {done}/{len(codes)}  ({time.time()-t0:.0f}s)", flush=True)
+        if not frames:
+            raise RuntimeError("成分股历史抓取全部失败")
+        df = pd.concat(frames, ignore_index=True)
+        df.to_csv(cache_path, index=False)
+        print(f"  成分股数据缓存完成：{len(df)} 行，成功 {df['code'].nunique()} 只 ({time.time()-t0:.0f}s)", flush=True)
+    g = df.groupby("date")["nh"].agg(["sum", "count"])
+    g = g[g["count"] >= 50]
+    s = (g["sum"] / g["count"] * 100)
+    s.name = "strength"
+    return s
+
+
+# ---------------------------------------------------------------- 打分
+# 因子方向：True = 原始值越高越贪婪（正向），False = 原始值越高越恐惧（反向）
+# 依据官方真实数据校准：
+#   - bx(股债差) corr=+0.84、strength corr=+0.92、wz corr=+0.53、premium corr=+0.60 → 正向
+#   - volatility：官方 2026-03-23 IV pct_year=99.6 时指数=3.4(极度恐惧)；2026-11-18
+#     IV 处于近一年低区间时指数反而更依赖其他因子。高波动=恐慌 → 反向。
+FACTOR_DIRECTION = {
+    "volatility": False,  # 波动率越高 = 越恐惧
+    "bx": True,           # 股债差越高 = 越贪婪
+    "premium": True,      # 升贴水越高(升水) = 越贪婪
+    "wz": True,           # 成交额偏离越高 = 越贪婪
+    "strength": True,     # 创新高占比越高 = 越贪婪
+}
+
+
+def pct_score(s: pd.Series, direction: bool = True) -> tuple[pd.Series, pd.Series]:
+    """
+    返回 (score_all, score_year)：
+      score_all  = 全历史 expanding 分位 *100（官方 pct_all，用作合成分值）
+      score_year = 近 WIN 日滚动分位 *100（官方 pct_year，仅用于展示与文字）
+    direction=False 的因子（波动率）做 100-x 反向，使"高分=贪婪"口径统一。
+    """
+    s = s.dropna().astype(float)
+    all_pct = s.expanding(min_periods=60).rank(pct=True) * 100
+    year_pct = s.rolling(WIN, min_periods=60).rank(pct=True) * 100
+    if not direction:
+        all_pct = 100 - all_pct
+        year_pct = 100 - year_pct
+    return all_pct.dropna(), year_pct.dropna()
+
+
+def analysis_text(key: str, row: dict, idx_name: str) -> str:
+    v = row["value"]
+    pct = row["score"]  # 已按"高分=贪婪"统一方向的情绪分
+    window = "极低" if pct < 15 else ("偏低" if pct < 35 else ("偏高" if pct > 70 else "中性"))
+    mapping = {
+        "volatility": f"指数波动：{idx_name}20日实现波动率（年化）目前为 {v:.2f}%。该值处于情绪分 {pct:.1f}（高分=平静、低分=剧烈波动）。波动急剧抬升代表恐慌加剧，会显著压低恐贪指数。",
+        "bx": f"避险需求：过去20个交易日，{idx_name}回报率 − 国债净价指数回报率 = {v:.2f}%，情绪分 {pct:.1f}（{window}）。差值越低说明资金越从股票撤向债券避险。",
+        "premium": f"升贴水率：{idx_name}股指期货（主力、10日平均）年化升贴水率为 {v:.2f}%，情绪分 {pct:.1f}（{window}）。深度贴水代表谨慎看空，会压低恐贪指数。",
+        "wz": f"两市成交额：两市成交量偏离20日均线程度目前为 {v:.2f}%，情绪分 {pct:.1f}（{window}）。交投萎缩说明市场情绪低迷。",
+        "strength": f"股价强度：{idx_name}成分股中创过去一年新高的个数占比为 {v:.2f}%，情绪分 {pct:.1f}（{window}）。占比越低说明市场越弱势。",
+    }
+    return mapping.get(key, "")
+
+
+# ---------------------------------------------------------------- 中证1000 计算
+def build_zz1000() -> dict:
+    print("[1/5] 抓取中证1000指数、IM期货、国债净价指数、两市成交量 ...", flush=True)
+    spot = fetch_index("sh000852")["close"]
+    fut = fetch_futures("IM0")
+    bond = fetch_bond()
+    turnover = fetch_turnover()
+    print("[2/5] 抓取中证1000成分股创新高占比（首次运行约需数分钟）...", flush=True)
+    strength = fetch_strength("000852", os.path.join(DATA, "zz1000_newhigh_cache.csv"))
+
+    df = pd.DataFrame({"spot": spot}).sort_index()
+    df = df.join(fut, how="left").join(bond, how="left").join(turnover, how="left").join(strength, how="left")
+    df = df[df.index >= "2022-07-22"]  # IM 期货上市日
+
+    raw = pd.DataFrame(index=df.index)
+    # 波动率：20日收益率标准差年化（反向：低波动=贪婪）
+    ret = df["spot"].pct_change()
+    vol = ret.rolling(20).std() * np.sqrt(252) * 100
+    raw["volatility"] = vol
+    # 避险需求：中证1000 20日收益 - 国债净价指数 20日收益
+    r20_stock = df["spot"] / df["spot"].shift(20) - 1
+    r20_bond = df["bond"] / df["bond"].shift(20) - 1
+    raw["bx"] = (r20_stock - r20_bond) * 100
+    # 升贴水：IM 主力相对现货，年化（按次月 30 天）10日均值
+    basis = (df["fut"] / df["spot"] - 1) * (365 / 30) * 100
+    raw["premium"] = basis.rolling(10, min_periods=5).mean()
+    # 两市成交额偏离20日均线的程度
+    raw["wz"] = (df["turnover"] / df["turnover"].rolling(20).mean() - 1) * 100
+    # 股价强度
+    raw["strength"] = df["strength"]
+
+    print("[3/5] 计算各因子 0-100 分位打分并等权合成 ...", flush=True)
+    factors = []
+    score_cols = []
+    names = {
+        "volatility": "指数波动：中证1000实现波动率",
+        "bx": "避险天堂：股债回报差",
+        "premium": "升贴水率：中证1000股指期货升贴水",
+        "wz": "两市成交额",
+        "strength": "股价强度：创新高个股数量占比",
+    }
+    units = {"volatility": "%", "bx": "%", "premium": "%", "wz": "%", "strength": "%"}
+    for key in ["volatility", "bx", "premium", "wz", "strength"]:
+        sc_all, sc_year = pct_score(raw[key], direction=FACTOR_DIRECTION[key])
+        score_cols.append(sc_all)
+        series = []
+        for dt, val in raw[key].dropna().items():
+            if dt not in sc_all.index:
+                continue
+            series.append({
+                "date": dt,
+                "value": round(float(val), 4),
+                "pct_year": round(float(sc_year.loc[dt]), 2) if dt in sc_year.index else None,
+                "pct_all": round(float(sc_all.loc[dt]), 2),
+            })
+        row = {
+            "key": key,
+            "name": names[key],
+            "unit": units[key],
+            "analysis": "",
+            "series": series,
+        }
+        factors.append(row)
+
+    scores = pd.concat(score_cols, axis=1).dropna()
+    final = scores.mean(axis=1)
+    print(f"[4/5] 中证1000恐贪指数区间：{final.index.min()} ~ {final.index.max()}，共 {len(final)} 日", flush=True)
+
+    # 为 analysis 补充文字（用最新一日；情绪分取 pct_all）
+    for f in factors:
+        s = f["series"][-1]
+        f["analysis"] = analysis_text(
+            f["key"],
+            {"value": s["value"], "score": s["pct_all"]},
+            "中证1000",
+        )
+
+    history = [{"date": d, "value": round(float(v), 2)} for d, v in final.items()]
+    last = history[-1]
+    state, color = state_of(last["value"])
+
+    def delta(n):
+        if len(history) <= n:
+            return 0.0, 0.0
+        prev = history[-1 - n]["value"]
+        return round(last["value"] - prev, 2), round((last["value"] / prev - 1) * 100, 2) if prev else 0.0
+
+    d1, c1 = delta(1)
+    d5, c5 = delta(5)
+    d20, c20 = delta(20)
+    d250, c250 = delta(250)
+
+    result = {
+        "value": last["value"],
+        "date": last["date"],
+        "desc": state,
+        "color": color,
+        "has_data": True,
+        "source": "transparent-reimplementation",
+        "source_note": ("中证1000指数为按韭圈儿公开方法论的透明复刻实现，非官方数值；因子数据来自 akshare（新浪财经/中债）。"
+                        "注：中证1000股指期权隐波(QVIX)数据源已停止更新，波动率因子改用中证1000的20日实现波动率(年化)作为代理，"
+                        "并做反向处理（波动越剧烈情绪分越低），与官方'高波动=恐惧'口径一致；其余四因子方向经官方历史数据相关性校准。"),
+        "changes": {"one_day": c1, "one_week": c5, "one_month": c20, "one_year": c250},
+        "deltas": {"one_day": d1, "one_week": d5, "one_month": d20, "one_year": d250},
+        "history": history,
+        "factors": factors,
+    }
+    return result
+
+
+def main():
+    print("=" * 60)
+    print("恐贪指数构建：沪深300(官方保真) + 中证1000(透明复刻)")
+    print("=" * 60)
+
+    with open(os.path.join(DATA, "hs300_fear_greed.json"), encoding="utf-8") as f:
+        hs300 = json.load(f)
+    hs300["source"] = "funddb-official-api"
+    hs300["source_note"] = "沪深300恐贪指数直接取自 funddb.cn / 韭圈儿官方 API，与官网完全一致。"
+    print(f"[OK] 沪深300 官方数据：{hs300['date']} 分值 {hs300['value']}，历史 {len(hs300['history'])} 日")
+
+    zz1000 = build_zz1000()
+    print(f"[OK] 中证1000 复刻数据：{zz1000['date']} 分值 {zz1000['value']}，历史 {len(zz1000['history'])} 日")
+
+    out = {
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "indices": {"hs300": hs300, "zz1000": zz1000},
+    }
+    path = os.path.join(DATA, "index_data.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    size = os.path.getsize(path) / 1024
+    print(f"[5/5] 已输出 {path} ({size:.0f} KB)")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
