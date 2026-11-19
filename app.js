@@ -35,6 +35,7 @@ function crossPointer(){
  *   - 折叠状态记忆在 localStorage
  */
 var _tocCleanup = null, _tocInited = false;
+var TOC_ALL = "__all__";
 
 function tocEsc(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
@@ -63,9 +64,11 @@ function mountToc(opts){
   if(!items.length){ bar.innerHTML = ""; if(side) side.innerHTML = ""; return; }
 
   var key = "toc:" + location.pathname;
-  var collapsed = false, curGroup = groups[0].name, curId = items[0].id;
-  var lastGroup = "", matches = [], sel = 0, manual = {}, timers = [];
-  try{ collapsed = localStorage.getItem(key + ":collapsed") === "1"; }catch(e){}
+  var collapsed = false;
+  var curGroup = TOC_ALL;          // 默认「全部展开」：二级条目一次性列出全部分组
+  var curId = items[0].id;         // 当前滚动位置所在卡片
+  var matches = [], sel = 0, manual = {}, timers = [];
+  try{ collapsed = localStorage.getItem(key + ":collapsed_v2") === "1"; }catch(e){}
 
   bar.className = "toc-bar" + (collapsed ? " collapsed" : "");
   bar.innerHTML =
@@ -88,11 +91,6 @@ function mountToc(opts){
   var resultsEl= bar.querySelector("#tocResults");
   var input    = bar.querySelector("#tocSearch");
 
-  groupsEl.innerHTML = groups.map(function(g){
-    return '<button type="button" class="toc-g" data-g="' + tocEsc(g.name) + '">' +
-           tocEsc(g.name) + '<span>' + g.items.length + '</span></button>';
-  }).join("");
-
   function offset(){
     var tb = document.querySelector(".topbar");
     var h1 = tb ? tb.getBoundingClientRect().height : 56;
@@ -112,20 +110,36 @@ function mountToc(opts){
     var t = setTimeout(function(){ el.classList.remove("toc-flash"); }, 1700);
     timers.push(t);
   }
-  function renderL2(){
-    var g = groupOf(curGroup);
-    l2El.innerHTML = '<span class="toc-l2-label">' + tocEsc(g.name) + ' ›</span>' +
-      g.items.map(function(it, i){
-        return '<button type="button" class="toc-item" data-id="' + tocEsc(it.id) + '">' +
-               '<i>' + (i + 1 < 10 ? "0" : "") + (i + 1) + '</i>' + tocEsc(it.label) + '</button>';
-      }).join("");
-    lastGroup = curGroup;
+  function renderGroups(){
+    var h = '<button type="button" class="toc-g" data-g="' + TOC_ALL + '">全部展开' +
+            '<span>' + items.length + '</span></button>';
+    groups.forEach(function(g){
+      h += '<button type="button" class="toc-g" data-g="' + tocEsc(g.name) + '">' +
+           tocEsc(g.name) + '<span>' + g.items.length + '</span></button>';
+    });
+    groupsEl.innerHTML = h;
   }
+  // 默认展示全部分组的全部卡片；点某个分组 = 只看该组
+  function renderL2(){
+    var h = "", n = 0;
+    groups.forEach(function(g){
+      if(curGroup !== TOC_ALL && curGroup !== g.name) return;
+      h += '<span class="toc-l2-label">' + tocEsc(g.name) + ' ›</span>';
+      g.items.forEach(function(it){
+        n++;
+        h += '<button type="button" class="toc-item" data-id="' + tocEsc(it.id) + '">' +
+             '<i>' + (n < 10 ? "0" : "") + n + '</i>' + tocEsc(it.label) + '</button>';
+      });
+    });
+    l2El.className = "toc-l2" + (curGroup === TOC_ALL ? " all" : "");
+    l2El.innerHTML = h;
+  }
+  // 侧栏二级树：默认全部分组展开，用户可手动折叠某一组
   function renderSide(){
     if(!side) return;
     var h = '<div class="toc-side-hd">本页目录 <span>' + items.length + '</span></div>';
     groups.forEach(function(g){
-      var open = manual[g.name] === undefined ? (g.name === curGroup) : manual[g.name];
+      var open = manual[g.name] === undefined ? true : manual[g.name];
       h += '<div class="toc-side-g' + (open ? " open" : "") + '">' +
         '<button type="button" class="toc-side-gbtn" data-gtoggle="' + tocEsc(g.name) + '">' +
           '<span class="toc-caret">▾</span>' + tocEsc(g.name) +
@@ -139,10 +153,10 @@ function mountToc(opts){
     side.innerHTML = h;
   }
   function markActive(){
-    Array.prototype.forEach.call(bar.querySelectorAll(".toc-g"), function(b){
+    Array.prototype.forEach.call(groupsEl.querySelectorAll(".toc-g"), function(b){
       b.classList.toggle("active", b.getAttribute("data-g") === curGroup);
     });
-    Array.prototype.forEach.call(bar.querySelectorAll(".toc-item"), function(b){
+    Array.prototype.forEach.call(l2El.querySelectorAll(".toc-item"), function(b){
       b.classList.toggle("active", b.getAttribute("data-id") === curId);
     });
     if(side) Array.prototype.forEach.call(side.querySelectorAll("[data-go]"), function(a){
@@ -154,16 +168,15 @@ function mountToc(opts){
     bar.classList.toggle("collapsed", v);
     var btn = bar.querySelector("#tocCollapse");
     if(btn) btn.textContent = v ? "展开" : "收起";
-    try{ localStorage.setItem(key + ":collapsed", v ? "1" : "0"); }catch(e){}
+    try{ localStorage.setItem(key + ":collapsed_v2", v ? "1" : "0"); }catch(e){}
   }
   function closeResults(){
     resultsEl.classList.remove("show"); matches = []; sel = 0;
   }
   function go(it, keepHash){
     if(!it) return;
-    curId = it.id; curGroup = it.group;
-    if(lastGroup !== curGroup) renderL2();
-    renderSide(); markActive();
+    curId = it.id;
+    markActive();
     if(!keepHash){ try{ history.replaceState(null, "", "#" + encodeURIComponent(it.id)); }catch(e){} }
     var y = it.el.getBoundingClientRect().top + window.pageYOffset - offset();
     try{ window.scrollTo({top:Math.max(0, y), behavior:"smooth"}); }
@@ -203,6 +216,7 @@ function mountToc(opts){
     var on = resultsEl.querySelector(".toc-res.on");
     if(on && on.scrollIntoView) on.scrollIntoView({block:"nearest"});
   }
+  // 只高亮当前卡片，不切换二级视图（避免滚动时把「全部展开」收成单组）
   function syncActive(){
     var best = null, off = offset();
     for(var i = 0; i < items.length; i++){
@@ -210,13 +224,12 @@ function mountToc(opts){
       else break;
     }
     if(!best) best = items[0];
-    if(best.id === curId && best.group === curGroup) return;
-    curId = best.id; curGroup = best.group;
-    if(lastGroup !== curGroup){ renderL2(); renderSide(); }
+    if(best.id === curId) return;
+    curId = best.id;
     markActive();
   }
 
-  renderL2(); renderSide(); markActive();
+  renderGroups(); renderL2(); renderSide(); markActive();
 
   // 2) 事件（用 on* 属性赋值，重绘不会累积监听）
   bar.onclick = function(e){
@@ -225,10 +238,11 @@ function mountToc(opts){
     var res = t.closest(".toc-res");
     if(t.closest("#tocCollapse")){ setCollapsed(!collapsed); return; }
     if(g){
-      var gr = groupOf(g.getAttribute("data-g"));
-      curGroup = gr.name;
+      var name = g.getAttribute("data-g");
+      if(name === TOC_ALL){ curGroup = TOC_ALL; renderL2(); markActive(); return; }
+      var gr = groupOf(name);
       if(gr.items.length === 1){ go(gr.items[0]); return; }  // 单卡片分组：一步直达
-      renderL2(); renderSide(); markActive();
+      curGroup = gr.name; renderL2(); markActive();
       return;
     }
     if(item){ go(byId(item.getAttribute("data-id"))); return; }
