@@ -1286,6 +1286,24 @@ def build_composite(panels):
 
 
 # ---------------- 输出 ----------------
+def hs300_close_series():
+    """供前端「同分位历史前瞻收益」使用的沪深300收盘价交易日序列。
+
+    复用 build_fear_greed.py 已落盘的 mood_hs300.csv（2002 起全历史），零网络请求。
+    前端按 date 查找该日及之后第 20/60 个交易日的收盘价，用于给每个分项的
+    「当前分位在历史上意味着什么」提供可核查的描述性统计。
+    """
+    try:
+        h = pd.read_csv(DATA / "mood_hs300.csv", parse_dates=["date"]).dropna()
+        h = h[h["date"] <= pd.Timestamp(TODAY)].sort_values("date")
+        h = h[h["date"].notna()]
+        return [[d.strftime("%Y-%m-%d"), round(float(v), 3)]
+                for d, v in zip(h["date"], h["hs300"])]
+    except Exception as e:
+        log(f"    [hs300_close] 读取失败，前瞻统计将不可用: {e}")
+        return []
+
+
 def write_output(panels, compare_panel, macro_panels, crowding_panel,
                  signal_panels, turning_panel, composite, comp_hist, comp_meta, t0):
     out = {
@@ -1302,6 +1320,7 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
         "signal_order": [k for k, _ in SIGNAL_BUILDERS if k in signal_panels],
         "turning_panel": turning_panel,
         "order": METRIC_ORDER,
+        "hs300_close": hs300_close_series(),
         "proxy_flags": {
             "rp": "精确", "dgz": "近似", "fx_fe": "精确", "pgjj_zsy": "代理",
             "qschsl": "精确", "pcr": "精确", "zzpgnh": "代理", "magic": "代理",
@@ -1327,6 +1346,7 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
         log(f"共振信号板: 底部{c['bottom_score']} 顶部{c['top_score']} 确认{c['confirm']}/3 -> {c['state']}")
     log(f"综合情绪分: {composite} ({state_of(composite)[0]})")
     log(f"输出: {jpath.name} ({jpath.stat().st_size/1024:.0f}KB) / {jspath.name}")
+    log(f"附沪深300收盘价 {len(out['hs300_close'])} 个交易日（供前端同分位前瞻统计）")
 
 
 def main():
