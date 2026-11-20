@@ -1279,6 +1279,24 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     syncDetailBtn();
   }
 
+  // 滚动条默认窗口：只显示最近两年。按序列末尾日期向前推 2 年，
+  // 换算成 dataZoom 的起点百分比；不足两年的短序列保持全显。
+  // 底部滑块仍可拖动、滚轮仍可缩放，随时查看更早数据。
+  function recentYearsStart(dates, years){
+    if(!dates || dates.length < 2) return 0;
+    years = years || 2;
+    var last = new Date(dates[dates.length-1]+"T00:00:00");
+    if(isNaN(last.getTime())) return 0;
+    var cut = new Date(last.getTime());
+    cut.setFullYear(cut.getFullYear() - years);
+    var cutStr = cut.getFullYear()+"-"+("0"+(cut.getMonth()+1)).slice(-2)+"-"+("0"+cut.getDate()).slice(-2);
+    var i = 0;
+    while(i < dates.length && dates[i] < cutStr) i++;
+    if(i <= 0) return 0;
+    if(i >= dates.length-1) i = dates.length-2;
+    return i / dates.length * 100;
+  }
+
   // 通用 dataZoom：内部滚轮缩放+拖拽平移 + 底部滑块
   // filterMode:'filter' 让纵轴随窗口内数据自动重算(yAxis 需 scale/auto)；
   // 'none' 则纵轴锁定全量范围(用于固定 0-100 的情绪分图)。
@@ -1321,7 +1339,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         grid:{left:42,right:18,top:26,bottom:52},
         xAxis:{type:"category",data:td,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:10,hideOverlap:true}},
         yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:10},splitLine:{lineStyle:{color:splitLine}}},
-        dataZoom:dataZoomOpt({bottom:8,filterMode:"none"}),
+        dataZoom:dataZoomOpt({bottom:8,filterMode:"none",start:recentYearsStart(td,2)}),
         series:[
           {name:"底部共振度",type:"line",data:tb,showSymbol:false,smooth:true,
            lineStyle:{width:2,color:bCol},areaStyle:{color:bCol+"1c"},
@@ -1345,7 +1363,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         grid:{left:42,right:18,top:18,bottom:56},
         xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:11}},
         yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:11},splitLine:{lineStyle:{color:splitLine}}},
-        dataZoom:dataZoomOpt({bottom:10,filterMode:"none"}),
+        dataZoom:dataZoomOpt({bottom:10,filterMode:"none",start:recentYearsStart(dates,2)}),
         series:[{
           type:"line",data:vals,showSymbol:false,smooth:true,
           lineStyle:{width:2,color:cssVar("--brand")||"#ff4713"},
@@ -1416,10 +1434,9 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
           lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1,opacity:.8},
           data:p.mark_lines.map(function(m){ return {yAxis:m.y,name:m.label,lineStyle:m.color?{color:m.color}:undefined}; })};
       }
-      // "全部"区间默认聚焦近5年，避免远古极值(如2007年85%)把当前曲线压平；
+      // 所有卡片默认聚焦最近两年，避免远古极值把当前曲线压平；
       // 用户可拖动滑块/滚轮查看更早数据，纵轴会随窗口自适应。
-      var startPct = 0;
-      if(range==="all" && dates.length>1250){ startPct = (dates.length-1250)/dates.length*100; }
+      var startPct = recentYearsStart(dates, 2);
       var isQschsl = (key==="qschsl");
       // 换手率用双纵轴：左轴换手率%，右轴历史水位分位0-100
       var yAxisCfg = {type:"value",scale:true,axisLabel:{color:axisLabel,fontSize:10,formatter:function(v){return v+" "+esc(unit);}},splitLine:{lineStyle:{color:splitLine}}};
