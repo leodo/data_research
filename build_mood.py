@@ -607,7 +607,7 @@ def calc_pcr(src):
         if pcr is not None:
             return make_panel("pcr", "PCR", pcr,
                               "上交所ETF期权未平仓认沽合约数÷未平仓认购合约数(akshare option_daily_stats_sse，逐交易日抓取)，综合50ETF/300ETF/500ETF/科创50ETF共5个标的",
-                              reverse=False, unit="", desc="认沽/认购持仓比。A股实证为顺周期：PCR与指数同向，处于低位时市场往往已在底部区域（后续收益更好），处高位时需谨慎。2021年以来PCR低15%分位未来60日平均+2.6%、高15%分位-3.5%")
+                              reverse=False, unit="", desc="认沽/认购持仓比。A股实证为顺周期：PCR与指数同向，处于低位时市场往往已在底部区域（后续收益更好），处高位时需谨慎。{@pcr_start} 以来，低 15% 分位未来 60 日平均 {@pcr_low60}%（{@pcr_low_n} 个样本、胜率 {@pcr_low_win}%），高 15% 分位 {@pcr_high60}%（{@pcr_high_n} 个样本、胜率 {@pcr_high_win}%），全历史基准 {@pcr_base60}%；数字随每次数据更新自动重算（重算于 {@as_of}）")
         return None
     except Exception as e:
         log(f"    [pcr] 计算失败: {e}")
@@ -842,7 +842,7 @@ def calc_below_net_panel():
         p = make_panel(
             "below_net", "破净率（全A破净个股占比）", s,
             "破净个股数 ÷ 全A上市公司数 ×100%，取 akshare stock_a_below_net_asset_statistics（乐咕乐股，2005-01 起日频，一次返回全历史）。"
-            "破净率越高=资产折价越极端，历史上 2005/2008/2018/2024 大底峰值分别为 24.4%/14.1%/14.0%/16.6%。",
+            "破净率越高=资产折价越极端，按年度峰值自动取历史前 4 大底：{@bn_peaks}（截至 {@bn_as_of}，随数据更新重算）。",
             reverse=True, unit="%",
             desc="A股顶底判断中底部指示最硬的单指标：市场愿意以低于净资产的价格卖出大量公司，通常意味着系统性的极度悲观。"
             "但它给的是赔率不是时点——破净率可以在高位维持数月，且顶部预测力明显弱于底部。"
@@ -1304,6 +1304,111 @@ def hs300_close_series():
         return []
 
 
+# ---------------- 动态历史结论 ----------------
+# 原先 desc / 页面说明里写死了「PCR 低15%分位未来60日 +2.6%」「破净率历次大底
+# 24.4%/14.1%/...」「TRIN>2 绝大多数是普涨日」等结论，它们会随数据累积失真
+# （2026-11-20 复核时 PCR 实际已变成 +1.12% / -1.17%）。改为每次构建重算，
+# 以扁平字典写入 D.facts，前端用 {@key} 占位符替换，零额外网络请求。
+def _fwd_bucket(points, lo, hi, dates, vals, gap=20, wins=(20, 60)):
+    """按 PIT 分位区间取历史观测日，间隔 gap 交易日去重，需完整前瞻窗口。"""
+    import bisect
+    n = len(vals)
+    acc = {w: [] for w in wins}
+    if n < max(wins) + 1:
+        return {w: {"n": 0, "avg": None, "win": None} for w in wins}
+    last = -10 ** 9
+    for q in points:
+        v = q.get("pct")
+        if v is None or not (lo <= v <= hi):
+            continue
+        i = bisect.bisect_left(dates, q["date"])
+        if i >= n or dates[i] != q["date"] or i + max(wins) >= n or i - last < gap:
+            continue
+        for w in wins:
+            acc[w].append((vals[i + w] / vals[i] - 1.0) * 100.0)
+        last = i
+    return {w: {"n": len(a),
+                "avg": round(float(np.mean(a)), 2) if a else None,
+                "win": round(float(np.mean([x > 0 for x in a]) * 100), 1) if a else None}
+            for w, a in acc.items()}
+
+
+def _signed(x, digits=2):
+    return "—" if x is None else ("+" if x >= 0 else "") + f"{x:.{digits}f}"
+
+
+def build_facts(panels, signal_panels):
+    """随数据自动重算的历史结论，供前端 {@key} 替换。"""
+    facts = {"as_of": TODAY.strftime("%Y-%m-%d")}
+    try:
+        h = pd.read_csv(DATA / "mood_hs300.csv", parse_dates=["date"]).dropna().sort_values("date")
+        dates = [d.strftime("%Y-%m-%d") for d in h["date"]]
+        vals = [float(v) for v in h["hs300"]]
+    except Exception as e:
+        log(f"    [facts] 沪深300序列不可用: {e}")
+        dates, vals = [], []
+    n = len(vals)
+
+    # 全历史基准：每 20 交易日取样
+    base = {w: [] for w in (20, 60)}
+    for i in range(0, n - 60, 20):
+        for w in base:
+            base[w].append((vals[i + w] / vals[i] - 1.0) * 100.0)
+    facts["pcr_base20"] = _signed(round(float(np.mean(base[20])), 2) if base[20] else None)
+    facts["pcr_base60"] = _signed(round(float(np.mean(base[60])), 2) if base[60] else None)
+    facts["pcr_base_n"] = len(base[60])
+
+    # ① PCR 低 / 高 15% 分位的未来收益（原写死 +2.6% / -3.5%）
+    p = panels.get("pcr")
+    if p and n and p.get("history"):
+        hp = p["history"]
+        lo = _fwd_bucket(hp, 0, 15, dates, vals)
+        hi = _fwd_bucket(hp, 85, 100, dates, vals)
+        facts.update({
+            "pcr_start": hp[0]["date"],
+            "pcr_low_n": lo[60]["n"], "pcr_high_n": hi[60]["n"],
+            "pcr_low20": _signed(lo[20]["avg"]), "pcr_low60": _signed(lo[60]["avg"]),
+            "pcr_high20": _signed(hi[20]["avg"]), "pcr_high60": _signed(hi[60]["avg"]),
+            "pcr_low_win": "—" if lo[60]["win"] is None else f"{lo[60]['win']:.1f}",
+            "pcr_high_win": "—" if hi[60]["win"] is None else f"{hi[60]['win']:.1f}",
+        })
+
+    # ② 破净率历次大底峰值：按年度最大值自动取前 4，不再人工写年份与数值
+    bn = signal_panels.get("below_net")
+    if bn and bn.get("history"):
+        s = pd.Series({pd.Timestamp(q["date"]): float(q["value"])
+                       for q in bn["history"] if q.get("value") is not None})
+        if len(s):
+            yearly = s.groupby(s.index.year).max()
+            top = yearly.sort_values(ascending=False).head(4).sort_index()
+            facts["bn_peaks"] = " / ".join(f"{int(y)}年 {v:.1f}%" for y, v in top.items())
+            facts["bn_as_of"] = bn["history"][-1]["date"]
+
+    # ③ TRIN>2 的成因分布（普涨日 / 普跌日），直接读 build_arms 的零请求产物
+    try:
+        a = pd.read_csv(DATA / "mood_arms.csv", parse_dates=["date"])
+        g = a[a["trin_vol"] > 2]
+        eu = int((g["adv_share"] > 80).sum())
+        pa = int((g["adv_share"] < 20).sum())
+        nn = len(g)
+        share = round(eu / nn * 100, 1) if nn else 0.0
+        start = a["date"].min().strftime("%Y-%m-%d")
+        facts.update({
+            "arms_n": nn, "arms_euphoria": eu, "arms_panic": pa,
+            "arms_euphoria_share": share, "arms_start": start,
+            "arms_as_of": a["date"].max().strftime("%Y-%m-%d"),
+            "arms_sentence": (f"本页 {start} 起全历史 TRIN>2 的 {nn} 个交易日中，"
+                              f"普涨日 {eu} 个（{share}%）、普跌日 {pa} 个"),
+        })
+    except Exception as e:
+        log(f"    [facts] 阿姆氏分布不可用: {e}")
+
+    log(f"    [facts] 动态结论: PCR低档60日 {facts.get('pcr_low60','—')}% / "
+        f"高档 {facts.get('pcr_high60','—')}%；破净峰值 {facts.get('bn_peaks','—')}；"
+        f"TRIN>2 共 {facts.get('arms_n','—')} 日")
+    return facts
+
+
 def write_output(panels, compare_panel, macro_panels, crowding_panel,
                  signal_panels, turning_panel, composite, comp_hist, comp_meta, t0):
     out = {
@@ -1321,6 +1426,7 @@ def write_output(panels, compare_panel, macro_panels, crowding_panel,
         "turning_panel": turning_panel,
         "order": METRIC_ORDER,
         "hs300_close": hs300_close_series(),
+        "facts": build_facts(panels, signal_panels),
         "proxy_flags": {
             "rp": "精确", "dgz": "近似", "fx_fe": "精确", "pgjj_zsy": "代理",
             "qschsl": "精确", "pcr": "精确", "zzpgnh": "代理", "magic": "代理",

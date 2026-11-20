@@ -109,7 +109,24 @@ a{text-decoration:none;color:inherit}
 .detail-tbl th:first-child,.detail-tbl td:first-child{text-align:left}
 .detail-all-btn{border:1px solid var(--line);background:var(--bg-card);color:var(--text-2);border-radius:7px;padding:6px 12px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .detail-all-btn:hover{border-color:var(--brand);color:var(--brand-deep)}
-@media(max-width:900px){.detail-body{grid-template-columns:1fr}.dsec.full{grid-column:auto}}
+@media(max-width:900px){.detail-body{grid-template-columns:1fr}.dsec.full{grid-column:auto}.dsec{overflow-x:auto}}
+/* 历史回放：醒目但不覆盖内容，随主题变量走 */
+.replay-banner{display:none;position:sticky;top:6px;z-index:40;align-items:center;gap:10px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.6;margin-bottom:12px}
+.replay-banner b{font-weight:700}
+.replay-banner button{border:1px solid var(--brand);background:var(--bg-card);color:var(--brand-deep);border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;margin-left:auto}
+.replay-banner button:hover{background:var(--brand);color:var(--bg-card)}
+.replay-date{border:1px solid var(--line);background:var(--bg-card);color:var(--text-2);border-radius:7px;padding:5px 8px;font-size:11.5px;font-family:inherit;color-scheme:light dark}
+.panel.replaying{border-color:var(--brand)}
+.replay-tag{display:inline-block;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:4px;padding:0 6px;font-size:10px;font-weight:400;margin-left:6px}
+.backtest-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px}
+.backtest-tbl th,.backtest-tbl td{border-bottom:1px solid var(--line);padding:5px 7px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text-2)}
+.backtest-tbl th{color:var(--text-3);font-weight:600;background:var(--bg-soft)}
+.backtest-tbl th:first-child,.backtest-tbl td:first-child{text-align:left}
+.backtest-tbl tr.total td{font-weight:700;color:var(--ink);background:var(--bg-soft)}
+.bt-good{color:var(--pos);font-weight:700}
+.bt-bad{color:var(--cau);font-weight:700}
+.bt-flat{color:var(--text-3)}
+.bt-scroll{overflow-x:auto}
 .note{font-size:12px;color:var(--text-3);line-height:1.8;background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
 .note b{color:var(--text-2)}
 .mask{position:fixed;inset:0;background:var(--mask-bg);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
@@ -206,7 +223,7 @@ a{text-decoration:none;color:inherit}
         <li><b>两融余额60日增速。</b>融资余额相对60个交易日前的变动率，观察杠杆资金进出速度；附融资余额规模与平均维持担保比例（杠杆安全垫）。数据取 akshare 两融账户统计，2012-09 起日更。</li>
         <li><b>全A站上200日均线占比。</b>逐日横截面统计收盘价站上自身200日均线的个股比例，高=普涨趋势强、低=普跌超卖；附60日均线宽度。全A个股收盘价取新浪公开接口、多进程逐只缓存后自算（未复权）。</li>
         <li><b>全A市净率中位数（月频）。</b>全市场估值中枢，2005 起月频，附等权平均 PB 观察风格分化。中位数不易被超大市值股拉动；注意与日频指标不同频。</li>
-        <li><b>破净率。</b>破净个股数 ÷ 全A公司数，2005 起日频。历次大底峰值 2005年 24.4% / 2008年 14.1% / 2018年 14.0% / 2024年 16.6%，是底部指示最硬的单指标；顶部预测力弱。</li>
+        <li><b>破净率。</b>破净个股数 ÷ 全A公司数，2005 起日频。按年度峰值自动取历史前 4 大底：{@bn_peaks}（截至 {@bn_as_of} 自动重算），是底部指示最硬的单指标；顶部预测力弱。</li>
         <li><b>新高新低差(NH-NL) 与 上涨家数占比。</b>复用 5547 只个股收盘价缓存逐日横截面自算，零网络请求。重点看与指数的背离：指数创新低而宽度不再创新低 = 下跌动能衰竭。</li>
         <li><b>沪深300 RSI14。</b>Wilder RSI，30/70 阈值仅作参考（趋势中可长期钝化），附 BIAS20 与 MA20/MA60 位置。</li>
         <li><b>顶底共振信号板。</b>把 13 个维度统一成 fear 分位（0=极热/顶部、100=极冷/底部），输出底部/顶部共振度 + 价格与宽度的独立拐点确认，并用沪深300 未来 20/60 日收益做历史胜率回测。这是赔率统计而非择时信号，阈值未经样本外检验。</li>
@@ -232,6 +249,12 @@ a{text-decoration:none;color:inherit}
   var charts = [];
   var range = "all";  // 3y / 5y / 10y / all
   var RANGES = [["3y","近3年"],["5y","近5年"],["10y","近10年"],["all","全部"]];
+  // 动态历史结论：build_mood.py 的 build_facts() 每次构建重算，前端只做 {@key} 替换。
+  // 源码里凡涉及会随数据漂移的数字，一律不得写死，必须走这里。
+  var FACTS = D.facts || {};
+  function factVal(k){ return FACTS[k]==null ? "—" : String(FACTS[k]); }
+  function expandFacts(s){ return String(s==null?"":s).replace(/\{@(\w+)\}/g,function(m,k){ return factVal(k); }); }
+  function escFacts(s){ return esc(expandFacts(s)); }
   // 各指标在高/低/中情绪分时的解读文案（score 高=乐观）
   var MEANING = {
     rp:         {low:"风险补偿被压缩，权益相对债券性价比偏低、情绪偏乐观。", high:"股票相对债券的补偿充分，往往对应底部区域。", mid:"股债性价比处于历史中枢附近。"},
@@ -256,7 +279,7 @@ a{text-decoration:none;color:inherit}
     fund_position:{low:"基金股票仓位处历史低位，机构现金充裕、潜在买盘足，历史上多对应底部区域。", high:"仓位处历史高位，机构弹药消耗充分、增量买盘有限，需警惕阶段性高位与拥挤。", mid:"机构仓位处于常态区间。"},
     m1m2:      {low:"M1-M2 剪刀差处历史低位（多为负值），资金沉淀为定期与储蓄、风险偏好低，历史上常对应底部区域。", high:"剪刀差走阔或由负转正，资金活化流入实体与风险资产，行情往往同步或滞后转强。", mid:"货币活化程度处于常态。"},
     repurchase:{low:"回购规模处历史低位，产业资本尚未大规模用真金白银表态。", high:"回购规模处历史高位，产业资本集中认可自家股票低估，历史上多见于市场底部或政策鼓励期（如2018Q4、2024回购增持再贷款）。", mid:"回购规模处于常态。"},
-    arms:      {low:"TRIN 处历史低位：平均每只上涨股的成交量大于下跌股。但极端普跌日上涨家数极少、家数比趋近 0 会把 TRIN 机械压低——若此时只有少数上涨股吸走大量成交，那是资金抱团叠加全面失血，并不等于买盘强劲，须结合上涨家数占比判断。", high:"TRIN 处历史高位：平均每只下跌股的成交量大于上涨股，即量能相对集中在下跌股。成因有两种且方向相反：① 恐慌抛售日全市场无差别卖出；② A 股更常见的普涨日——上涨家数太多、单只上涨股量能被摊薄，而少数下跌股承接了相对集中的量。本页全历史 TRIN>2 的交易日绝大多数是普涨日、恐慌日极少，因此不能一律读作「抛压主导 / 超卖底部机会」，请结合上涨家数占比与指数位置判断。", mid:"TRIN 处于 0.5~2.0 的常态区间，涨跌两组的量能分配大致均衡。"},
+    arms:      {low:"TRIN 处历史低位：平均每只上涨股的成交量大于下跌股。但极端普跌日上涨家数极少、家数比趋近 0 会把 TRIN 机械压低——若此时只有少数上涨股吸走大量成交，那是资金抱团叠加全面失血，并不等于买盘强劲，须结合上涨家数占比判断。", high:"TRIN 处历史高位：平均每只下跌股的成交量大于上涨股，即量能相对集中在下跌股。成因有两种且方向相反：① 恐慌抛售日全市场无差别卖出；② A 股更常见的普涨日——上涨家数太多、单只上涨股量能被摊薄，而少数下跌股承接了相对集中的量。{@arms_sentence}，因此不能一律读作「抛压主导 / 超卖底部机会」，请结合上涨家数占比与指数位置判断。", mid:"TRIN 处于 0.5~2.0 的常态区间，涨跌两组的量能分配大致均衡。"},
     breadth_score:{low:"市场宽广度综合分处历史低位：普跌、内部动能枯竭，历史上多对应底部区域，但低宽度可长期钝化。", high:"宽度综合分处高位：普涨、内部健康、情绪偏热；若指数创新高而宽度回落，提示涨势由少数权重股支撑。", mid:"市场内部参与度处于中枢。"},
     mcclellan: {low:"麦克莱伦摆动值处历史低位：短期卖压强烈；深度负值后开始收敛，常是下跌动能衰竭的早期迹象。", high:"摆动值处高位：短期买盘强劲、参与广泛，情绪偏热。", mid:"宽度动能处于多空均衡附近。"}
   };
@@ -315,7 +338,7 @@ a{text-decoration:none;color:inherit}
     pcr: {
       logic:"上交所 ETF 期权未平仓认沽/认购持仓比，综合 50/300/500/科创50ETF 等 5 个标的。A 股实证为<b>顺周期</b>：PCR 与指数同向，低位往往对应市场已在底部区域、此后收益更好；高位对应情绪偏热、位置偏高。这与美股常用的反向解读相反，是本页面最容易被读反的指标。",
       cross:"与「沪深300 RSI14 / BIAS20」对照短期位置；与「顶底共振信号板」看是否与其他极值同步触发；与「两融余额增速」对照杠杆资金与期权保护需求。",
-      caveat:"持仓量 PCR 受期权到期、移仓与做市商对冲影响，日度噪声大；样本自 2021 起，未覆盖完整牛熊；卡片提到的「低 15% 分位未来 60 日 +2.6%」是 2021 年以来的历史描述统计，非预测。"
+      caveat:"持仓量 PCR 受期权到期、移仓与做市商对冲影响，日度噪声大；样本自 2021 起，未覆盖完整牛熊；卡片提到的「低 15% 分位未来 60 日 {@pcr_low60}%」是 {@pcr_start} 以来的历史描述统计（{@pcr_low_n} 个样本、全历史基准 {@pcr_base60}%），数字随每次数据更新自动重算，非预测。"
     },
     zzpgnh: {
       logic:"往前 3 年买入并持有偏股基金的年化回报，代理中长期持有人的真实体感。深度负值=长期套牢、赎回压力大，常对应底部；明显正值=赚钱效应积累、情绪偏热。3 年窗口让它非常平滑，适合判断周期位置而非择时。",
@@ -348,7 +371,7 @@ a{text-decoration:none;color:inherit}
       caveat:"PB 不含盈利质量，亏损侵蚀净资产会让 PB 显得偏高；净值为季度快照，价格日变而净资产滞后；月频样本量远小于日频卡，分位精度较低，单月跳动不宜过度解读。"
     },
     below_net: {
-      logic:"破净个股数 ÷ 全A公司数。市场愿意以低于净资产的价格卖出大量公司，是系统性悲观最硬的证据之一；历次大底峰值 2005年 24.4% / 2008年 14.1% / 2018年 14.0% / 2024年 16.6%。它给的是<b>赔率不是时点</b>：高位可维持数月，且顶部预测力明显弱于底部。",
+      logic:"破净个股数 ÷ 全A公司数。市场愿意以低于净资产的价格卖出大量公司，是系统性悲观最硬的证据之一；按年度峰值自动取历史前 4 大底：{@bn_peaks}。它给的是<b>赔率不是时点</b>：高位可维持数月，且顶部预测力明显弱于底部。",
       cross:"与「全A PB 中位数」「A股风险溢价」验证便宜是否真实；与「NH-NL」「宽度综合分」看抛压是否开始收敛；与「顶底共振信号板」看是否形成多维极值共振。",
       caveat:"因子公司剔除规则不同，与东财等外部口径可能有 1~2 个百分点差异；银行地产等重资产行业权重变化会结构性影响读数；PB<1 可能是资产质量折价而非低估。反向指标：卡片顶部显示原始值分位，情绪分已翻转。"
     },
@@ -437,6 +460,44 @@ a{text-decoration:none;color:inherit}
     while(lo<=hi){ var mid=(lo+hi)>>1; if(HS.dates[mid]>=date){ ans=mid; hi=mid-1; } else lo=mid+1; }
     return ans;
   }
+  // ---------------- 历史回放：point-in-time 重算 ----------------
+  // history[i].pct 由 expanding(min_periods=20).rank(pct=True) 生成，每个点只用到
+  // 当日为止的数据，因此可严格重建任意历史日的读数，不存在前视偏差。
+  var replay = {on:false, date:null, timer:null};
+  function lastHsIdx(date){
+    var lo=0,hi=HS.n-1,ans=-1;
+    while(lo<=hi){ var m=(lo+hi)>>1; if(HS.dates[m]<=date){ ans=m; lo=m+1; } else hi=m-1; }
+    return ans;
+  }
+  function scoreOf(pct,rev){ return pct==null?null:(rev?100-pct:pct); }
+  function stateOf(s){ return s==null?"数据不足":(s<=30?"积极":(s>=70?"谨慎":"中立")); }
+  function panelByKey(k){
+    if(k==="crowding") return D.crowding_panel;
+    return panels[k] || (D.signal_panels||{})[k] || (D.macro_panels||{})[k] || null;
+  }
+  function snapshot(k,p,date){
+    if(!p || !p.history || !p.history.length || !date) return null;
+    var h=p.history, lo=0, hi=h.length-1, i=-1;
+    while(lo<=hi){ var m=(lo+hi)>>1; if(h[m].date<=date){ i=m; lo=m+1; } else hi=m-1; }
+    if(i<0) return null;
+    var pt=h[i], rev=p.reverse===true, s=scoreOf(pt.pct,rev), sub=h.slice(0,i+1);
+    function winPct(years){
+      if(s==null) return null;
+      var cut=(parseInt(date.slice(0,4),10)-years)+date.slice(4);
+      var a=[],q;
+      for(q=0;q<sub.length;q++){
+        if(sub[q].pct==null || sub[q].date<cut) continue;
+        a.push(scoreOf(sub[q].pct,rev));
+      }
+      if(a.length<20) return null;
+      var c=0; for(q=0;q<a.length;q++) if(a[q]<=s) c++;
+      return c/a.length*100;
+    }
+    return {key:k,name:p.name,unit:p.unit,value:pt.value,pct_all:pt.pct,score:s,
+            state:stateOf(s),pct_3y:winPct(3),pct_5y:winPct(5),pct_10y:winPct(10),
+            reverse:rev,history:sub,freq:p.freq,desc:p.desc,source:p.source,
+            __asOf:date,__maxIx:lastHsIdx(date)};
+  }
   function med(a){ if(!a.length) return NaN; var s=a.slice().sort(function(x,y){return x-y;}); var m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
   function rstat(a){
     if(!a.length) return {n:0,avg:NaN,med:NaN,win:NaN};
@@ -460,7 +521,9 @@ a{text-decoration:none;color:inherit}
     return '<span style="color:'+c+';font-weight:700">'+(v>=0?"+":"")+fmt(v,2)+'%</span>';
   }
   // 同分区间样本：按至少间隔 20 个交易日去重，需完整 60 交易日前瞻数据；样本 <8 不出统计
-  function fwdCalc(points, cur, key, band){
+  function fwdCalc(points, cur, key, band, maxIx){
+    // maxIx：回放日对应的沪深300索引。回放时只允许「样本日+60交易日 ≤ 回放日」的
+    // 已完结样本参与，否则等于偷看未来，就不是那一天的解读了。
     band=band||7.5;
     if(!HS.n || !points || !points.length || !isFinite(cur))
       return {ok:false,reason:"缺少沪深300收盘价序列或面板历史"};
@@ -471,7 +534,7 @@ a{text-decoration:none;color:inherit}
       var v=Number(raw);
       if(!isFinite(v) || Math.abs(v-cur)>band) continue;
       var ix=hsIdx(points[i].date);
-      if(ix<0 || ix+60>=HS.n || ix-last<20) continue;
+      if(ix<0 || ix+60>=HS.n || (maxIx!=null && ix+60>maxIx) || ix-last<20) continue;
       a20.push((HS.vals[ix+20]/HS.vals[ix]-1)*100);
       a60.push((HS.vals[ix+60]/HS.vals[ix]-1)*100);
       if(!firstD) firstD=points[i].date;
@@ -490,13 +553,14 @@ a{text-decoration:none;color:inherit}
     if(HS_BASE) row("全历史基准",HS_BASE.r20,HS_BASE.r60);
     return h+'</tbody></table>';
   }
-  function fwdSection(f,label,what){
+  function fwdSection(f,label,what,isReplay){
+    var pit = isReplay ? ' <span class="warn">回放口径：</span>只统计<b>该日之前已完结</b>的样本（样本日+60 交易日 ≤ 回放日），不使用任何未来数据。' : '';
     if(!f.ok){
       return '<div class="dsec full"><div class="dt">同类位置的历史表现（沪深300前瞻收益）</div>'+
         '当前分位 ±7.5 区间内可回溯的有效样本'+(f.n==null?"":' <b>'+f.n+'</b> 个')+
         '（要求 ≥8 个且具备完整 60 个交易日前瞻数据），'+
         (f.reason==="样本不足"?'<b>样本不足，本页不给出统计量</b>，以免小样本造成误导。':'缺少计算所需数据。')+
-        ' 常见原因：该指标历史起点较晚、当前读数接近历史极值、或数据源为月/周频。</div>';
+        pit+' 常见原因：该指标历史起点较晚、当前读数接近历史极值、或数据源为月/周频。</div>';
     }
     var b=HS_BASE;
     var cmp="";
@@ -506,7 +570,7 @@ a{text-decoration:none;color:inherit}
           (Math.abs(d20)<0.5&&Math.abs(d60)<0.5?'，差异很小，不宜据此推断方向。':'。');
     }
     return '<div class="dsec full"><div class="dt">同类位置的历史表现（沪深300前瞻收益）</div>'+
-      '把历史上'+what+'落在 <b>'+fmt(f.lo,1)+'~'+fmt(f.hi,1)+'</b> 区间的观测日取出，按至少间隔 20 个交易日去重，得到 <b>'+f.n+'</b> 个样本（'+esc(f.first)+' ~ '+esc(f.last)+'），统计其后 20 / 60 个交易日的沪深300 收益：'+
+      '把历史上'+what+'落在 <b>'+fmt(f.lo,1)+'~'+fmt(f.hi,1)+'</b> 区间的观测日取出，按至少间隔 20 个交易日去重，得到 <b>'+f.n+'</b> 个样本（'+esc(f.first)+' ~ '+esc(f.last)+'），统计其后 20 / 60 个交易日的沪深300 收益：'+pit+
       fwdTable(f,label)+cmp+
       '<div style="margin-top:5px;color:var(--text-3);font-size:10.5px">读法：这是<b>描述性统计</b>，只回答「历史上处于相似位置时，指数之后通常怎么走」，不回答「这次会怎么走」。样本区间彼此重叠、未计交易成本与分红、宏观环境不同，且本指标与指数收益之间并无因果关系；若样本数偏少或均值与基准接近，请直接忽略差异。胜率=收益为正的比例。</div></div>';
   }
@@ -515,6 +579,12 @@ a{text-decoration:none;color:inherit}
     var out=[], h=p.history||[], cur=Number(p.value), pf=Number(p.pct_all), s=Number(p.score);
     var unit=esc(p.unit||""), rev=p.reverse===true;
     function add(t,body,full){ out.push('<div class="dsec'+(full?' full':'')+'"><div class="dt">'+t+'</div>'+body+'</div>'); }
+    // 0) 回放口径（仅回放时出现，放在最前面避免被当成当前数据）
+    if(p.__asOf){
+      add("历史回放 · point-in-time 重算，非当前数据",
+        '当前显示的是 <b>'+esc(p.__asOf)+'</b> 的读数与解读。原始值分位、近 3/5/10 年窗口分位、近期变化、历史区间、前瞻统计<b>全部只用该日及之前的数据</b>重算（该指标截至该日共 <b>'+h.length+'</b> 个观测点）。'+
+        ' <span class="warn">重要区别：</span>判读逻辑、联动观察与使用边界是<b>现行规则</b>，不是当天网站真实展示过的文案——重现的是「用今天的规则套用当日数据会得到什么」，而非「当天页面写过什么」。这样后视镜验证才不会用到事后修订过的规则。',true);
+    }
     // 1) 当前读数
     var lastD=h.length?h[h.length-1].date:"—", firstD=h.length?h[0].date:"—";
     var freqTxt=p.freq==="monthly"?"月频":(p.freq==="weekly"?"周频":"日频");
@@ -568,7 +638,7 @@ a{text-decoration:none;color:inherit}
       }
     }
     // 5) 同分位区间前瞻统计
-    out.push(fwdSection(fwdCalc(h,pf,"pct",7.5),"同分位区间","原始值历史分位"));
+    out.push(fwdSection(fwdCalc(h,pf,"pct",7.5,p.__maxIx),"同分位区间","原始值历史分位",!!p.__asOf));
     // 6~8) 静态判读知识
     var d=DETAIL[k]||{};
     add("判读逻辑 · 这个指标在衡量什么",d.logic||"请结合卡片下方的指标说明与数据源理解该指标的构造与方向。",true);
@@ -586,17 +656,31 @@ a{text-decoration:none;color:inherit}
   }
 
   // 综合情绪分的详细解读：构成明细 + 当前位置 + 同分数区间的历史表现
-  function compDetailHtml(){
-    var comp=D.composite||{}, cs=Number(comp.score)||50;
+  // ctx={date} 为回放：历史截断到该日、各分项用快照、前瞻统计限定 PIT。
+  function compSections(ctx){
+    var comp=D.composite||{}, date=ctx&&ctx.date, isRep=!!date;
+    var ch=(comp.history||[]).slice(), cs=Number(comp.score)||50, cstate=comp.state||"中立";
+    if(isRep){
+      var cut=[]; for(var z=0;z<ch.length;z++){ if(ch[z].date<=date) cut.push(ch[z]); else break; }
+      ch=cut;
+      if(ch.length){ cs=Number(ch[ch.length-1].score)||0; cstate=stateOf(cs); }
+    }
+    var out=[];
+    if(isRep && !ch.length){
+      return ['<div class="dsec full"><div class="dt">历史回放 · 当日无数据</div>'+esc(date)+' 早于综合情绪分历史起点，本页不生成该日的综合分解读。这是数据源起点差异，不是计算错误。</div>'];
+    }
+    if(isRep) out.push('<div class="dsec full"><div class="dt">历史回放 · point-in-time 重算，非当前数据</div>'+
+      '当前综合分与 8 个分项均重算到 <b>'+esc(date)+'</b>：分项情绪分用各自<b>截至该日</b>的 expanding 分位，综合分取该周度历史点，前瞻统计只用该日之前已完结的样本。<span class="warn">判读规则仍是现行版本</span>，不是当天页面真实展示过的文案。</div>');
     var rows=[];
     order.forEach(function(k){
       var p=panels[k]; if(!p) return;
-      rows.push({name:p.name,value:p.value,unit:p.unit,score:Number(p.score),state:p.state,
-                 flag:flags[k]||"精确",reverse:p.reverse===true});
+      var q=isRep?snapshot(k,p,date):p; if(!q) return;
+      rows.push({name:p.name,value:q.value,unit:q.unit,score:Number(q.score),state:q.state,
+                 flag:flags[k]||"精确",reverse:q.reverse===true});
     });
     rows.sort(function(a,b){ return a.score-b.score; });
     var lo=rows[0], hi=rows[rows.length-1];
-    var t='<div class="dsec full"><div class="dt">这个分数怎么来的 · 8 个分项当前读数</div>'+
+    var t='<div class="dsec full"><div class="dt">这个分数怎么来的 · 8 个分项'+(isRep?esc(date)+' 读数':'当前读数')+'</div>'+
       '<table class="detail-tbl"><thead><tr><th>指标</th><th>当前值</th><th>情绪分</th><th>状态</th><th>方向</th><th>口径</th></tr></thead><tbody>';
     rows.forEach(function(r){
       t+='<tr><td>'+esc(r.name)+'</td><td>'+fmt(r.value,2)+esc(r.unit||"")+'</td><td><b>'+fmt(r.score,1)+'</b></td><td>'+esc(r.state)+'</td><td>'+(r.reverse?"反向":"正向")+'</td><td>'+esc(r.flag)+'</td></tr>';
@@ -605,23 +689,121 @@ a{text-decoration:none;color:inherit}
       (lo&&hi?'当前最悲观的是「'+esc(lo.name)+'」（'+fmt(lo.score,1)+'），最乐观的是「'+esc(hi.name)+'」（'+fmt(hi.score,1)+'）；两者差值 '+fmt(hi.score-lo.score,1)+' 分，'+
        (hi.score-lo.score>60?'说明各分项分歧很大，等权平均会掩盖单一极端信号。':'说明各分项方向相对一致。'):'')+
       ' 交易拥挤度、结构观察、顶底信号与共振板<b>均不计入</b>综合分。</div></div>';
-    var ch=comp.history||[], pctNow=50;
+    out.push(t);
+    var pctNow=50;
     if(ch.length){
       var cnt=0; for(var i=0;i<ch.length;i++){ if(Number(ch[i].score)<=cs) cnt++; }
       pctNow=cnt/ch.length*100;
     }
-    var pos='<div class="dsec"><div class="dt">当前位置</div>'+
-      '综合分 <b>'+fmt(cs,1)+'</b>（'+esc(comp.state||"")+'），在全部 <b>'+ch.length+'</b> 个周度历史点中处于 <b>'+fmt(pctNow,1)+'%</b> 分位；距中立线 50 有 <b>'+(cs>=50?"+":"")+fmt(cs-50,1)+'</b> 分。'+
-      ' 分数越低＝情绪越悲观（常对应底部区域），越高＝越亢奋（常对应顶部区域）。</div>';
+    out.push('<div class="dsec"><div class="dt">'+(isRep?'当日位置':'当前位置')+'</div>'+
+      '综合分 <b>'+fmt(cs,1)+'</b>（'+esc(cstate)+'），在截至'+(isRep?esc(date):'今日')+'的 <b>'+ch.length+'</b> 个周度历史点中处于 <b>'+fmt(pctNow,1)+'%</b> 分位；距中立线 50 有 <b>'+(cs>=50?"+":"")+fmt(cs-50,1)+'</b> 分。'+
+      ' 分数越低＝情绪越悲观（常对应底部区域），越高＝越亢奋（常对应顶部区域）。</div>');
     var meta=comp.meta||{};
-    var caveat='<div class="dsec"><div class="dt">怎么读 · 使用边界</div>'+
+    out.push('<div class="dsec"><div class="dt">怎么读 · 使用边界</div>'+
       '综合分是<b>情绪温度计，不是择时信号</b>：① 8 项等权、未做相关性去重，多个同源指标会互相强化，也可能稀释单一极端信号；② 4 项为代理/近似口径，方向参考为主；'+
       '③ 历史按「当日已有数据的指标等权」还原至 <b>'+esc(meta.history_start||"2000 年代")+'</b>，全部 '+fmt(meta.n_metrics||8,0)+' 项齐备自 <b>'+esc(meta.full_start||"—")+'</b> 起，早期口径与当前不完全可比；'+
-      '④ 极值可长期钝化，低分不等于立刻反弹、高分不等于立刻见顶；⑤ 历史周频点与当前日度更新不同频。</div>';
-    var f=fwdCalc(ch,cs,"score",7.5);
+      '④ 极值可长期钝化，低分不等于立刻反弹、高分不等于立刻见顶；⑤ 历史周频点与当前日度更新不同频。</div>');
+    out.push(fwdSection(fwdCalc(ch,cs,"score",7.5,isRep?lastHsIdx(date):null),"同分数区间","综合情绪分",isRep));
+    return out;
+  }
+  function compDetailHtml(ctx){
     return '<div class="detail-box" data-detail="__composite__">'+
       '<div class="detail-hd" data-detail-toggle="1"><span class="dt">详细解读 · 综合情绪分</span><span class="dhint">点击标题可收起 / 展开</span></div>'+
-      '<div class="detail-body">'+t+pos+caveat+fwdSection(f,"同分数区间","综合情绪分")+'</div></div>';
+      '<div class="detail-body">'+compSections(ctx).join("")+'</div></div>';
+  }
+
+  // ---------------- 回放：局部刷新，只改文字与数字，不重建图表 ----------------
+  function setReplayDate(date){ if(!date) return; replay.date=date; refreshReplay(); }
+  function scheduleReplay(date){
+    if(!replay.on || !date || date===replay.date) return;
+    if(replay.timer) clearTimeout(replay.timer);
+    replay.timer=setTimeout(function(){ setReplayDate(date); },110);
+  }
+  function refreshReplay(){
+    var date=replay.on?replay.date:null, i, j, e;
+    var banner=document.getElementById("replayBanner");
+    if(banner){
+      banner.style.display=date?"flex":"none";
+      var bd=document.getElementById("replayBannerDate");
+      if(bd) bd.textContent=date||"—";
+    }
+    function setTag(db,d){
+      if(!db) return;
+      var tag=db.querySelector(".replay-tag"), hd=db.querySelector(".detail-hd .dt");
+      if(d){
+        if(!tag && hd){ tag=document.createElement("span"); tag.className="replay-tag"; hd.appendChild(tag); }
+        if(tag) tag.textContent="回放 "+d;
+      } else if(tag && tag.parentNode) tag.parentNode.removeChild(tag);
+    }
+    var boxes=app.querySelectorAll(".panel[data-panel]");
+    for(i=0;i<boxes.length;i++){
+      var box=boxes[i], k=box.getAttribute("data-panel"), p=panelByKey(k);
+      if(!p) continue;
+      var q=date?snapshot(k,p,date):null, noData=!!date&&!q, v=q||p;
+      var isMain=!!panels[k] || k==="crowding";
+      box.classList.toggle("replaying",!!date);
+      var cell=function(n){ return box.querySelector('[data-cell="'+n+'"]'); };
+      var db=box.querySelector('.detail-box[data-detail]');
+      var st=(p.history&&p.history.length)?p.history[0].date:"—";
+      if(noData){
+        // 数据源起点晚于回放日：绝不能静默显示当前值，否则会把今天的读数当成历史
+        if((e=cell("value"))) e.textContent="—";
+        if((e=cell("score"))) e.textContent="—";
+        for(j=0;j<4;j++){ var c=cell("p"+j); if(c) c.textContent="—"; }
+        if((e=cell("interp"))) e.innerHTML='<b>数据解读：</b><b style="color:var(--cau)">'+esc(date)+' 该指标尚无数据</b>（历史起点 '+esc(st)+'），这一天不存在可重现的解读。';
+        if(db){ var nd=db.querySelector(".detail-body"); if(nd) nd.innerHTML='<div class="dsec full"><div class="dt">历史回放 · 当日无数据</div>该指标起于 <b>'+esc(st)+'</b>，'+esc(date)+' 尚未开始记录，本页不生成解读。这是各数据源历史起点不同所致，不是计算错误；同页其他卡片照常回放。</div>'; }
+      } else {
+        if((e=cell("value"))) e.textContent=fmt(v.value, p.unit==="个"?0:2);
+        if((e=cell("score"))){
+          e.textContent=fmt(isMain?v.score:v.pct_all, 1);
+          if(isMain) e.style.color=stateColor(v.state);
+        }
+        var arr=[v.pct_3y,v.pct_5y,v.pct_10y,v.pct_all];
+        for(j=0;j<4;j++){ var c2=cell("p"+j); if(c2) c2.textContent=fmt(arr[j],0); }
+        if((e=cell("interp"))) e.innerHTML='<b>数据解读：</b>'+expandFacts(interpretation(k,v));
+        if(db){ var body=db.querySelector(".detail-body"); if(body) body.innerHTML=expandFacts(diagSections(k,v).join("")); }
+      }
+      if((e=cell("state")) && isMain){
+        e.textContent=noData?"无数据":v.state;
+        e.className="pstate "+(noData?"":stateCls(v.state));
+      }
+      setTag(db,date);
+      var aux=box.querySelectorAll('[data-cell="aux"]');
+      for(j=0;j<aux.length;j++) aux[j].style.display=date?"none":"";
+    }
+    var cdb=app.querySelector('.detail-box[data-detail="__composite__"]');
+    if(cdb){
+      var cbody=cdb.querySelector(".detail-body");
+      if(cbody) cbody.innerHTML=expandFacts(compSections(date?{date:date}:null).join(""));
+      setTag(cdb,date);
+    }
+    var inp=document.getElementById("replayDate");
+    if(inp && date && inp.value!==date) inp.value=date;
+    var btn=document.getElementById("replayBtn");
+    if(btn) btn.textContent=replay.on?"退出回放":"开启回放";
+    var hint=document.getElementById("replayHint");
+    if(hint) hint.textContent=replay.on
+      ? (date?"正在重现 "+date+"；把鼠标移到任意走势图上可切换日期，也可用日期框跳转":"把鼠标移到任意走势图上，或用日期框选一天")
+      : "开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读";
+  }
+  function bindReplayEvents(){
+    for(var i=0;i<charts.length;i++){
+      var c=charts[i];
+      if(c.__replayBound) continue;
+      var ds;
+      try{ var op=c.getOption(); ds=op&&op.xAxis&&op.xAxis[0]&&op.xAxis[0].data; }catch(err){ continue; }
+      if(!ds || !ds.length) continue;
+      c.__replayBound=true;
+      (function(dates, chart){
+        chart.on("updateAxisPointer",function(ev){
+          if(!replay.on) return;
+          var ai=ev&&ev.axesInfo&&ev.axesInfo[0];
+          if(!ai || ai.axisDim!=="x") return;
+          var d=(typeof ai.value==="string" && /^\d{4}-/.test(ai.value)) ? ai.value : dates[Number(ai.value)];
+          if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) scheduleReplay(d);
+        });
+      })(ds,c);
+    }
   }
 
   var theme = (function(){ try{ return localStorage.getItem("mood_theme")||localStorage.getItem("fg_theme")||"light"; }catch(e){ return "light"; } })();
@@ -657,20 +839,20 @@ a{text-decoration:none;color:inherit}
   function extraCardHtml(k, p, group, tag, badge){
     if(!p) return "";
     var h = "";
-    h += '<div class="panel" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="'+esc(group)+'" id="toc_'+k+'">';
+    h += '<div class="panel" data-panel="'+esc(k)+'" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="'+esc(group)+'" id="toc_'+k+'">';
     var freqTag = p.freq ? '<span class="ptag" style="margin-left:6px">'+(p.freq==="monthly"?"月频":(p.freq==="weekly"?"周频":esc(p.freq)))+'</span>' : '';
     h += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">'+esc(tag)+'</span>'+freqTag+staleTag(p,p.freq)+'</div></div>';
-    h += '<span class="pstate" style="background:var(--bg-soft);color:var(--text-2)">'+esc(badge||group)+'</span></div>';
-    h += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value,2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
-    h += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
+    h += '<span class="pstate" data-cell="badge" style="background:var(--bg-soft);color:var(--text-2)">'+esc(badge||group)+'</span></div>';
+    h += '<div class="panel-body"><div class="panel-val"><div class="v"><span data-cell="value">'+fmt(p.value,2)+'</span><span class="u">'+esc(p.unit||"")+'</span></div>';
+    h += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)" data-cell="score">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
     h += '<div class="panel-pcts">';
-    [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
-      h += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+    [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it,n){
+      h += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v" data-cell="p'+n+'">'+fmt(it[1],0)+'</div></div>';
     });
     h += '</div></div>';
     h += '<div class="pchart" id="pc_'+k+'"></div>';
-    h += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
-    if(p.aux_text) h += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
+    h += '<div class="panel-interp" data-cell="interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+    if(p.aux_text) h += '<div class="panel-interp" data-cell="aux" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
     h += detailBox(k,p,"详细解读 · "+p.name);
     h += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
     h += '<div class="panel-src">数据源：'+esc(p.source||"")+'</div>';
@@ -723,13 +905,87 @@ a{text-decoration:none;color:inherit}
       h += '<tr><td>'+esc(x.date)+'</td><td>'+esc(x.kind)+'</td><td>'+fmt(x.bottom_score,1)+'</td><td>'+x.confirm+'/3</td><td>'+f(x.ret20)+'</td><td>'+f(x.ret60)+'</td></tr>';
     });
     h += '</tbody></table></div>';
-    h += '<div class="note" style="margin-top:16px"><b>方法与局限：</b>'+esc(T.disclaimer||"")+' '+fmt(c.n_dims,0)+' 个维度为 ERP、破净率、200日宽度、NH-NL、换手率、PCR、两融增速、全A PB、股基3年年化、BIAS20、RSI14、阿姆氏 TRIN10、麦克莱伦摆动值（后两者由 build_arms.py 产出，缺失时自动跳过）；分位为全历史 expanding(min_periods='+fmt(th.min_hist,0)+')，月频数据最多前向填充45个交易日。需注意：低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜；共振板 2026-11-20 由 11 维扩到 13 维，历史共振度与回测已重算，勿与此前数值直接比较。极端单边日（上涨家数占比 &lt;20% 或 &gt;80%）TRIN 会因家数比失真而机械偏低或偏高，该情形下的 TRIN 维度已剔除'+(T.masked_reason?'（当前：'+esc(T.masked_reason)+'）':'')+'，当前'+( (T.masked_dims||[]).length ? '剔除：'+esc((T.masked_dims||[]).join('、')) : '无剔除维度')+'；共振板分位统一用 2015 年起日历与 min_periods=250，与单卡全历史分位略有差异属口径不同。全历史 TRIN&gt;2 的交易日绝大多数是普涨日而非恐慌日，勿把 TRIN 高位一律读作「超卖底部」。</div>';
+    h += '<div class="note" style="margin-top:16px"><b>方法与局限：</b>'+esc(T.disclaimer||"")+' '+fmt(c.n_dims,0)+' 个维度为 ERP、破净率、200日宽度、NH-NL、换手率、PCR、两融增速、全A PB、股基3年年化、BIAS20、RSI14、阿姆氏 TRIN10、麦克莱伦摆动值（后两者由 build_arms.py 产出，缺失时自动跳过）；分位为全历史 expanding(min_periods='+fmt(th.min_hist,0)+')，月频数据最多前向填充45个交易日。需注意：低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜；共振板 2026-11-20 由 11 维扩到 13 维，历史共振度与回测已重算，勿与此前数值直接比较。极端单边日（上涨家数占比 &lt;20% 或 &gt;80%）TRIN 会因家数比失真而机械偏低或偏高，该情形下的 TRIN 维度已剔除'+(T.masked_reason?'（当前：'+esc(T.masked_reason)+'）':'')+'，当前'+( (T.masked_dims||[]).length ? '剔除：'+esc((T.masked_dims||[]).join('、')) : '无剔除维度')+'；共振板分位统一用 2015 年起日历与 min_periods=250，与单卡全历史分位略有差异属口径不同。{@arms_sentence}，勿把 TRIN 高位一律读作「超卖底部」。</div>';
     h += '</div>';
+    return h;
+  }
+
+  // ---------------- 解读有效性后视回测 ----------------
+  // 验证对象不是某条文案，而是整个体系的方向假设：情绪分低(悲观)之后应涨、
+  // 高(亢奋)之后应跌。分档用每个历史日的 PIT 情绪分，无未来函数；收益用沪深300。
+  function bucketReturns(h, valFn, lo, hi){
+    var a20=[],a60=[],last=-1e9;
+    for(var i=0;i<h.length;i++){
+      var s=valFn(h[i]);
+      if(s==null || !isFinite(s) || !(s>=lo && s<hi) || h[i].date<HS.dates[0]) continue;
+      var ix=hsIdx(h[i].date);
+      if(ix<0 || ix+60>=HS.n || ix-last<20) continue;
+      a20.push((HS.vals[ix+20]/HS.vals[ix]-1)*100);
+      a60.push((HS.vals[ix+60]/HS.vals[ix]-1)*100);
+      last=ix;
+    }
+    return {r20:rstat(a20),r60:rstat(a60)};
+  }
+  function btVerdict(low,high){
+    if(low.r60.n<8 || high.r60.n<8) return {t:"样本不足",c:"bt-flat",sp:NaN};
+    // 用「悲观组 − 亢奋组」价差判定，比各自与基准比较更稳健：不受市场整体
+    // 涨跌、样本期落在牛市还是熊市影响，直接检验方向本身是否成立。
+    var sp=low.r60.avg-high.r60.avg;
+    if(sp>1) return {t:"符合预期",c:"bt-good",sp:sp};
+    if(sp>0.5) return {t:"弱符合",c:"",sp:sp};
+    if(sp<-1) return {t:"方向相反",c:"bt-bad",sp:sp};
+    if(sp<-0.5) return {t:"弱相反",c:"",sp:sp};
+    return {t:"不显著",c:"bt-flat",sp:sp};
+  }
+  function backtestHtml(){
+    if(!HS.n || !HS_BASE) return "";
+    var rows=[], cnt={"符合预期":0,"弱符合":0,"不显著":0,"弱相反":0,"方向相反":0,"样本不足":0};
+    function metricFn(p){ var rev=p.reverse===true; return function(q){ return q.pct==null?null:(rev?100-q.pct:q.pct); }; }
+    function run(name,h,valFn,grp){
+      if(!h || !h.length) return;
+      var low=bucketReturns(h,valFn,0,35), high=bucketReturns(h,valFn,65,101);
+      var v=btVerdict(low,high);
+      cnt[v.t]=(cnt[v.t]||0)+1;
+      rows.push({name:name,grp:grp,low:low,high:high,v:v});
+    }
+    order.forEach(function(k){ if(panels[k]) run(panels[k].name,panels[k].history,metricFn(panels[k]),"分项"); });
+    var mp=D.macro_panels||{}, mo=D.macro_order||Object.keys(mp);
+    mo.forEach(function(k){ if(mp[k]) run(mp[k].name,mp[k].history,metricFn(mp[k]),"结构"); });
+    var sp=D.signal_panels||{}, so=D.signal_order||Object.keys(sp);
+    so.forEach(function(k){ if(sp[k]) run(sp[k].name,sp[k].history,metricFn(sp[k]),"顶底"); });
+    if(D.crowding_panel) run(D.crowding_panel.name,D.crowding_panel.history,metricFn(D.crowding_panel),"拥挤度");
+    if(D.composite && D.composite.history) run("综合情绪分",D.composite.history,function(q){return Number(q.score);},"总览");
+    var b20=HS_BASE.r20, b60=HS_BASE.r60;
+    var h='<div class="card" data-toc="解读有效性后视回测" data-toc-group="说明" id="toc_backtest">';
+    h+='<div class="sec-head"><span class="sec-title">解读有效性后视回测 · 这个体系的方向到底准不准</span><span style="color:var(--text-3);font-size:12px">本页实时计算 · 数据截至 '+esc(D.data_date||"")+'</span></div>';
+    h+='<div style="color:var(--text-2);font-size:12px;line-height:1.8">把每个指标历史上每一天的<b>当日情绪分</b>（由该日 expanding 分位得到，反向指标已翻转，<b>不含未来数据</b>）分成「悲观 &lt;35」与「亢奋 &gt;65」两组，按至少间隔 20 交易日去重、要求完整 60 日前瞻，统计此后 20 / 60 个交易日的沪深300收益。若解读体系的方向成立，<b>悲观组之后的收益应系统性高于亢奋组</b>。判定用「悲观组 − 亢奋组」60 日均收益<b>价差</b>：&gt;1pp 符合预期、0.5~1pp 弱符合、±0.5pp 内不显著、&lt;−0.5pp 弱相反、&lt;−1pp 方向相反。价差不受市场整体涨跌影响，比单独看绝对正负可靠；表中仍列出全历史基准供对照。</div>';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 4px">';
+    Object.keys(cnt).forEach(function(k){
+      var col=(k==="符合预期"||k==="弱符合")?"var(--pos)":((k==="方向相反"||k==="弱相反")?"var(--cau)":"var(--text-3)");
+      h+='<span style="border:1px solid var(--line);background:var(--bg-soft);border-radius:6px;padding:4px 9px;font-size:11.5px;color:var(--text-2)">'+esc(k)+' <b style="color:'+col+'">'+cnt[k]+'</b> 项</span>';
+    });
+    h+='<span style="border:1px solid var(--line);background:var(--bg-soft);border-radius:6px;padding:4px 9px;font-size:11.5px;color:var(--text-2)">共 <b>'+rows.length+'</b> 项 · 基准 '+b60.n+' 个样本 / 60日均 '+retHtml(b60.avg)+' / 胜率 '+fmt(b60.win,1)+'%</span></div>';
+    h+='<div class="bt-scroll"><table class="backtest-tbl"><thead><tr><th>指标</th><th>类</th><th>悲观组 n</th><th>20日均</th><th>60日均</th><th>60日胜率</th><th>亢奋组 n</th><th>20日均</th><th>60日均</th><th>60日胜率</th><th>价差(60日)</th><th>方向判定</th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var L=r.low, H=r.high, dash='<span style="color:var(--text-3)">—</span>';
+      function cell(st){ return st.n<1?dash:retHtml(st.avg); }
+      h+='<tr><td>'+esc(r.name)+'</td><td style="color:var(--text-3)">'+esc(r.grp)+'</td>'+
+        '<td>'+(L.r60.n||dash)+'</td><td>'+cell(L.r20)+'</td><td>'+cell(L.r60)+'</td><td>'+(L.r60.n?fmt(L.r60.win,1)+'%':dash)+'</td>'+
+        '<td>'+(H.r60.n||dash)+'</td><td>'+cell(H.r20)+'</td><td>'+cell(H.r60)+'</td><td>'+(H.r60.n?fmt(H.r60.win,1)+'%':dash)+'</td>'+
+        '<td>'+(isFinite(r.v.sp)?retHtml(r.v.sp):dash)+'</td><td class="'+r.v.c+'">'+esc(r.v.t)+'</td></tr>';
+    });
+    h+='<tr class="total"><td>全历史基准（每 20 交易日取样）</td><td>—</td><td>'+b60.n+'</td><td>'+retHtml(b20.avg)+'</td><td>'+retHtml(b60.avg)+'</td><td>'+fmt(b60.win,1)+'%</td><td colspan="6" style="text-align:left;color:var(--text-3);font-weight:400">价差 = 悲观组 60 日均 − 亢奋组 60 日均；任一组样本 &lt;8 记为样本不足</td></tr>';
+    h+='</tbody></table></div>';
+    h+='<div class="note" style="margin-top:12px"><b>怎么读 / 使用边界：</b>若不少指标落在「弱相反 / 方向相反」，通常不是计算错误，而是 A 股在中短期存在<b>动量/趋势延续</b>：情绪亢奋常出现在上涨中段而非末端，情绪悲观也常延续数月，均值回归未必在 60 个交易日内兑现——这正是后视镜要揭示的「解读适用边界」。对方向相反的指标，可用上方<b>历史回放</b>跳到它的极端日，看当天解读说了什么、之后指数实际怎么走，逐日核对而非只看汇总。<br>这是<b>方向一致性检验，不是策略回测</b>：① 分组阈值为本页设定、未经样本外检验；② 同一指标的相邻观测高度自相关，虽按 20 交易日去重，收益窗口仍重叠，显著性被高估；③ 未计交易成本、滑点与分红，宏观环境跨期不同；④ 分位为 expanding 口径，早期样本短、判定不稳定；⑤ 指标与指数收益之间并无因果关系，不能据「符合预期」直接推出可交易信号；⑥ 本表是<b>事后视角</b>（用全历史检验），而历史回放是<b>当日视角</b>（只用当时可得数据），两者互补但不可混为一谈；⑦ 数字随每次数据更新自动重算，无需 AI 参与；⑧ 本表固定为<b>事后全历史视角</b>，不随上方「历史回放」切换——回放是当日视角（只用当时可得数据），两者互补但不能混用。</div>';
+    h+='</div>';
     return h;
   }
 
   function render(){
     var html = "";
+    html += '<div class="replay-banner" id="replayBanner" style="display:none"><b>历史回放中</b>'+
+      '<span>正在重现 <b id="replayBannerDate">—</b> 的读数与解读（point-in-time 重算，不是当前数据）</span>'+
+      '<button id="replayExit" type="button">退出回放</button></div>';
     // Hero 综合情绪分
     var comp = D.composite || {score:50,state:"中立",history:[]};
     var cs = Number(comp.score)||50;
@@ -749,7 +1005,11 @@ a{text-decoration:none;color:inherit}
     // 时间范围切换（作用于全部分项）
     html += '<div class="card range-card"><div class="range-row"><span class="range-label">查看区间</span><div class="ranges" id="rangeBtns">';
     RANGES.forEach(function(r){ html += '<button data-range="'+r[0]+'"'+(r[0]===range?' class="active"':'')+'>'+r[1]+'</button>'; });
-    html += '</div><span class="range-hint">切换区间后，曲线支持鼠标拖拽平移、滚轮缩放细节</span><button class="detail-all-btn" id="detailAllBtn" type="button">收起全部详细解读</button></div></div>';
+    html += '</div><span class="range-hint">切换区间后，曲线支持鼠标拖拽平移、滚轮缩放细节</span><button class="detail-all-btn" id="detailAllBtn" type="button">收起全部详细解读</button></div>';
+    html += '<div class="range-row" style="margin-top:9px;flex-wrap:wrap"><span class="range-label">历史回放</span>'+
+      '<button class="detail-all-btn" id="replayBtn" type="button">开启回放</button>'+
+      '<input type="date" id="replayDate" class="replay-date" min="2003-01-01" max="'+esc(D.data_date||"")+'" value="'+esc(D.data_date||"")+'">'+
+      '<span class="range-hint" id="replayHint">开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读</span></div></div>';
 
     // 综合情绪分走势
     var cm = comp.meta || null;
@@ -784,27 +1044,27 @@ a{text-decoration:none;color:inherit}
       if(!p) return;
       var flag = flags[k] || "精确";
       var flagCls = (flag==="精确") ? "exact" : "proxy";
-      html += '<div class="panel" data-toc="'+esc(p.name)+'" data-toc-group="分项指标" id="toc_'+k+'">';
+      html += '<div class="panel" data-panel="'+esc(k)+'" data-toc="'+esc(p.name)+'" data-toc-group="分项指标" id="toc_'+k+'">';
       html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag '+flagCls+'">'+esc(flag)+'自算</span>'+staleTag(p)+'</div></div>';
-      html += '<span class="pstate '+stateCls(p.state)+'">'+esc(p.state)+'</span></div>';
-      html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(p.value, p.unit==="个"?0:2)+'<span class="u">'+esc(p.unit||"")+'</span></div>';
-      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(p.state)+'">'+fmt(p.score,1)+'</b> / 100</div></div>';
+      html += '<span class="pstate '+stateCls(p.state)+'" data-cell="state">'+esc(p.state)+'</span></div>';
+      html += '<div class="panel-body"><div class="panel-val"><div class="v"><span data-cell="value">'+fmt(p.value, p.unit==="个"?0:2)+'</span><span class="u">'+esc(p.unit||"")+'</span></div>';
+      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(p.state)+'" data-cell="score">'+fmt(p.score,1)+'</b> / 100</div></div>';
       html += '<div class="panel-pcts">';
-      [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it){
-        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+      [["近3年",p.pct_3y],["近5年",p.pct_5y],["近10年",p.pct_10y],["全历史",p.pct_all]].forEach(function(it,n){
+        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v" data-cell="p'+n+'">'+fmt(it[1],0)+'</div></div>';
       });
       html += '</div></div>';
       html += '<div class="pchart" id="pc_'+k+'"></div>';
-      html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
+      html += '<div class="panel-interp" data-cell="interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
       // ERP 股债归因联动：低利率可能制造「便宜错觉」，直接挂在 rp 主卡上
       if(p.erp_warning){
         var wl = p.erp_warn_level==="warn";
-        html += '<div class="panel-interp" style="border-left-color:'+(wl?'var(--cau)':'var(--pos)')+';margin-top:7px"><b>股债归因'+(wl?'预警':'复核')+'：</b>'+esc(p.erp_warning)+'</div>';
+        html += '<div class="panel-interp" data-cell="aux" style="border-left-color:'+(wl?'var(--cau)':'var(--pos)')+';margin-top:7px"><b>股债归因'+(wl?'预警':'复核')+'：</b>'+esc(p.erp_warning)+'</div>';
       }
       // 换手率：主图内叠加"上交所官方口径"虚线供对比
       if(k==="qschsl" && D.compare_panel){
         var cp=D.compare_panel;
-        html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px"><b>口径对比与历史可比性：</b>图中<b>蓝虚线</b>为「上交所官方换手率」（2022起、全程同一口径不拼接），当前 <b>'+fmt(cp.value,2)+'%</b>；<b>红实线</b>为还原全市场量级的桥接口径。两者在 2024 年 9 月<b>同步跳升</b>（沪市官方 0.58%→1.55%），已核验为真实放量、非拼接错误。因此绝对换手率在不同「量能时代」间不宜直接比高低——请看<b>紫色点线「历史水位(分位)」（右轴 0–100）</b>：它是全历史 expanding 排名，尺度无关，2018 年 0.65%（水位 7）与 2026 年 1.41%（水位 72）可直接比较。鼠标悬停会出现十字线，横线即为该日历史水位。</div>';
+        html += '<div class="panel-interp" data-cell="aux" style="border-left-color:var(--text-3);margin-top:7px"><b>口径对比与历史可比性：</b>图中<b>蓝虚线</b>为「上交所官方换手率」（2022起、全程同一口径不拼接），当前 <b>'+fmt(cp.value,2)+'%</b>；<b>红实线</b>为还原全市场量级的桥接口径。两者在 2024 年 9 月<b>同步跳升</b>（沪市官方 0.58%→1.55%），已核验为真实放量、非拼接错误。因此绝对换手率在不同「量能时代」间不宜直接比高低——请看<b>紫色点线「历史水位(分位)」（右轴 0–100）</b>：它是全历史 expanding 排名，尺度无关，2018 年 0.65%（水位 7）与 2026 年 1.41%（水位 72）可直接比较。鼠标悬停会出现十字线，横线即为该日历史水位。</div>';
       }
       html += detailBox(k,p,"详细解读 · "+p.name);
       html += '<div class="panel-desc">'+esc(p.desc||"")+'</div>';
@@ -818,22 +1078,22 @@ a{text-decoration:none;color:inherit}
     if(cd){
       html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">交易拥挤度</span><span style="color:var(--text-3);font-size:12px">市场微观结构观察 · 反向情绪指标 · 不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
-      html += '<div class="panel" data-toc="'+esc(cd.name)+'" data-toc-group="交易拥挤度" id="toc_crowding">';
+      html += '<div class="panel" data-panel="crowding" data-toc="'+esc(cd.name)+'" data-toc-group="交易拥挤度" id="toc_crowding">';
       html += '<div class="panel-hd"><div><div class="panel-name">'+esc(cd.name)+'</div><div class="panel-tags"><span class="ptag exact">精确自算</span><span class="ptag proxy" style="margin-left:6px">反向指标</span></div></div>';
-      html += '<span class="pstate '+stateCls(cd.state)+'">'+esc(cd.state)+'</span></div>';
-      html += '<div class="panel-body"><div class="panel-val"><div class="v">'+fmt(cd.value,2)+'<span class="u">'+esc(cd.unit||"")+'</span></div>';
-      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(cd.state)+'">'+fmt(cd.score,1)+'</b> / 100（越高=越拥挤越需警惕）</div></div>';
+      html += '<span class="pstate '+stateCls(cd.state)+'" data-cell="state">'+esc(cd.state)+'</span></div>';
+      html += '<div class="panel-body"><div class="panel-val"><div class="v"><span data-cell="value">'+fmt(cd.value,2)+'</span><span class="u">'+esc(cd.unit||"")+'</span></div>';
+      html += '<div class="score-line">情绪分 <b style="color:'+stateColor(cd.state)+'" data-cell="score">'+fmt(cd.score,1)+'</b> / 100（越高=越拥挤越需警惕）</div></div>';
       html += '<div class="panel-pcts">';
-      [["近3年",cd.pct_3y],["近5年",cd.pct_5y],["近10年",cd.pct_10y],["全历史",cd.pct_all]].forEach(function(it){
-        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v">'+fmt(it[1],0)+'</div></div>';
+      [["近3年",cd.pct_3y],["近5年",cd.pct_5y],["近10年",cd.pct_10y],["全历史",cd.pct_all]].forEach(function(it,n){
+        html += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v" data-cell="p'+n+'">'+fmt(it[1],0)+'</div></div>';
       });
       html += '</div></div>';
       html += '<div class="pchart" id="pc_crowding" style="height:340px"></div>';
-      html += '<div class="panel-interp"><b>数据解读：</b>'+interpretation("crowding",cd)+'</div>';
+      html += '<div class="panel-interp" data-cell="interp"><b>数据解读：</b>'+interpretation("crowding",cd)+'</div>';
       // 辅助指标摘要
       if(cd.auxiliary && cd.auxiliary.length){
         var ax = cd.auxiliary[cd.auxiliary.length-1];
-        html += '<div class="panel-interp" style="border-left-color:var(--text-3);margin-top:7px"><b>辅助指标：</b>图中<b>虚线</b>为 Top10% 个股成交额占比（当前 '+fmt(ax.top10,1)+'%）；当日 HHI 有效交易个股数约 <b>'+fmt(ax.eff_n,0)+'</b> 只（越少=成交越集中于少数个股）。HHI 与 Top10% 是全分布集中度视角，比单一 5% 切点更稳健。</div>';
+        html += '<div class="panel-interp" data-cell="aux" style="border-left-color:var(--text-3);margin-top:7px"><b>辅助指标：</b>图中<b>虚线</b>为 Top10% 个股成交额占比（当前 '+fmt(ax.top10,1)+'%）；当日 HHI 有效交易个股数约 <b>'+fmt(ax.eff_n,0)+'</b> 只（越少=成交越集中于少数个股）。HHI 与 Top10% 是全分布集中度视角，比单一 5% 切点更稳健。</div>';
       }
       html += detailBox("crowding",cd,"详细解读 · "+cd.name);
       html += '<div class="panel-desc">'+esc(cd.desc||"")+'</div>';
@@ -852,11 +1112,12 @@ a{text-decoration:none;color:inherit}
       html += '</div>';
     }
 
+    html += backtestHtml();
     html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
-    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行数据源仅回溯至 <b>2023-01</b>、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14、ERP股债归因、基金股票仓位、M1-M2剪刀差、回购规模、阿姆氏指标、宽度综合分、麦克莱伦摆动与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。⑦ ERP 股债归因把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)：只有前者上行才代表股票真的变便宜，后者下行只是无风险利率更低；PE 为月频 ffill，股票端贡献呈阶梯状属正常。共振信号板 2026-11-20 由 11 维扩到 13 维（新增 TRIN10 与麦克莱伦摆动值），历史共振度与回测已同步重算，请勿与此前数值直接比较。⑧ 阿姆氏指标 TRIN 主口径为「近似成交量」：用成交额÷收盘价反推股数（实测误差 &lt;0.5%），另附成交额口径(Dollar TRIN)对照。TRIN=(涨家数/跌家数)÷(涨股总量/跌股总量)，代数上等价于「平均每只下跌股量 ÷ 平均每只上涨股量」，衡量的是量在涨跌两组间的分配、不是全市场抛压总量；家数比在极端单边日失去上界会造成两种镜像失真：普跌日（上涨家数占比低于 20%）TRIN 机械偏低，不等于买盘强劲；普涨日（高于 80%）TRIN 机械偏高，不等于恐慌抛售或「超卖底部」。本页全历史 TRIN&gt;2 的交易日绝大多数是普涨日而非恐慌日，务必结合上涨家数占比与指数位置一起读。⑨ 基金股票仓位是第三方净值回归的测算值（非季报披露真实持仓，起点 2017-12、周频）；M1-M2 为月频且央行 2024 年调整过 M1 统计范围，前后绝对值不可比；回购规模按方案起始月归档、计划金额未必全部实施且未经市值归一化，长期有规模膨胀趋势。这三项请以历史分位与方向为主，勿跨时代比绝对值。⑩ 综合情绪分历史按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个（新基金发行 2023-01 才有数据），与当前 8 指标等权口径不完全可比，当前值不受影响；⑪ 共振信号板的 13 个维度统一对齐到 2015 年起交易日历、分位用 expanding(min_periods=250)，而各单卡用自身全历史、min_periods=20，因此<b>同一指标在两处分位略有差异属口径不同、并非计算错误</b>；⑫ 极端单边日（上涨家数占比低于 20% 或高于 80%）TRIN 会机械失真，该情形下 TRIN 维度已从共振板极值判定中剔除（维度明细标注具体原因），避免与阿姆氏卡片的警示自相矛盾。⑬ 每张卡片的「详细解读」中，<b>同类位置的历史表现</b>由 build_mood.py 注入的沪深300收盘价序列（2002 起交易日）计算：取原始值历史分位落在当前 ±7.5 区间内的历史观测日，按至少间隔 20 个交易日去重，要求有效样本 ≥8 个且具备完整 60 个交易日前瞻数据，再统计其后 20 / 60 交易日收益的均值、中位与上涨概率，并与「每 20 交易日取一个样本」的全历史基准对照；样本不足时本页直接不出统计量。这是<b>描述性统计而非预测</b>：样本区间重叠、未计交易成本与分红、宏观环境不同，分组依据为原始值分位（不区分指标方向），请勿把「同区间均值高于基准」直接读成看涨信号。另注意三套数字不可混用：<b>当前情绪分</b>是绝对水平（0=极悲观、100=极乐观），<b>近3/5/10年分位</b>是情绪分在各自窗口内的相对排名，<b>全历史分位</b>是原始值的 expanding 分位（反向指标方向与窗口分位相反），三者既不能直接相减，也不能横向比较；历史不足 10 年的指标，其 5/10 年窗口覆盖同一段样本，不构成时代对照。详细解读默认全部展开，可用顶部按钮一键收起。</div>';
+    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行数据源仅回溯至 <b>2023-01</b>、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14、ERP股债归因、基金股票仓位、M1-M2剪刀差、回购规模、阿姆氏指标、宽度综合分、麦克莱伦摆动与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。⑦ ERP 股债归因把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)：只有前者上行才代表股票真的变便宜，后者下行只是无风险利率更低；PE 为月频 ffill，股票端贡献呈阶梯状属正常。共振信号板 2026-11-20 由 11 维扩到 13 维（新增 TRIN10 与麦克莱伦摆动值），历史共振度与回测已同步重算，请勿与此前数值直接比较。⑧ 阿姆氏指标 TRIN 主口径为「近似成交量」：用成交额÷收盘价反推股数（实测误差 &lt;0.5%），另附成交额口径(Dollar TRIN)对照。TRIN=(涨家数/跌家数)÷(涨股总量/跌股总量)，代数上等价于「平均每只下跌股量 ÷ 平均每只上涨股量」，衡量的是量在涨跌两组间的分配、不是全市场抛压总量；家数比在极端单边日失去上界会造成两种镜像失真：普跌日（上涨家数占比低于 20%）TRIN 机械偏低，不等于买盘强劲；普涨日（高于 80%）TRIN 机械偏高，不等于恐慌抛售或「超卖底部」。{@arms_sentence}，务必结合上涨家数占比与指数位置一起读。⑨ 基金股票仓位是第三方净值回归的测算值（非季报披露真实持仓，起点 2017-12、周频）；M1-M2 为月频且央行 2024 年调整过 M1 统计范围，前后绝对值不可比；回购规模按方案起始月归档、计划金额未必全部实施且未经市值归一化，长期有规模膨胀趋势。这三项请以历史分位与方向为主，勿跨时代比绝对值。⑩ 综合情绪分历史按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个（新基金发行 2023-01 才有数据），与当前 8 指标等权口径不完全可比，当前值不受影响；⑪ 共振信号板的 13 个维度统一对齐到 2015 年起交易日历、分位用 expanding(min_periods=250)，而各单卡用自身全历史、min_periods=20，因此<b>同一指标在两处分位略有差异属口径不同、并非计算错误</b>；⑫ 极端单边日（上涨家数占比低于 20% 或高于 80%）TRIN 会机械失真，该情形下 TRIN 维度已从共振板极值判定中剔除（维度明细标注具体原因），避免与阿姆氏卡片的警示自相矛盾。⑬ 每张卡片的「详细解读」中，<b>同类位置的历史表现</b>由 build_mood.py 注入的沪深300收盘价序列（2002 起交易日）计算：取原始值历史分位落在当前 ±7.5 区间内的历史观测日，按至少间隔 20 个交易日去重，要求有效样本 ≥8 个且具备完整 60 个交易日前瞻数据，再统计其后 20 / 60 交易日收益的均值、中位与上涨概率，并与「每 20 交易日取一个样本」的全历史基准对照；样本不足时本页直接不出统计量。这是<b>描述性统计而非预测</b>：样本区间重叠、未计交易成本与分红、宏观环境不同，分组依据为原始值分位（不区分指标方向），请勿把「同区间均值高于基准」直接读成看涨信号。另注意三套数字不可混用：<b>当前情绪分</b>是绝对水平（0=极悲观、100=极乐观），<b>近3/5/10年分位</b>是情绪分在各自窗口内的相对排名，<b>全历史分位</b>是原始值的 expanding 分位（反向指标方向与窗口分位相反），三者既不能直接相减，也不能横向比较；历史不足 10 年的指标，其 5/10 年窗口覆盖同一段样本，不构成时代对照。详细解读默认全部展开，可用顶部按钮一键收起。⑭ 新增<b>历史回放</b>：开启后把鼠标移到任意走势图（或用日期框）即可重现该日的读数与解读，全部按 point-in-time 重算——原始值分位、近 3/5/10 年窗口分位、近期变化、历史区间与前瞻统计只用该日及之前的数据，前瞻样本还要求「样本日+60 交易日 ≤ 回放日」，无未来函数；数据源起点晚于回放日的卡片明确标注「当日无数据」，不会静默显示当前值。注意判读逻辑/联动/使用边界是<b>现行规则</b>，重现的是「用今天的规则套当日数据」，而非「当天页面真实写过什么」，这样后视验证才不会用到事后修订过的规则。⑮ 新增<b>解读有效性后视回测</b>：按每个历史日的 PIT 情绪分分「悲观&lt;35 / 亢奋&gt;65」两组，统计其后 20/60 交易日沪深300收益，用「悲观组−亢奋组」60 日均<b>价差</b>判定方向（&gt;1pp 符合预期、&lt;−1pp 方向相反、任一组样本 &lt;8 记样本不足）。这是方向一致性检验而非策略回测：样本重叠、阈值为设定值、未做样本外检验、未计成本，且 A 股中短期动量可能使不少指标呈「方向相反」——那是解读的适用边界，不是计算错误。</div>';
 
     app.className = "";   // 移除初始 loading 态（padding/text-align 会压缩卡片）
-    app.innerHTML = html;
+    app.innerHTML = expandFacts(html);
     if(window.mountToc) mountToc({app:"#app", bar:"#tocBar", side:"#tocSide", prefix:"mood"});
 
     var how = document.getElementById("howBtn");
@@ -890,6 +1151,21 @@ a{text-decoration:none;color:inherit}
       hd.parentNode.classList.toggle("collapsed");
       syncDetailBtn();
     };
+    // 历史回放：开关 / 日期框 / 退出；图表悬停事件在 bindReplayEvents() 里统一挂
+    var rbtn=document.getElementById("replayBtn");
+    if(rbtn) rbtn.addEventListener("click",function(){
+      replay.on=!replay.on;
+      if(!replay.on) replay.date=null;
+      else if(!replay.date){ var ri=document.getElementById("replayDate"); replay.date=(ri&&ri.value)||D.data_date||""; }
+      refreshReplay();
+    });
+    var rdate=document.getElementById("replayDate");
+    if(rdate) rdate.addEventListener("change",function(){
+      replay.on=true;
+      setReplayDate(rdate.value||D.data_date||"");
+    });
+    var rexit=document.getElementById("replayExit");
+    if(rexit) rexit.addEventListener("click",function(){ replay.on=false; replay.date=null; refreshReplay(); });
     syncDetailBtn();
   }
 
@@ -1073,6 +1349,7 @@ a{text-decoration:none;color:inherit}
     // 顶底信号明细卡
     var sp=D.signal_panels||{}, so=D.signal_order||Object.keys(sp);
     so.forEach(function(k){ renderOneChart(k, "pc_"+k, sp[k]); });
+    bindReplayEvents();
   }
 
   function redrawCharts(){
@@ -1088,6 +1365,9 @@ a{text-decoration:none;color:inherit}
   var mask = document.getElementById("mask");
   if(mask) mask.addEventListener("click", function(e){ if(e.target===mask) mask.classList.remove("show"); });
   window.addEventListener("resize", function(){ charts.forEach(function(c){ try{ c.resize(); }catch(e){} }); });
+
+  var maskStatic = document.getElementById("mask");
+  if(maskStatic) maskStatic.innerHTML = expandFacts(maskStatic.innerHTML);
 
   render();
   renderCharts();
