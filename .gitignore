@@ -6,10 +6,21 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
 
-# 运行状态
-serve.log
+# 运行状态 / 日志
+*.log
 last_update.json
+
+# 本地密钥与环境变量（切勿入库）
+.env
+.env.*
+*.pem
 
 # 旧版备份：只排除根目录；archive/ 内的历史快照仍纳入版本控制
 /*.bak*
