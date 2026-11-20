@@ -137,8 +137,10 @@ def _compute_arms(df):
     d["trin5"] = d["trin_vol"].rolling(5, min_periods=5).mean()
     d["trin10"] = d["trin_vol"].rolling(ARMS_TRIN_SMOOTH, min_periods=ARMS_TRIN_SMOOTH).mean()
     d["up_vol_share"] = d["v_adv"] / (d["v_adv"] + d["v_dec"]) * 100
+    # 上涨家数占比：判断 TRIN 是否落在「极端单边日」失真区间的必备诊断列
+    d["adv_share"] = d["n_adv"] / (d["n_adv"] + d["n_dec"]) * 100
     cols = ["trin", "trin_vol", "trin5", "trin10", "ad_ratio", "adv_amt_ratio",
-            "adv_vol_ratio", "up_vol_share", "n_adv", "n_dec", "n_stocks"]
+            "adv_vol_ratio", "up_vol_share", "adv_share", "n_adv", "n_dec", "n_stocks"]
     out = d[cols].replace([np.inf, -np.inf], np.nan).dropna(subset=["trin", "trin_vol"])
     out = out[out.index <= TODAY].round(4)
     out.to_csv(OUT_ARMS, index_label="date")

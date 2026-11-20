@@ -18,11 +18,13 @@ build_arms.py 产出，缺失时自动跳过，不影响其余 11 维）。
 分位用全历史 expanding(min_periods=250)，与情绪面板口径一致；
 月频序列最多前向填充 45 个交易日、日频最多 10 日，避免停更数据无限前推。
 
-**TRIN 普跌日屏蔽（2026-11-20 复核新增）**：A 股极端普跌日少数上涨股
-吸走大量成交会让 TRIN 系统性偏低，阿姆氏卡片已明确警示「此时不是买盘
-强劲」。若不屏蔽，共振板当前唯一的「顶部极值」维度恰好来自这一已知误读。
-故当上涨家数占比 < TURNING_ARMS_PANIC_ADV 时，把该日 TRIN 维度置空，
-不计入有效维度数；维度明细里仍列出但标注「已剔除」。
+**TRIN 极端单边日双向屏蔽（2026-11-20 复核补充）**：TRIN 的分子是
+涨跌家数比，在 A 股齐涨齐跌时会失去上界，产生两种镜像失真：
+  普跌日 涨占比 <TURNING_ARMS_PANIC_ADV    → 家数比趋近0 → TRIN 机械偏低（不是买盘强劲）
+  普涨日 涨占比 >TURNING_ARMS_EUPHORIA_ADV → 家数比爆炸  → TRIN 机械偏高（不是恐慌抛售）
+实测全历史 TRIN>2 共 96 日，其中 67 日为普涨日、仅 1 日为恐慌日，故
+「TRIN 高位 = 恐慌超卖/底部机会」在 A 股不成立。两种单边日都把该日
+TRIN 维度置空，不计入有效维度数；维度明细仍列出但标注剔除原因。
 
 历史回测：以沪深300 收盘价计算未来 20 / 60 交易日收益，分「底部拐点触发 /
 底部极值未确认 / 顶部警戒 / 全样本基准」四组统计胜率与平均收益；
@@ -42,9 +44,10 @@ import json
 import numpy as np
 import pandas as pd
 
-from config import (TURNING_ARMS_PANIC_ADV, TURNING_FEAR_PCT, TURNING_FWD_WINS,
-                    TURNING_MIN_DIMS, TURNING_MIN_HIST, TURNING_TOP_PCT,
-                    TURNING_TRIGGER, TURNING_TRIGGER_GAP)
+from config import (TURNING_ARMS_EUPHORIA_ADV, TURNING_ARMS_PANIC_ADV,
+                    TURNING_FEAR_PCT, TURNING_FWD_WINS, TURNING_MIN_DIMS,
+                    TURNING_MIN_HIST, TURNING_TOP_PCT, TURNING_TRIGGER,
+                    TURNING_TRIGGER_GAP)
 from core import DATA, TODAY, log
 
 OUT_CSV = DATA / "mood_turning.csv"
@@ -162,25 +165,35 @@ def build():
             "last_date": last_pos.strftime("%Y-%m-%d") if last_pos is not None else None,
         })
 
-    # ---------- 极端普跌日的 TRIN 屏蔽 ----------
-    # 阿姆氏卡片已明确警示：A 股普跌日少数上涨股吸走大量成交会让 TRIN 系统性
-    # 偏低，此时不是「买盘强劲/超买」，不能机械套用美股教科书的顶部结论。
-    # 若共振板照单全收，当前唯一的「顶部极值」维度恰好来自这一已知误读。
-    panic_mask = None
+    # ---------- 极端单边日的 TRIN 双向屏蔽 ----------
+    # 分子「涨跌家数比」在单边市失去上界，两种镜像失真都已被阿姆氏卡片标注：
+    #   普跌日 涨占比 <20% → 家数比趋近 0 → TRIN 机械偏低（不是买盘强劲）
+    #   普涨日 涨占比 >80% → 家数比爆炸  → TRIN 机械偏高（不是恐慌抛售）
+    # 实测全历史 TRIN>2 的 96 日中 67 日为普涨日、仅 1 日为恐慌日，
+    # 故 TRIN10 高位不能当作「恐慌/底部极值」计入共振板。
+    side_mask = None
+    side_reason = None
     if "arms" in fear:
         try:
             adv = _series("mood_breadth_extra.csv", "adv_ratio").reindex(idx).ffill(limit=10)
-            panic_mask = adv < TURNING_ARMS_PANIC_ADV
-            fear["arms"] = fear["arms"].where(~panic_mask)
-            log(f"    [turning] TRIN 维度在 {int(panic_mask.sum())} 个极端普跌日"
-                f"（上涨家数占比 < {TURNING_ARMS_PANIC_ADV}%）被剔除，不参与极值统计")
+            panic = (adv < TURNING_ARMS_PANIC_ADV).fillna(False)
+            euphoria = (adv > TURNING_ARMS_EUPHORIA_ADV).fillna(False)
+            side_mask = panic | euphoria
+            side_reason = pd.Series("已剔除·单边日", index=idx)
+            side_reason[panic] = "已剔除·普跌日"
+            side_reason[euphoria] = "已剔除·普涨日"
+            fear["arms"] = fear["arms"].where(~side_mask)
+            log(f"    [turning] TRIN 维度在 {int(panic.sum())} 个极端普跌日、"
+                f"{int(euphoria.sum())} 个极端普涨日被剔除，不参与极值统计")
         except (FileNotFoundError, KeyError) as e:
-            log(f"    [turning] 普跌日屏蔽未生效：{e}")
-            panic_mask = None
-    if panic_mask is not None and len(panic_mask) and bool(panic_mask.iloc[-1]):
+            log(f"    [turning] 单边日屏蔽未生效：{e}")
+            side_mask, side_reason = None, None
+    if side_mask is not None and len(side_mask) and bool(side_mask.iloc[-1]):
+        label = str(side_reason.iloc[-1])
         for d in detail:
             if d["key"] == "arms":
                 d["masked"] = True
+                d["masked_label"] = label
                 d["is_bottom"] = False
                 d["is_top"] = False
 
@@ -296,6 +309,9 @@ def build():
         },
         "dims": detail,
         "masked_dims": [d["name"] for d in detail if d.get("masked")],
+        "masked_reason": (str(side_reason.iloc[-1])
+                          if side_mask is not None and len(side_mask) and bool(side_mask.iloc[-1])
+                          else ""),
         "backtest": backtest,
         "triggers": trig[:12],
         "thresholds": {
@@ -309,7 +325,8 @@ def build():
                        "低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。"
                        "各维度统一对齐 2015 年起交易日历、分位用 expanding(min_periods=250)，"
                        "与单卡「自身全历史 + min_periods=20」的分位略有差异属口径不同、并非计算错误；"
-                       "极端普跌日（上涨家数占比<20%）的 TRIN 维度已按阿姆氏卡片的警示剔除。"
+                       "极端单边日（上涨家数占比<20% 或 >80%）TRIN 会因家数比失真而机械偏低或偏高，"
+                       "该情形下的 TRIN 维度已按阿姆氏卡片的警示剔除。"
                        "极值可长期钝化，政策与盈利才决定反弹还是反转。仅供研究参考，不构成投资建议。"),
     }
     OUT_META.write_text(json.dumps(meta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

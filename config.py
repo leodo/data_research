@@ -53,6 +53,9 @@ TURNING_TRIGGER_GAP = 20        # 触发日去重的间隔（交易日），避�
 TURNING_MIN_HIST = 250          # 单维度 expanding 分位的最小历史样本
 TURNING_ARMS_PANIC_ADV = 20.0   # 上涨家数占比低于此值(极端普跌日)时剔除 TRIN 维度：
                                 # 此时低 TRIN 是资金抱团+全面失血，不是买盘强劲
+TURNING_ARMS_EUPHORIA_ADV = 80.0  # 高于此值(极端普涨日)同样剔除：
+                                # 家数比爆炸使 TRIN 机械升高，并非恐慌抛售。
+                                # 实测全历史 TRIN>2 的 96 日中 67 日为普涨日、仅 1 日为恐慌日
 
 # ---------------- ERP 股债归因（build_mood.py 内）----------------
 ERP_ATTR_WIN = 250              # 归因回看窗口（交易日，约 1 年）

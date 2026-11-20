@@ -1069,42 +1069,62 @@ def calc_repurchase_panel():
 
 # ---------------- 新增观察卡：阿姆氏指标与市场宽广度体系 ----------------
 def calc_arms_panel():
-    """阿姆氏指标 TRIN：两套口径 + 10 日平滑。"""
+    """阿姆氏指标 TRIN：两套口径 + 10 日平滑 + 极端单边日诊断。"""
     try:
         d = _read_frame("arms")
         if d is None or "trin_vol" not in d.columns:
             return None
         p = make_panel("arms", "阿姆氏指标 TRIN（Arms Index）", d["trin_vol"].dropna(),
                        "复用 data/breadth_prices/(5547 只未复权收盘价) 与 data/crowding_amounts/(成交额) "
-                       "按日对齐自算，零个股请求。TRIN=(涨家数/跌家数)÷(涨股量/跌股量)；"
+                       "按日对齐自算，零个股请求。TRIN=(涨家数/跌家数)÷(涨股总成交量/跌股总成交量)，"
+                       "代数上等价于「平均每只下跌股成交量 ÷ 平均每只上涨股成交量」；"
                        "主序列为经典成交量口径(amount/close 反推股数)，辅助线含 10 日平滑与成交额口径。",
                        reverse=False, unit="",
-                       desc="Richard Arms 1967 年的短期情绪指标：>1 表示下跌股放量、抛压主导，"
-                       "<1 表示上涨股放量；>2 常对应恐慌性抛售（超卖/底部机会），<0.5 常对应买盘过热。"
-                       "日频噪声大，10 日平滑(蓝虚线)更常用于判极值。"
-                       "A 股口径特别注意：极端普跌日涨家数极少，若少数上涨股吸走大量成交，TRIN 会系统性偏低，"
-                       "此时并非「买盘强劲」而是资金抱团叠加全面失血，须结合上涨家数占比一起读，"
-                       "不能机械套用美股教科书的超买结论。")
+                       desc="Richard Arms 1967 年的量能分配指标：TRIN>1 表示平均每只下跌股的成交量大于上涨股，"
+                       "<1 表示上涨股平均放量。它衡量的是「量在涨跌两组之间的分配」，不是全市场抛压总量。"
+                       "A 股齐涨齐跌特征明显，家数比在极端单边日失去上界，会让 TRIN 机械失真："
+                       "极端普跌日家数比趋近 0 → TRIN 偏低（并非买盘强劲，而是少数上涨股吸走成交叠加全面失血）；"
+                       "极端普涨日家数比放大 → TRIN 偏高（并非恐慌抛售，而是上涨家数太多、单只上涨股量能被摊薄）。"
+                       "因此教科书「>2 = 恐慌超卖/底部机会、<0.5 = 买盘过热」在 A 股不可机械套用，"
+                       "务必同时看上涨家数占比与指数位置；10 日平滑(蓝虚线)能降噪但不能消除该结构性偏差。")
         if p:
             p["score_label"] = "历史分位"
-            p["score_hint"] = "（越高=抛压越重）"
+            p["score_hint"] = "（越高=跌股平均量相对越大，极端单边日会失真）"
             p["auxiliary"] = _aux_rows(d, ["trin10", "trin"])
             p["aux_lines"] = [
                 {"name": "TRIN 10日平滑", "field": "trin10", "color": "#5b8ff9"},
                 {"name": "成交额口径 Dollar TRIN", "field": "trin", "color": "#8b5cf6"},
             ]
             p["mark_lines"] = [
-                {"y": 0.5, "label": "0.5 超买线", "color": "#e8633a"},
+                {"y": 0.5, "label": "0.5 低位参考", "color": "#e8633a"},
                 {"y": 1.0, "label": "1.0 均衡", "color": "#2aa876"},
-                {"y": 2.0, "label": "2.0 超卖线", "color": "#2aa876"},
+                {"y": 2.0, "label": "2.0 高位参考", "color": "#2aa876"},
             ]
             r = d.iloc[-1]
-            p["aux_text"] = (f"当前成交量口径 {r['trin_vol']:.3f}、10 日平滑 {r['trin10']:.3f}、"
-                             f"成交额口径 {r['trin']:.3f}；上涨/下跌量比 {r['adv_vol_ratio']:.3f}、"
-                             f"上涨股量占比 {r['up_vol_share']:.2f}%、上涨 {int(r['n_adv'])} 家 / "
-                             f"下跌 {int(r['n_dec'])} 家。两套口径中位均为 "
-                             f"{d['trin_vol'].median():.3f}，1%/99% 分位 "
-                             f"{d['trin_vol'].quantile(.01):.3f}/{d['trin_vol'].quantile(.99):.3f}。")
+            base = (f"当前成交量口径 {r['trin_vol']:.3f}、10 日平滑 {r['trin10']:.3f}、"
+                    f"成交额口径 {r['trin']:.3f}；上涨/下跌量比 {r['adv_vol_ratio']:.3f}、"
+                    f"上涨股量占比 {r['up_vol_share']:.2f}%、上涨 {int(r['n_adv'])} 家 / "
+                    f"下跌 {int(r['n_dec'])} 家。两套口径中位均为 "
+                    f"{d['trin_vol'].median():.3f}，1%/99% 分位 "
+                    f"{d['trin_vol'].quantile(.01):.3f}/{d['trin_vol'].quantile(.99):.3f}。")
+            # 极端单边日诊断：TRIN 高位究竟是恐慌抛售还是普涨日家数比放大，
+            # 用全历史构成与最近一次实例让用户可自行核对图上任意一个尖峰。
+            share = d["n_adv"] / (d["n_adv"] + d["n_dec"]) * 100
+            hi = d[d["trin_vol"] > 2.0]
+            hs = share.reindex(hi.index)
+            eup = d.index[(share > 80) & (d["trin_vol"] > 2.0)]
+            diag = ""
+            if len(hi):
+                diag += (f"【极端单边日诊断】全历史 TRIN>2 共 {len(hi)} 日，其中上涨家数占比 >80% 的"
+                         f"普涨日 {int((hs > 80).sum())} 日、<20% 的恐慌日 {int((hs < 20).sum())} 日"
+                         "——高位极值主要由家数比放大驱动，并非恐慌抛售。")
+            if len(eup):
+                dt, rr = eup[-1], d.loc[eup[-1]]
+                diag += (f"最近一次「普涨却 TRIN>2」：{dt.strftime('%Y-%m-%d')} "
+                         f"TRIN={rr['trin_vol']:.3f}、上涨占比 {share.loc[dt]:.1f}%、"
+                         f"涨 {int(rr['n_adv'])} / 跌 {int(rr['n_dec'])} 家，"
+                         "此类日不可按「超卖底部」解读。")
+            p["aux_text"] = base + diag
         return p
     except Exception as e:
         log(f"    [arms] 计算失败: {e}")
