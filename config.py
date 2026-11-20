@@ -76,3 +76,10 @@ BREADTH_SCORE_MIN_HIST = 20     # 合成宽度分前各维度 expanding 分位�
 M1M2_START = "2008-01-01"       # 东财货币供应量接口起点
 REPURCHASE_START = "2015-01-01" # 回购样本 2005 起，但 2015 前样本稀疏，作图从此开始
 REPURCHASE_ROLL = 12            # 回购规模滚动窗口（月）
+
+# ---------------- 重要股东增减持（build_holder_change.py）----------------
+# 东财 RPT_SHARE_HOLDER_INCREASE 全量 1994 起，但 2015 前公告样本稀疏，
+# 与回购卡片起点对齐便于同栏目对照。
+HOLDER_CHANGE_START = "2015-01-01"
+HOLDER_CHANGE_ROLL = 12         # 滚动窗口（月），与回购一致
+HOLDER_CHANGE_LOOKBACK = 15     # 增量回看天数，覆盖盘后补录/修订的公告

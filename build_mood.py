@@ -43,7 +43,8 @@ import akshare as ak
 import numpy as np
 import pandas as pd
 
-from config import ERP_ATTR_WIN, ERP_ILLUSION_SHARE, REPURCHASE_ROLL
+from config import (ERP_ATTR_WIN, ERP_ILLUSION_SHARE, HOLDER_CHANGE_ROLL,
+                    REPURCHASE_ROLL)
 from core import (BASE, DATA, TODAY, get_or_fetch, log, pct_rank,
                   sjoin, window_pct)
 
@@ -1067,6 +1068,51 @@ def calc_repurchase_panel():
         return None
 
 
+def calc_holder_change_panel():
+    """重要股东增减持（月频，2015-01 起）。紧邻回购卡片，同属产业资本行为。"""
+    try:
+        d = _read_frame("holder_change")
+        col = f"net_amt_roll{HOLDER_CHANGE_ROLL}"
+        inc_col = f"inc_amt_roll{HOLDER_CHANGE_ROLL}"
+        dec_col = f"dec_amt_roll{HOLDER_CHANGE_ROLL}"
+        sec_col = f"sec_amt_roll{HOLDER_CHANGE_ROLL}"
+        if d is None or col not in d.columns:
+            return None
+        p = make_panel("holder_change", f"重要股东增减持（滚动{HOLDER_CHANGE_ROLL}月净额）",
+                       d[col].dropna(),
+                       "东方财富「股东增减持」公告 RPT_SHARE_HOLDER_INCREASE，按<b>公告日</b>归档（PIT 可见）；"
+                       f"金额 = |变动股数|(万股) × 变动时收盘价 / 10000 估算（亿元），滚动 {HOLDER_CHANGE_ROLL} 月合计。"
+                       "辅助线为增持/减持总额；接口含大宗交易与协议划转，并非全部为二级市场买卖。",
+                       reverse=False, unit="亿元",
+                       desc="重要股东（大股东/董监高）的净增减持是产业资本对自家股票估值的直接表态："
+                       "净增持放量多见于市场底部或政策鼓励期，净减持放量多见于估值偏高、行情亢奋阶段。"
+                       "与紧邻的「A股回购规模」互补——回购是公司自己买回股份，增减持是股东买卖，"
+                       "主体不同、信号可相互印证。")
+        if p:
+            p["freq"] = "monthly"
+            p["score_label"] = "历史分位"
+            p["score_hint"] = "（越高=产业资本净买入越强）"
+            p["auxiliary"] = _aux_rows(d, [inc_col, dec_col, sec_col])
+            p["aux_lines"] = [
+                {"name": f"增持总额({HOLDER_CHANGE_ROLL}月)", "field": inc_col, "color": "#e8633a"},
+                {"name": f"减持总额({HOLDER_CHANGE_ROLL}月)", "field": dec_col, "color": "#5b8ff9"},
+            ]
+            r = d.iloc[-1]
+            total = float(r[inc_col] + r[dec_col])
+            sec_pct = (float(r[sec_col]) / total * 100) if total else 0.0
+            p["aux_text"] = (
+                f"当前滚动 {HOLDER_CHANGE_ROLL} 月净增持 {r[col]:.1f} 亿"
+                f"（增持 {r[inc_col]:.1f} / 减持 {r[dec_col]:.1f} 亿），"
+                f"其中<b>仅二级市场</b>成交约占 {sec_pct:.0f}%，其余为大宗交易与协议划转/内部转让；"
+                f"当月已披露 {int(r['n_records'])} 笔（未完结月，滚动值会继续抬升）。"
+                f"历史区间 {d[col].min():.1f} ~ {d[col].max():.1f} 亿，区间切换按数据点计（月频）。"
+            )
+        return p
+    except Exception as e:
+        log(f"    [holder_change] 计算失败: {e}")
+        return None
+
+
 # ---------------- 新增观察卡：阿姆氏指标与市场宽广度体系 ----------------
 def calc_arms_panel():
     """阿姆氏指标 TRIN：两套口径 + 10 日平滑 + 极端单边日诊断。"""
@@ -1228,6 +1274,8 @@ MACRO_BUILDERS = [
     ("fund_position", calc_fund_position_panel),
     ("m1m2", calc_m1m2_panel),
     ("repurchase", calc_repurchase_panel),
+    # 与回购并列：同属产业资本行为，紧邻排放便于对照
+    ("holder_change", calc_holder_change_panel),
 ]
 
 

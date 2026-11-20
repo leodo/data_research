@@ -125,6 +125,7 @@ PIPELINES = {
         ("基金股票仓位", "build_fund_position.py"),
         ("M1-M2 剪刀差", "build_money_supply.py"),
         ("A股回购规模", "build_repurchase.py"),
+        ("重要股东增减持", "build_holder_change.py"),
         # build_turning.py 由 build_mood.py 在 load_sources() 之后同进程调用，
         # 不单独登记：它依赖那些刚落盘的源缓存，并生成信号卡所需的 mood_tech.csv。
         # ERP 股债归因同样由 build_mood.py 同进程计算（复用已加载的 PE / 国债序列）。
