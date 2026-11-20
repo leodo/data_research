@@ -110,8 +110,20 @@ a{text-decoration:none;color:inherit}
 .detail-all-btn{border:1px solid var(--line);background:var(--bg-card);color:var(--text-2);border-radius:7px;padding:6px 12px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .detail-all-btn:hover{border-color:var(--brand);color:var(--brand-deep)}
 @media(max-width:900px){.detail-body{grid-template-columns:1fr}.dsec.full{grid-column:auto}.dsec{overflow-x:auto}}
-/* 历史回放：醒目但不覆盖内容，随主题变量走 */
-.replay-banner{display:none;position:sticky;top:6px;z-index:40;align-items:center;gap:10px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.6;margin-bottom:12px}
+/* 历史回放入口：常驻页面顶部，避免被综合分详细解读挤出首屏 */
+.replay-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);border-left:4px solid var(--brand);color:var(--brand-deep);border-radius:9px;padding:10px 14px;font-size:12px;line-height:1.6}
+.replay-toolbar.on{background:var(--brand);color:var(--bg-card);border-color:var(--brand)}
+.replay-toolbar.on .rt-btn{background:var(--bg-card);color:var(--brand-deep);border-color:var(--bg-card)}
+.replay-toolbar.on .replay-date{background:var(--bg-card);color:var(--text-2);border-color:var(--bg-card)}
+.rt-label{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.rt-label b{font-size:14px;font-weight:700}
+.rt-sub{font-size:11.5px;opacity:.78}
+.rt-btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.rt-btn:hover{filter:brightness(1.1)}
+.rt-hint{font-size:11.5px;opacity:.85;flex:1;min-width:210px}
+@media(max-width:900px){.rt-hint{min-width:100%}.rt-label{flex-wrap:wrap;white-space:normal}}
+/* 回放状态条：贴在顶部导航下方，滚动时持续可见 */
+.replay-banner{display:none;position:sticky;top:62px;z-index:21;align-items:center;gap:10px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.6;margin-bottom:12px}
 .replay-banner b{font-weight:700}
 .replay-banner button{border:1px solid var(--brand);background:var(--bg-card);color:var(--brand-deep);border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;margin-left:auto}
 .replay-banner button:hover{background:var(--brand);color:var(--bg-card)}
@@ -727,6 +739,8 @@ a{text-decoration:none;color:inherit}
       var bd=document.getElementById("replayBannerDate");
       if(bd) bd.textContent=date||"—";
     }
+    var toolbar=document.getElementById("replayToolbar");
+    if(toolbar) toolbar.classList.toggle("on",!!date);
     function setTag(db,d){
       if(!db) return;
       var tag=db.querySelector(".replay-tag"), hd=db.querySelector(".detail-hd .dt");
@@ -986,6 +1000,14 @@ a{text-decoration:none;color:inherit}
     html += '<div class="replay-banner" id="replayBanner" style="display:none"><b>历史回放中</b>'+
       '<span>正在重现 <b id="replayBannerDate">—</b> 的读数与解读（point-in-time 重算，不是当前数据）</span>'+
       '<button id="replayExit" type="button">退出回放</button></div>';
+    // 历史回放入口：置于最顶部，避免被综合分详细解读挤出首屏
+    html += '<div data-toc="历史回放" data-toc-group="总览" id="toc_replay" style="margin-bottom:14px">'+
+      '<div class="replay-toolbar" id="replayToolbar">'+
+        '<div class="rt-label"><b>历史回放</b><span class="rt-sub">重现任意历史交易日的读数与解读（只用当时可得数据）</span></div>'+
+        '<button class="rt-btn" id="replayBtn" type="button">开启回放</button>'+
+        '<input type="date" id="replayDate" class="replay-date" min="2003-01-01" max="'+esc(D.data_date||"")+'" value="'+esc(D.data_date||"")+'">'+
+        '<span class="rt-hint" id="replayHint">开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读</span>'+
+      '</div></div>';
     // Hero 综合情绪分
     var comp = D.composite || {score:50,state:"中立",history:[]};
     var cs = Number(comp.score)||50;
@@ -1007,9 +1029,7 @@ a{text-decoration:none;color:inherit}
     RANGES.forEach(function(r){ html += '<button data-range="'+r[0]+'"'+(r[0]===range?' class="active"':'')+'>'+r[1]+'</button>'; });
     html += '</div><span class="range-hint">切换区间后，曲线支持鼠标拖拽平移、滚轮缩放细节</span><button class="detail-all-btn" id="detailAllBtn" type="button">收起全部详细解读</button></div>';
     html += '<div class="range-row" style="margin-top:9px;flex-wrap:wrap"><span class="range-label">历史回放</span>'+
-      '<button class="detail-all-btn" id="replayBtn" type="button">开启回放</button>'+
-      '<input type="date" id="replayDate" class="replay-date" min="2003-01-01" max="'+esc(D.data_date||"")+'" value="'+esc(D.data_date||"")+'">'+
-      '<span class="range-hint" id="replayHint">开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读</span></div></div>';
+      '<span class="range-hint">入口在<b>页面最顶部</b>的「历史回放」工具条（也可点左侧目录「总览 → 历史回放」跳转）；开启后把鼠标移到任意走势图即可重现当日读数与解读</span></div></div>';
 
     // 综合情绪分走势
     var cm = comp.meta || null;
