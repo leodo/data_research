@@ -110,8 +110,8 @@ a{text-decoration:none;color:inherit}
 .detail-all-btn{border:1px solid var(--line);background:var(--bg-card);color:var(--text-2);border-radius:7px;padding:6px 12px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .detail-all-btn:hover{border-color:var(--brand);color:var(--brand-deep)}
 @media(max-width:900px){.detail-body{grid-template-columns:1fr}.dsec.full{grid-column:auto}.dsec{overflow-x:auto}}
-/* 历史回放入口：常驻页面顶部，避免被综合分详细解读挤出首屏 */
-.replay-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);border-left:4px solid var(--brand);color:var(--brand-deep);border-radius:9px;padding:10px 14px;font-size:12px;line-height:1.6}
+/* 历史回放入口：常驻页面顶部；一律用不透明底色，避免暗色主题下 brand-soft 半透明 */
+.replay-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg-card);border:1px solid var(--brand);border-left:4px solid var(--brand);color:var(--brand-deep);border-radius:9px;padding:9px 13px;font-size:12px;line-height:1.6;box-shadow:var(--shadow)}
 .replay-toolbar.on{background:var(--brand);color:var(--bg-card);border-color:var(--brand)}
 .replay-toolbar.on .rt-btn{background:var(--bg-card);color:var(--brand-deep);border-color:var(--bg-card)}
 .replay-toolbar.on .replay-date{background:var(--bg-card);color:var(--text-2);border-color:var(--bg-card)}
@@ -120,13 +120,28 @@ a{text-decoration:none;color:inherit}
 .rt-sub{font-size:11.5px;opacity:.78}
 .rt-btn{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:7px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .rt-btn:hover{filter:brightness(1.1)}
+.rt-extra{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.replay-toolbar:not(.on) .rt-extra{display:none}
+.rt-mini{border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:6px 10px;font-size:11.5px;cursor:pointer;white-space:nowrap;opacity:.92}
+.rt-mini:hover{opacity:1;background:var(--bg-card);color:var(--brand-deep)}
+.rt-mini.locked{background:var(--bg-card);color:var(--brand-deep);border-color:var(--bg-card);font-weight:700;opacity:1}
 .rt-hint{font-size:11.5px;opacity:.85;flex:1;min-width:210px}
+.replay-toolbar.on .rt-hint{flex-basis:100%;min-width:100%;line-height:1.5}
 @media(max-width:900px){.rt-hint{min-width:100%}.rt-label{flex-wrap:wrap;white-space:normal}}
-/* 回放状态条：贴在顶部导航下方，滚动时持续可见 */
-.replay-banner{display:none;position:sticky;top:62px;z-index:21;align-items:center;gap:10px;flex-wrap:wrap;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.6;margin-bottom:12px}
-.replay-banner b{font-weight:700}
-.replay-banner button{border:1px solid var(--brand);background:var(--bg-card);color:var(--brand-deep);border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;margin-left:auto}
+/* 回放状态条：实底 + 阴影 + 高层级，滚动时是清晰的浮层而非与内容透叠；可收起成角标 */
+.replay-banner{display:none;position:sticky;top:62px;z-index:60;align-items:center;gap:9px;flex-wrap:wrap;background:var(--bg-card);border:1px solid var(--brand);border-left:4px solid var(--brand);color:var(--ink);border-radius:8px;padding:7px 12px;font-size:11.5px;line-height:1.6;margin-bottom:12px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
+.replay-banner .rb-title,.replay-banner .rb-date{color:var(--brand-deep);font-weight:700;white-space:nowrap}
+.replay-banner .rb-date{font-variant-numeric:tabular-nums}
+.replay-banner .rb-detail{color:var(--text-2)}
+.replay-banner button{border:1px solid var(--brand);background:var(--bg-card);color:var(--brand-deep);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap}
 .replay-banner button:hover{background:var(--brand);color:var(--bg-card)}
+.replay-banner .rb-collapse{margin-left:auto}
+.replay-banner.mini{width:fit-content;margin-left:auto;padding:4px 10px;gap:8px;font-size:11px}
+.replay-banner.mini .rb-detail{display:none}
+.replay-banner.mini .rb-collapse{margin-left:0}
+/* 回放开启时，图表提示「点击可锁定」 */
+.panel.replaying .pchart,.replay-on #compChart{cursor:crosshair}
 .replay-date{border:1px solid var(--line);background:var(--bg-card);color:var(--text-2);border-radius:7px;padding:5px 8px;font-size:11.5px;font-family:inherit;color-scheme:light dark}
 .panel.replaying{border-color:var(--brand)}
 .replay-tag{display:inline-block;background:var(--brand-soft);border:1px solid var(--brand);color:var(--brand-deep);border-radius:4px;padding:0 6px;font-size:10px;font-weight:400;margin-left:6px}
@@ -475,7 +490,8 @@ a{text-decoration:none;color:inherit}
   // ---------------- 历史回放：point-in-time 重算 ----------------
   // history[i].pct 由 expanding(min_periods=20).rank(pct=True) 生成，每个点只用到
   // 当日为止的数据，因此可严格重建任意历史日的读数，不存在前视偏差。
-  var replay = {on:false, date:null, timer:null};
+  // lock=true 时鼠标悬停不再改日期；collapsed=true 时顶部状态条缩成角标
+  var replay = {on:false, date:null, timer:null, lock:false, collapsed:false, hoverDate:null};
   function lastHsIdx(date){
     var lo=0,hi=HS.n-1,ans=-1;
     while(lo<=hi){ var m=(lo+hi)>>1; if(HS.dates[m]<=date){ ans=m; lo=m+1; } else hi=m-1; }
@@ -725,9 +741,20 @@ a{text-decoration:none;color:inherit}
   }
 
   // ---------------- 回放：局部刷新，只改文字与数字，不重建图表 ----------------
-  function setReplayDate(date){ if(!date) return; replay.date=date; refreshReplay(); }
+  function setReplayDate(date){ if(!date) return; replay.date=date; replay.hoverDate=date; refreshReplay(); }
+  // 逐交易日切换（不是自然日）：用注入的沪深300收盘价序列作为交易日历
+  var TRADE_DATES = (D.hs300_close||[]).map(function(x){ return x[0]; });
+  function stepReplay(delta){
+    if(!TRADE_DATES.length) return;
+    var cur = replay.date || D.data_date || TRADE_DATES[TRADE_DATES.length-1], i=-1;
+    for(var j=0;j<TRADE_DATES.length;j++){ if(TRADE_DATES[j]<=cur) i=j; else break; }
+    if(i<0) i=0;
+    var ni=Math.max(0,Math.min(TRADE_DATES.length-1,i+delta));
+    replay.lock=true;
+    setReplayDate(TRADE_DATES[ni]);
+  }
   function scheduleReplay(date){
-    if(!replay.on || !date || date===replay.date) return;
+    if(!replay.on || replay.lock || !date || date===replay.date) return;
     if(replay.timer) clearTimeout(replay.timer);
     replay.timer=setTimeout(function(){ setReplayDate(date); },110);
   }
@@ -738,9 +765,11 @@ a{text-decoration:none;color:inherit}
       banner.style.display=date?"flex":"none";
       var bd=document.getElementById("replayBannerDate");
       if(bd) bd.textContent=date||"—";
+      banner.classList.toggle("mini",!!replay.collapsed);
     }
     var toolbar=document.getElementById("replayToolbar");
     if(toolbar) toolbar.classList.toggle("on",!!date);
+    if(app && app.classList) app.classList.toggle("replay-on",!!date);
     function setTag(db,d){
       if(!db) return;
       var tag=db.querySelector(".replay-tag"), hd=db.querySelector(".detail-hd .dt");
@@ -795,10 +824,21 @@ a{text-decoration:none;color:inherit}
     if(inp && date && inp.value!==date) inp.value=date;
     var btn=document.getElementById("replayBtn");
     if(btn) btn.textContent=replay.on?"退出回放":"开启回放";
+    var lockBtn=document.getElementById("replayLockBtn");
+    if(lockBtn){
+      lockBtn.textContent=replay.lock?"解除锁定":"锁定当前日期";
+      lockBtn.classList.toggle("locked",replay.lock);
+    }
+    var bmode=document.getElementById("replayBannerMode");
+    if(bmode) bmode.textContent=replay.lock?"日期已锁定":"跟随鼠标（单击图表可锁定）";
+    var collapseBtn=document.getElementById("replayCollapse");
+    if(collapseBtn) collapseBtn.textContent=replay.collapsed?"展开":"收起";
     var hint=document.getElementById("replayHint");
-    if(hint) hint.textContent=replay.on
-      ? (date?"正在重现 "+date+"；把鼠标移到任意走势图上可切换日期，也可用日期框跳转":"把鼠标移到任意走势图上，或用日期框选一天")
-      : "开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读";
+    if(hint) hint.textContent = !replay.on
+      ? "开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读"
+      : (replay.lock
+          ? "已锁定 "+(date||"—")+" · 鼠标移动不会再切换日期；点「解除锁定」恢复跟随，或用上一天/下一天、← → 逐日切换"
+          : "跟随鼠标中 · 单击图表任意位置即可锁定该日，之后可自由移动鼠标；也可用日期框、上一天/下一天或 ← →");
   }
   function bindReplayEvents(){
     for(var i=0;i<charts.length;i++){
@@ -814,7 +854,28 @@ a{text-decoration:none;color:inherit}
           var ai=ev&&ev.axesInfo&&ev.axesInfo[0];
           if(!ai || ai.axisDim!=="x") return;
           var d=(typeof ai.value==="string" && /^\d{4}-/.test(ai.value)) ? ai.value : dates[Number(ai.value)];
-          if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) scheduleReplay(d);
+          if(!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+          replay.hoverDate=d;        // 始终记住鼠标所指的那一天（点击时用它）
+          if(replay.lock) return;    // 锁定后鼠标移动不再切换日期
+          scheduleReplay(d);
+        });
+        // 单击图表 = 锁定鼠标所指的那一天，之后可自由把鼠标移出图表去读文字
+        // 日期来自 axisPointer 而非 convertFromPixel（后者在部分图表返回 null），
+        // 因此区间切换/主题重建实例后依然有效；DOM 监听只挂一次。
+        var dom=chart.getDom();
+        if(!dom || dom.__replayClickBound) return;
+        dom.__replayClickBound=true;
+        dom.addEventListener("click",function(ev){
+          if(!replay.on) return;
+          var r=dom.getBoundingClientRect(), px=ev.clientX-r.left, py=ev.clientY-r.top;
+          try{  // 点到 dataZoom 滑块等绘图网格外的区域时不锁定
+            var inst=(window.echarts&&echarts.getInstanceByDom)?echarts.getInstanceByDom(dom):null;
+            if(inst && !inst.containPixel({gridIndex:0},[px,py])) return;
+          }catch(e){}
+          var d=replay.hoverDate||replay.date;
+          if(!d) return;
+          replay.lock=true;
+          setReplayDate(d);
         });
       })(ds,c);
     }
@@ -997,8 +1058,11 @@ a{text-decoration:none;color:inherit}
 
   function render(){
     var html = "";
-    html += '<div class="replay-banner" id="replayBanner" style="display:none"><b>历史回放中</b>'+
-      '<span>正在重现 <b id="replayBannerDate">—</b> 的读数与解读（point-in-time 重算，不是当前数据）</span>'+
+    html += '<div class="replay-banner" id="replayBanner" style="display:none">'+
+      '<b class="rb-title">历史回放中</b>'+
+      '<span class="rb-date" id="replayBannerDate">—</span>'+
+      '<span class="rb-detail">的读数与解读 · 只用当日可得数据（point-in-time）· <span id="replayBannerMode">跟随鼠标</span></span>'+
+      '<button id="replayCollapse" type="button" class="rb-collapse">收起</button>'+
       '<button id="replayExit" type="button">退出回放</button></div>';
     // 历史回放入口：置于最顶部，避免被综合分详细解读挤出首屏
     html += '<div data-toc="历史回放" data-toc-group="总览" id="toc_replay" style="margin-bottom:14px">'+
@@ -1006,6 +1070,11 @@ a{text-decoration:none;color:inherit}
         '<div class="rt-label"><b>历史回放</b><span class="rt-sub">重现任意历史交易日的读数与解读（只用当时可得数据）</span></div>'+
         '<button class="rt-btn" id="replayBtn" type="button">开启回放</button>'+
         '<input type="date" id="replayDate" class="replay-date" min="2003-01-01" max="'+esc(D.data_date||"")+'" value="'+esc(D.data_date||"")+'">'+
+        '<span class="rt-extra">'+
+          '<button class="rt-mini" id="replayPrevBtn" type="button" title="上一个交易日（键盘 ←）">‹ 上一天</button>'+
+          '<button class="rt-mini" id="replayLockBtn" type="button">锁定当前日期</button>'+
+          '<button class="rt-mini" id="replayNextBtn" type="button" title="下一个交易日（键盘 →）">下一天 ›</button>'+
+        '</span>'+
         '<span class="rt-hint" id="replayHint">开启后，把鼠标移到任意走势图上即可重现那一天的读数与解读</span>'+
       '</div></div>';
     // Hero 综合情绪分
@@ -1134,7 +1203,7 @@ a{text-decoration:none;color:inherit}
 
     html += backtestHtml();
     html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
-    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行数据源仅回溯至 <b>2023-01</b>、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14、ERP股债归因、基金股票仓位、M1-M2剪刀差、回购规模、阿姆氏指标、宽度综合分、麦克莱伦摆动与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。⑦ ERP 股债归因把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)：只有前者上行才代表股票真的变便宜，后者下行只是无风险利率更低；PE 为月频 ffill，股票端贡献呈阶梯状属正常。共振信号板 2026-11-20 由 11 维扩到 13 维（新增 TRIN10 与麦克莱伦摆动值），历史共振度与回测已同步重算，请勿与此前数值直接比较。⑧ 阿姆氏指标 TRIN 主口径为「近似成交量」：用成交额÷收盘价反推股数（实测误差 &lt;0.5%），另附成交额口径(Dollar TRIN)对照。TRIN=(涨家数/跌家数)÷(涨股总量/跌股总量)，代数上等价于「平均每只下跌股量 ÷ 平均每只上涨股量」，衡量的是量在涨跌两组间的分配、不是全市场抛压总量；家数比在极端单边日失去上界会造成两种镜像失真：普跌日（上涨家数占比低于 20%）TRIN 机械偏低，不等于买盘强劲；普涨日（高于 80%）TRIN 机械偏高，不等于恐慌抛售或「超卖底部」。{@arms_sentence}，务必结合上涨家数占比与指数位置一起读。⑨ 基金股票仓位是第三方净值回归的测算值（非季报披露真实持仓，起点 2017-12、周频）；M1-M2 为月频且央行 2024 年调整过 M1 统计范围，前后绝对值不可比；回购规模按方案起始月归档、计划金额未必全部实施且未经市值归一化，长期有规模膨胀趋势。这三项请以历史分位与方向为主，勿跨时代比绝对值。⑩ 综合情绪分历史按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个（新基金发行 2023-01 才有数据），与当前 8 指标等权口径不完全可比，当前值不受影响；⑪ 共振信号板的 13 个维度统一对齐到 2015 年起交易日历、分位用 expanding(min_periods=250)，而各单卡用自身全历史、min_periods=20，因此<b>同一指标在两处分位略有差异属口径不同、并非计算错误</b>；⑫ 极端单边日（上涨家数占比低于 20% 或高于 80%）TRIN 会机械失真，该情形下 TRIN 维度已从共振板极值判定中剔除（维度明细标注具体原因），避免与阿姆氏卡片的警示自相矛盾。⑬ 每张卡片的「详细解读」中，<b>同类位置的历史表现</b>由 build_mood.py 注入的沪深300收盘价序列（2002 起交易日）计算：取原始值历史分位落在当前 ±7.5 区间内的历史观测日，按至少间隔 20 个交易日去重，要求有效样本 ≥8 个且具备完整 60 个交易日前瞻数据，再统计其后 20 / 60 交易日收益的均值、中位与上涨概率，并与「每 20 交易日取一个样本」的全历史基准对照；样本不足时本页直接不出统计量。这是<b>描述性统计而非预测</b>：样本区间重叠、未计交易成本与分红、宏观环境不同，分组依据为原始值分位（不区分指标方向），请勿把「同区间均值高于基准」直接读成看涨信号。另注意三套数字不可混用：<b>当前情绪分</b>是绝对水平（0=极悲观、100=极乐观），<b>近3/5/10年分位</b>是情绪分在各自窗口内的相对排名，<b>全历史分位</b>是原始值的 expanding 分位（反向指标方向与窗口分位相反），三者既不能直接相减，也不能横向比较；历史不足 10 年的指标，其 5/10 年窗口覆盖同一段样本，不构成时代对照。详细解读默认全部展开，可用顶部按钮一键收起。⑭ 新增<b>历史回放</b>：开启后把鼠标移到任意走势图（或用日期框）即可重现该日的读数与解读，全部按 point-in-time 重算——原始值分位、近 3/5/10 年窗口分位、近期变化、历史区间与前瞻统计只用该日及之前的数据，前瞻样本还要求「样本日+60 交易日 ≤ 回放日」，无未来函数；数据源起点晚于回放日的卡片明确标注「当日无数据」，不会静默显示当前值。注意判读逻辑/联动/使用边界是<b>现行规则</b>，重现的是「用今天的规则套当日数据」，而非「当天页面真实写过什么」，这样后视验证才不会用到事后修订过的规则。⑮ 新增<b>解读有效性后视回测</b>：按每个历史日的 PIT 情绪分分「悲观&lt;35 / 亢奋&gt;65」两组，统计其后 20/60 交易日沪深300收益，用「悲观组−亢奋组」60 日均<b>价差</b>判定方向（&gt;1pp 符合预期、&lt;−1pp 方向相反、任一组样本 &lt;8 记样本不足）。这是方向一致性检验而非策略回测：样本重叠、阈值为设定值、未做样本外检验、未计成本，且 A 股中短期动量可能使不少指标呈「方向相反」——那是解读的适用边界，不是计算错误。</div>';
+    html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行数据源仅回溯至 <b>2023-01</b>、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14、ERP股债归因、基金股票仓位、M1-M2剪刀差、回购规模、阿姆氏指标、宽度综合分、麦克莱伦摆动与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。⑦ ERP 股债归因把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)：只有前者上行才代表股票真的变便宜，后者下行只是无风险利率更低；PE 为月频 ffill，股票端贡献呈阶梯状属正常。共振信号板 2026-11-20 由 11 维扩到 13 维（新增 TRIN10 与麦克莱伦摆动值），历史共振度与回测已同步重算，请勿与此前数值直接比较。⑧ 阿姆氏指标 TRIN 主口径为「近似成交量」：用成交额÷收盘价反推股数（实测误差 &lt;0.5%），另附成交额口径(Dollar TRIN)对照。TRIN=(涨家数/跌家数)÷(涨股总量/跌股总量)，代数上等价于「平均每只下跌股量 ÷ 平均每只上涨股量」，衡量的是量在涨跌两组间的分配、不是全市场抛压总量；家数比在极端单边日失去上界会造成两种镜像失真：普跌日（上涨家数占比低于 20%）TRIN 机械偏低，不等于买盘强劲；普涨日（高于 80%）TRIN 机械偏高，不等于恐慌抛售或「超卖底部」。{@arms_sentence}，务必结合上涨家数占比与指数位置一起读。⑨ 基金股票仓位是第三方净值回归的测算值（非季报披露真实持仓，起点 2017-12、周频）；M1-M2 为月频且央行 2024 年调整过 M1 统计范围，前后绝对值不可比；回购规模按方案起始月归档、计划金额未必全部实施且未经市值归一化，长期有规模膨胀趋势。这三项请以历史分位与方向为主，勿跨时代比绝对值。⑩ 综合情绪分历史按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个（新基金发行 2023-01 才有数据），与当前 8 指标等权口径不完全可比，当前值不受影响；⑪ 共振信号板的 13 个维度统一对齐到 2015 年起交易日历、分位用 expanding(min_periods=250)，而各单卡用自身全历史、min_periods=20，因此<b>同一指标在两处分位略有差异属口径不同、并非计算错误</b>；⑫ 极端单边日（上涨家数占比低于 20% 或高于 80%）TRIN 会机械失真，该情形下 TRIN 维度已从共振板极值判定中剔除（维度明细标注具体原因），避免与阿姆氏卡片的警示自相矛盾。⑬ 每张卡片的「详细解读」中，<b>同类位置的历史表现</b>由 build_mood.py 注入的沪深300收盘价序列（2002 起交易日）计算：取原始值历史分位落在当前 ±7.5 区间内的历史观测日，按至少间隔 20 个交易日去重，要求有效样本 ≥8 个且具备完整 60 个交易日前瞻数据，再统计其后 20 / 60 交易日收益的均值、中位与上涨概率，并与「每 20 交易日取一个样本」的全历史基准对照；样本不足时本页直接不出统计量。这是<b>描述性统计而非预测</b>：样本区间重叠、未计交易成本与分红、宏观环境不同，分组依据为原始值分位（不区分指标方向），请勿把「同区间均值高于基准」直接读成看涨信号。另注意三套数字不可混用：<b>当前情绪分</b>是绝对水平（0=极悲观、100=极乐观），<b>近3/5/10年分位</b>是情绪分在各自窗口内的相对排名，<b>全历史分位</b>是原始值的 expanding 分位（反向指标方向与窗口分位相反），三者既不能直接相减，也不能横向比较；历史不足 10 年的指标，其 5/10 年窗口覆盖同一段样本，不构成时代对照。详细解读默认全部展开，可用顶部按钮一键收起。⑭ 新增<b>历史回放</b>：开启后把鼠标移到任意走势图（或用日期框）即可重现该日的读数与解读，全部按 point-in-time 重算——原始值分位、近 3/5/10 年窗口分位、近期变化、历史区间与前瞻统计只用该日及之前的数据，前瞻样本还要求「样本日+60 交易日 ≤ 回放日」，无未来函数；数据源起点晚于回放日的卡片明确标注「当日无数据」，不会静默显示当前值。注意判读逻辑/联动/使用边界是<b>现行规则</b>，重现的是「用今天的规则套当日数据」，而非「当天页面真实写过什么」，这样后视验证才不会用到事后修订过的规则。回放默认跟随鼠标，<b>单击走势图任意位置即可锁定该日</b>（锁定后移动鼠标不会再切换日期，点别处可换日），也可用工具条的「上一天 / 下一天」或键盘 ← → 按交易日逐日切换、用日期框跳转（选完自动锁定）；顶部状态条为<b>不透明浮层</b>，点「收起」可缩成右上小角标以免遮挡内容，Esc 退出回放。⑮ 新增<b>解读有效性后视回测</b>：按每个历史日的 PIT 情绪分分「悲观&lt;35 / 亢奋&gt;65」两组，统计其后 20/60 交易日沪深300收益，用「悲观组−亢奋组」60 日均<b>价差</b>判定方向（&gt;1pp 符合预期、&lt;−1pp 方向相反、任一组样本 &lt;8 记样本不足）。这是方向一致性检验而非策略回测：样本重叠、阈值为设定值、未做样本外检验、未计成本，且 A 股中短期动量可能使不少指标呈「方向相反」——那是解读的适用边界，不是计算错误。</div>';
 
     app.className = "";   // 移除初始 loading 态（padding/text-align 会压缩卡片）
     app.innerHTML = expandFacts(html);
@@ -1172,20 +1241,41 @@ a{text-decoration:none;color:inherit}
       syncDetailBtn();
     };
     // 历史回放：开关 / 日期框 / 退出；图表悬停事件在 bindReplayEvents() 里统一挂
+    function stopReplay(){ replay.on=false; replay.date=null; replay.lock=false; replay.collapsed=false; replay.hoverDate=null; refreshReplay(); }
     var rbtn=document.getElementById("replayBtn");
     if(rbtn) rbtn.addEventListener("click",function(){
       replay.on=!replay.on;
-      if(!replay.on) replay.date=null;
-      else if(!replay.date){ var ri=document.getElementById("replayDate"); replay.date=(ri&&ri.value)||D.data_date||""; }
-      refreshReplay();
+      if(!replay.on) stopReplay();
+      else{
+        replay.lock=false;   // 刚开启时默认跟随鼠标
+        if(!replay.date){ var ri=document.getElementById("replayDate"); replay.date=(ri&&ri.value)||D.data_date||""; }
+        refreshReplay();
+      }
     });
     var rdate=document.getElementById("replayDate");
     if(rdate) rdate.addEventListener("change",function(){
       replay.on=true;
+      replay.lock=true;     // 手动选日期后不再被鼠标覆盖
       setReplayDate(rdate.value||D.data_date||"");
     });
     var rexit=document.getElementById("replayExit");
-    if(rexit) rexit.addEventListener("click",function(){ replay.on=false; replay.date=null; refreshReplay(); });
+    if(rexit) rexit.addEventListener("click",stopReplay);
+    var rlock=document.getElementById("replayLockBtn");
+    if(rlock) rlock.addEventListener("click",function(){ replay.lock=!replay.lock; refreshReplay(); });
+    var rprev=document.getElementById("replayPrevBtn");
+    if(rprev) rprev.addEventListener("click",function(){ stepReplay(-1); });
+    var rnext=document.getElementById("replayNextBtn");
+    if(rnext) rnext.addEventListener("click",function(){ stepReplay(1); });
+    var rcol=document.getElementById("replayCollapse");
+    if(rcol) rcol.addEventListener("click",function(){ replay.collapsed=!replay.collapsed; refreshReplay(); });
+    document.addEventListener("keydown",function(ev){
+      if(!replay.on) return;
+      var tag=ev.target&&ev.target.tagName;
+      if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT") return;
+      if(ev.key==="ArrowLeft"){ ev.preventDefault(); stepReplay(-1); }
+      else if(ev.key==="ArrowRight"){ ev.preventDefault(); stepReplay(1); }
+      else if(ev.key==="Escape"){ stopReplay(); }
+    });
     syncDetailBtn();
   }
 
