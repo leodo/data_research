@@ -1,0 +1,430 @@
+/* L0 因子变换层 + L1 常驻效力审计 · 独立渲染器（2026-11-21）
+ * 消费 data/factor_matrix.js 的 window.FACTOR_MATRIX 与 data/efficacy_audit.js 的
+ * window.EFFICACY_AUDIT，挂载到 mood.html 的 #factorAuditRoot。
+ * 与主页面 render() 及 confirm_cards.js 完全隔离：独立样式前缀 fa-、独立图表实例。
+ * 缺失数据时只提示本层，不影响原有 8 指标、共振板与确认层。
+ */
+(function () {
+  "use strict";
+  var L0 = window.FACTOR_MATRIX, L1 = window.EFFICACY_AUDIT;
+  var root = document.getElementById("factorAuditRoot");
+  if (!root) return;
+  if (!L0 || !L0.factors || !L1 || !L1.summary) {
+    root.innerHTML = '<div class="card fa-card"><div class="fa-sec-head">因子研究层 · 数据未就绪</div>' +
+      '<div class="fa-note">未找到 data/factor_matrix.js / data/efficacy_audit.js，请依次运行 ' +
+      '<code>python build_factor_matrix.py</code> 与 <code>python audit_efficacy.py</code>。' +
+      '本层为只读审计层，缺失不影响原有任何卡片。</div></div>';
+    return;
+  }
+
+  /* ---------------- 样式（全部走项目主题变量）---------------- */
+  var css = [
+    '.fa-sec{margin-top:28px}',
+    '.fa-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px}',
+    '.fa-title{font-size:17px;font-weight:800;color:var(--ink)}',
+    '.fa-sub{font-size:12px;color:var(--text-3)}',
+    '.fa-layer{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}',
+    '.fa-chip{border:1px solid var(--line);background:var(--bg-soft);border-radius:9px;padding:9px 13px;min-width:158px}',
+    '.fa-chip .k{font-size:11px;color:var(--text-3)}',
+    '.fa-chip .v{font-size:15px;font-weight:700;margin-top:2px;color:var(--ink);font-variant-numeric:tabular-nums}',
+    '.fa-chip.warn{border-color:var(--cau);background:var(--cau-bg)}',
+    '.fa-chip.warn .v{color:var(--cau)}',
+    '.fa-card{padding:18px 20px}',
+    '.fa-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px}',
+    '.fa-name{font-size:15px;font-weight:700;color:var(--ink)}',
+    '.fa-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid var(--line);color:var(--text-2);background:var(--bg-soft)}',
+    '.fa-meta{font-size:11.5px;color:var(--text-3);margin:0 0 12px}',
+    '.fa-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:9px;margin:12px 0}',
+    '.fa-kv>div{background:var(--bg-soft);border:1px solid var(--line);border-radius:8px;padding:9px 11px}',
+    '.fa-kv .k{font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.fa-kv .v{font-size:17px;font-weight:700;margin-top:2px;color:var(--ink);font-variant-numeric:tabular-nums}',
+    '.fa-chart{width:100%;height:270px;margin:8px 0 4px}',
+    '.fa-chart.tall{height:430px}',
+    '.fa-h3{font-size:12.5px;font-weight:700;color:var(--text-2);margin:16px 0 6px}',
+    '.fa-tbl{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0}',
+    '.fa-tbl th,.fa-tbl td{border:1px solid var(--line);padding:6px 9px;text-align:left;white-space:nowrap}',
+    '.fa-tbl th{background:var(--bg-soft);color:var(--text-2);font-weight:600}',
+    '.fa-tbl td.num{text-align:right;font-variant-numeric:tabular-nums}',
+    '.fa-tbl td.wrap{white-space:normal;min-width:230px;line-height:1.55;color:var(--text-2)}',
+    '.fa-tbl tr.hl td{background:var(--brand-soft)}',
+    '.fa-scroll{overflow-x:auto}',
+    '.fa-note{background:var(--srcbg);border:1px solid var(--line);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--text-2);line-height:1.7;margin-top:12px}',
+    '.fa-warn{border-left:3px solid var(--cau);padding-left:10px;margin-top:10px;font-size:12px;color:var(--text-2);line-height:1.7}',
+    '.fa-good{border-left:3px solid var(--down);padding-left:10px;margin-top:10px;font-size:12px;color:var(--text-2);line-height:1.7}',
+    '.fa-foot{font-size:11.5px;color:var(--text-3);margin-top:16px;line-height:1.8;border-top:1px solid var(--line);padding-top:12px}',
+    '.fa-pos{color:var(--up);font-weight:600}.fa-neg{color:var(--down);font-weight:600}',
+    '.fa-tag{font-size:10.5px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);background:var(--bg-soft);color:var(--text-2)}'
+  ].join("\n");
+  var st = document.createElement("style");
+  st.id = "fa-style"; st.textContent = css;
+  document.head.appendChild(st);
+
+  /* ---------------- 工具 ---------------- */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function f(v, suffix) {
+    if (v === null || v === undefined || v === "" || (typeof v === "number" && !isFinite(v))) return "—";
+    return String(v) + (suffix || "");
+  }
+  function signCls(v) {
+    return (typeof v === "number" && v > 0) ? "fa-pos" : ((typeof v === "number" && v < 0) ? "fa-neg" : "");
+  }
+  function kv(list) {
+    return '<div class="fa-kv">' + list.map(function (x) {
+      return '<div><div class="k" title="' + esc(x[0]) + '">' + esc(x[0]) + '</div>' +
+        '<div class="v">' + f(x[1], x[2] || "") + '</div></div>';
+    }).join("") + "</div>";
+  }
+  function tbl(cols, rows, hlKeys, wrapLast) {
+    var h = '<div class="fa-scroll"><table class="fa-tbl"><thead><tr>' +
+      cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr></thead><tbody>";
+    rows.forEach(function (r) {
+      var first = (r[0] && typeof r[0] === "object" && r[0].html) ? String(r[0].html).replace(/<[^>]+>/g, "") : r[0];
+      var on = hlKeys && hlKeys.indexOf(first) >= 0 ? ' class="hl"' : "";
+      h += "<tr" + on + ">" + r.map(function (c, i) {
+        var isObj = c && typeof c === "object" && Object.prototype.hasOwnProperty.call(c, "html");
+        var cell = isObj ? c.html : esc(c);
+        var wrap = wrapLast && i === r.length - 1 ? " wrap" : "";
+        var numeric = i > 0 && !wrap && !(isObj && c.left) && !(isObj && c.num);
+        return "<td" + wrap + (numeric ? ' class="num"' : (isObj && c.num ? ' class="num"' : "")) + ">" + cell + "</td>";
+      }).join("") + "</tr>";
+    });
+    return h + "</tbody></table></div>";
+  }
+  function cv(name, fallback) {
+    try {
+      var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fallback;
+    } catch (e) { return fallback; }
+  }
+  function theme() {
+    return {
+      ink: cv("--ink", "#111"), t2: cv("--text-2", "#4d4d4d"), t3: cv("--text-3", "#8c8c8c"),
+      line: cv("--chart-axis-line", "#e8e8e8"), split: cv("--chart-split", "#f3f3f3"),
+      up: cv("--up", "#ff4713"), down: cv("--down", "#00875a"),
+      neu: cv("--neu", "#1e88ff"), cau: cv("--cau", "#ff2525"),
+      brand: cv("--brand", "#ff4713"), bgsoft: cv("--bg-soft", "#fafafa"),
+      tipBg: cv("--chart-tip-bg", "#fff"), tipFg: cv("--chart-tip-fg", "#111")
+    };
+  }
+
+  var M = L0.meta, S = L1.summary, CF = L1.conditional_fdr || {}, JF = L1.joint_fdr || {};
+  var MA = L1.metadata_audit || {}, PIT = M.pit_check || {};
+  var TR = L1.track_robustness || { tracks: [], note: "" };
+  var EL = L1.experiment_log || { families: [], note: "" };
+  var html = '<div class="fa-sec" data-toc="因子研究层（L0/L1/L2/L3）" data-toc-group="因子研究" id="toc_factor_layer">';
+  html += '<div class="fa-head"><span class="fa-title">因子研究层 · L0 变换矩阵 / L1 常驻审计 / L2 周期画像 / L3 每日可信度</span>' +
+    '<span class="fa-sub">独立只读层 · 不进综合分 · 不改共振板 · 数据基准 ' + esc(M.base_date) + '</span></div>';
+  html += '<div class="fa-layer">';
+  html += '<div class="fa-chip"><div class="k">L0 因子矩阵</div><div class="v">' +
+    f(M.n_in_matrix) + ' 因子 × ' + f(M.n_transforms) + ' 变换</div></div>';
+  html += '<div class="fa-chip"><div class="k">PIT 无前视自检</div><div class="v">' +
+    (PIT.passed ? "通过" : "未通过") + ' · ' + f(PIT.n) + ' 次回放</div></div>';
+  html += '<div class="fa-chip"><div class="k">L1 主检验 FDR</div><div class="v">' +
+    f(S.n_sig_fdr) + ' / ' + f(S.n_tests) + ' 显著</div></div>';
+  html += '<div class="fa-chip"><div class="k">条件 IC FDR</div><div class="v">' +
+    f(CF.fdr_sig) + ' / ' + f(CF.n_tests) + ' 显著</div></div>';
+  html += '<div class="fa-chip warn"><div class="k">联合族系 FDR</div><div class="v">' +
+    f(JF.fdr_sig) + ' / ' + f(JF.n_tests) + ' 显著</div></div>';
+  html += '</div>';
+
+  /* ---------------- 卡片 1：L0 变换矩阵 ---------------- */
+  html += '<div class="card fa-card" data-toc="L0 因子变换矩阵" data-toc-group="因子研究" id="toc_fa_l0">';
+  html += '<div class="fa-sec-head"><span class="fa-name">① L0 · 双轨 PIT 因子变换矩阵</span>' +
+    '<span class="fa-badge">生产口径原样保留</span></div>';
+  html += '<p class="fa-meta">宽表 data/factor_matrix.csv · ' + f(M.n_days_in_matrix) +
+    ' 交易日 × ' + f(M.n_columns) + ' 列 · 审计起点 ' + esc(M.start) + ' · 变换全部只用 t 及之前信息</p>';
+  html += kv([
+    ["收集因子", M.n_factors_all], ["入模日频因子", M.n_in_matrix],
+    ["并列变换", M.n_transforms], ["排除低频/低覆盖", (L0.excluded || []).length],
+    ["PIT 回放次数", PIT.n], ["回放最大差", PIT.max_abs_diff],
+    ["生产轨道同步", M.prod_track_sync ? "是" : "否"], ["主检验轨道", M.main_track]
+  ]);
+  html += '<div class="fa-chart" id="faChartKs"></div>';
+  html += '<div class="fa-h3">12 种变换定义与跨年分布漂移（相邻年份 KS 距离均值，越低越平稳）</div>';
+  var ksMap = {};
+  (L0.charts.ks_by_transform || []).forEach(function (x) { ksMap[x.key] = x.ks_mean; });
+  html += tbl(["变换", "口径 / 公式", "窗口", "角色", "跨年 KS"],
+    (L0.transforms || []).map(function (t) {
+      return [t.key, t.formula, t.window === null ? "全历史" : t.window, t.role, f(ksMap[t.key])];
+    }), ["pct_exp", "pct_r126"]);
+  html += '<div class="fa-good"><b>双轨原则：</b><code>pct_exp</code> 就是卡片现用的全历史 expanding 分位，' +
+    '原样保留以保证综合分 34.65(8/8) 与已交付报告的历史可比性；' +
+    '其它 11 种变换并列生成，只写进独立因子矩阵，<b>绝不替换、绝不回写 mood_data.json</b>。' +
+    'PIT 自检做法：对代表因子用「截至 t 的子样本」重算 rolling 变换末值，与全量序列在 t 处比对，' +
+    '本次 ' + f(PIT.n) + ' 次回放最大差 ' + f(PIT.max_abs_diff) + '。</div>';
+  html += '<div class="fa-note">' + esc(M.note) + '</div>';
+  html += '</div>';
+
+  /* ---------------- 卡片 2：元数据与漂移 ---------------- */
+  html += '<div class="card fa-card" data-toc="因子元数据与量纲漂移" data-toc-group="因子研究" id="toc_fa_meta">';
+  html += '<div class="fa-sec-head"><span class="fa-name">② 因子元数据 · 量纲漂移与处理清单</span>' +
+    '<span class="fa-badge">25 因子登记 / 17 入模</span></div>';
+  html += '<p class="fa-meta">publish_date 源端未提供，L0 如实写 null；' +
+    '用 as_of + stale_days（交易日）近似。发布滞后 ' + f(MA.max_stale_days) +
+    ' 日内 · 无滞后 ' + f(MA.stale_distribution && MA.stale_distribution["0"]) + ' 个 · ' +
+    '1~3 日 ' + f(MA.stale_distribution && MA.stale_distribution["1-3"]) + ' 个 · ' +
+    '&gt;3 日 ' + f(MA.stale_distribution && MA.stale_distribution[">3"]) + ' 个</p>';
+  var repPath = (L0.charts.year_paths || [])[0];
+  if (repPath) {
+    html += '<div class="fa-h3">代表因子逐年路径 · ' + esc(repPath.name) +
+      '（原始值中位数 vs 两种分位中位数）</div>';
+    html += '<div class="fa-chart" id="faChartPath"></div>';
+  }
+  html += '<div class="fa-h3">入模因子处理清单（按跨年 KS 降序；处理建议按经济含义先验指定）</div>';
+  var facs = (L0.factors || []).filter(function (x) { return x.in_matrix; })
+    .slice().sort(function (a, b) { return (b.ks_raw || 0) - (a.ks_raw || 0); });
+  html += tbl(["指标", "单位", "类型", "起点", "数据日", "滞后(交易日)", "KS raw", "KS exp", "KS r126", "趋势ρ", "优先级", "处理建议"],
+    facs.map(function (x) {
+      return [x.name, x.unit, x.kind, x.history_start, x.as_of, x.stale_trade_days,
+        f(x.ks_raw), f(x.ks_pct_exp), f(x.ks_pct_r126), f(x.trend_rho), x.priority,
+        esc(x.recommend)];
+    }), [], true);
+  html += '<div class="fa-h3">未入模因子（' + (L0.excluded || []).length + ' 个，混频不造伪独立观测）</div>';
+  html += tbl(["指标", "频率", "覆盖率", "原因"],
+    (L0.excluded || []).map(function (x) {
+      return [x.name, x.freq, f(x.coverage_pct, "%"), x.reason];
+    }));
+  html += '<div class="fa-warn"><b>漂移实证：</b>expanding 全历史分位几乎没消除跨年漂移（KS 均值仅小幅下降），' +
+    '真正压稳的是 126 日滚动分位。趋势型因子后期会被 expanding 永久标成「历史极值」，' +
+    '因此趋势类必须双尺度并列、bounded 类不要二次分位；但 <b>KS 降低是分位压平分布的设计使然，' +
+    '不等于预测信息增加</b>，也不构成本层判定哪种变换更有效的证据。</div>';
+  html += '</div>';
+
+  /* ---------------- 卡片 3：L1 效力审计 ---------------- */
+  html += '<div class="card fa-card" data-toc="L1 常驻效力审计" data-toc-group="因子研究" id="toc_fa_l1">';
+  html += '<div class="fa-sec-head"><span class="fa-name">③ L1 · 单因子 / 条件 IC / 多轨道稳健性</span>' +
+    '<span class="fa-badge">统一读取 L0 矩阵</span></div>';
+  html += '<p class="fa-meta">因子值唯一来源 data/factor_matrix.csv · ' +
+    '主检验 block bootstrap ' + f(L1.meta.bootstrap) + ' 次 · 条件 IC ' +
+    f(L1.meta.bootstrap_conditional) + ' 次 · 耗时 ' + f(L1.meta.elapsed_sec, "s") + '</p>';
+  html += kv([
+    ["主检验次数", S.n_tests], ["raw p<0.05", S.n_sig_raw], ["族内 FDR 显著", S.n_sig_fdr],
+    ["条件 IC 次数", CF.n_tests], ["条件 raw 显著", CF.raw_sig],
+    ["条件族内 FDR", CF.fdr_sig], ["联合 FDR 显著(条件)", CF.joint_sig],
+    ["联合族系总数", JF.n_tests]
+  ]);
+  html += '<div class="fa-h3">三口径多重检验对照</div>';
+  html += tbl(["族系", "检验数", "p 值方法", "raw 显著", "FDR 显著", "最小 q"], [
+    ["单因子主检验（pct_exp）", S.n_tests, "block bootstrap " + L1.meta.bootstrap, S.n_sig_raw, S.n_sig_fdr,
+      f((L1.single || []).reduce(function (a, b) { return Math.min(a, b.q); }, 1))],
+    ["条件 IC（8 状态 × 17 因子）", CF.n_tests, "block bootstrap " + L1.meta.bootstrap_conditional,
+      CF.raw_sig, CF.fdr_sig, f(CF.min_q)],
+    ["联合族系（主检验 + 条件）", JF.n_tests, "同上，合并 BH", "—", JF.fdr_sig, f(CF.min_q_joint)]
+  ]);
+  var vc = S.verdict_counts || {};
+  html += '<div class="fa-h3">单因子判定分布（' + S.n_tests + ' 次检验）</div>';
+  html += tbl(["判定", "次数"], Object.keys(vc).map(function (k) { return [k, vc[k]]; }), ["不显著"]);
+
+  html += '<div class="fa-h3">状态依赖 · 条件 IC 绝对值 Top10（已附族内 / 联合 q 值）</div>';
+  html += tbl(["市场状态", "因子", "IC(60日)", "样本 n", "q 族内", "q 联合"],
+    (CF.top || []).map(function (t) {
+      return [t.state, t.name, { html: '<span class="' + signCls(t.ic) + '">' + f(t.ic) + '</span>', num: true },
+        t.n, f(t.q_cond), f(t.q_joint)];
+    }));
+  var sigCells = CF.sig_cells || [];
+  html += '<div class="fa-h3">FDR 后仍显著的条件格子（' + sigCells.length + ' 个，两种校正口径一致）</div>';
+  if (sigCells.length) {
+    html += tbl(["市场状态", "因子", "IC(60日)", "95% CI", "样本 n", "q 族内", "q 联合"],
+      sigCells.map(function (t) {
+        return [t.state, t.name,
+          { html: '<span class="' + signCls(t.ic) + '">' + f(t.ic) + '</span>', num: true },
+          "[" + f(t.ci && t.ci[0]) + ", " + f(t.ci && t.ci[1]) + "]",
+          t.n, f(t.q_cond), f(t.q_joint)];
+      }));
+    html += '<div class="fa-good"><b>校正后的正面结果：</b>主检验 51 次全不显著，' +
+      '但条件 IC 在联合族系 ' + f(JF.n_tests) + ' 次校正后仍有 ' + sigCells.length +
+      ' 个格子显著，且方向一致（高波动状态下宽度类因子分位越高、未来 60 日收益越低）。' +
+      '这正是「信息集中在特定状态而非全样本线性相关」的证据，也说明只做单因子 IC 会漏掉它。</div>';
+  } else {
+    html += '<div class="fa-note">本次没有任何条件格子在 FDR 后显著。</div>';
+  }
+  html += '<div class="fa-warn"><b>p 值分辨率：</b>条件 IC 用 ' + f(L1.meta.bootstrap_conditional) +
+    ' 次移动块 bootstrap，p 的分辨率下限是 1/' + f(L1.meta.bootstrap_conditional) +
+    '；表中 q=0 应读作「低于分辨率下限」，不是精确 0。条件样本重叠、状态定义含阈值、' +
+    '未经样本外检验，显著格子只作假设生成，不构成可交易信号。</div>';
+  html += '<div class="fa-h3">条件 IC 热力图（8 状态 × 17 因子，红=正 IC / 绿=负 IC）</div>';
+  html += '<div class="fa-chart tall" id="faChartHeat"></div>';
+
+  html += '<div class="fa-h3">多轨道稳健性 · 换一条变换轨道，结论会不会变</div>';
+  html += tbl(["变换轨道", "n", "|IC| 均值", "raw 显著", "FDR 显著", "最小 q", "与主轨道秩相关", "符号翻转率"],
+    (TR.tracks || []).map(function (t) {
+      return [t.track, t.n, f(t.abs_ic), t.raw_sig, t.fdr_sig, f(t.min_q),
+        f(t.ic_rank_corr_with_main), f(t.sign_flip_rate, "%")];
+    }), [M.main_track]);
+  html += '<div class="fa-warn"><b>反面证据与边界（必须保留）：</b>' +
+    esc(CF.note) + ' ' + esc(TR.note) +
+    ' 当前主检验在 FDR 后仍为 ' + f(S.n_sig_fdr) + ' 个显著；' +
+    '「51/51 不显著」是<b>线性 IC 设定下的结论</b>，不是对指标的终审——' +
+    '分层单调性与条件 IC 显示信息集中在尾部档位与特定状态。' +
+    '相关矩阵中 ERP 与 ERP 股债归因 r=1.000（重复卡片），PCA 前 3 主成分 ' + f(S.cum3, "%") +
+    ' / 前 5 ' + f(S.cum5, "%") + '，说明 17 因子只有约 4~5 个独立维度，' +
+    '有效检验数远小于名义次数。</div>';
+  html += '</div>';
+
+  /* ---------------- 卡片 4：纪律与边界 ---------------- */
+  html += '<div class="card fa-card" data-toc="审计纪律与试验日志" data-toc-group="因子研究" id="toc_fa_rules">';
+  html += '<div class="fa-sec-head"><span class="fa-name">④ 纪律 · 试验日志 · 统计边界</span>' +
+    '<span class="fa-badge">不改生产口径</span></div>';
+  html += '<div class="fa-h3">试验日志（每轮新增指标 / 变换 / 状态都要登记）</div>';
+  html += tbl(["检验族系", "次数", "p 值方法", "FDR 口径", "显著数"],
+    (EL.families || []).map(function (x) {
+      return [x.name, x.n, x.p_method, x.fdr, x.sig === null ? "探索性" : x.sig];
+    }));
+  html += '<div class="fa-warn">' + esc(EL.note) + '</div>';
+  html += '<div class="fa-h3">L0 层的口径边界</div>';
+  html += '<ul style="font-size:12px;color:var(--text-2);line-height:1.8;padding-left:20px;margin:8px 0">' +
+    (L0.caveats || []).map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + '</ul>';
+  html += '<div class="fa-warn"><b>元数据诚实性：</b>' + esc(MA.publish_date_note) +
+    ' 本次 ' + f(MA.n_total) + ' 个因子中可用 publish_date 为 ' + f(MA.publish_date_available) +
+    ' 个，全部以 as_of 近似，故所有 PIT 结论仍可能存在发布滞后，属已知上限而非已消除。</div>';
+  html += '<div class="fa-foot"><b>免责声明：</b>本栏目基于公开数据与量化历史标定，仅供研究参考，' +
+    '不构成投资建议。所有 IC、相关性与前瞻统计均为描述性回测，样本重叠、未计交易成本与分红、' +
+    '阈值与窗口未经严格样本外检验，过往表现不预示未来收益。市场有风险，投资需谨慎，' +
+    '任何投资决策应结合个人风险承受能力独立判断，必要时咨询持牌专业机构。<br>' +
+    '数据来源：项目本地指标库自算 · L0 ' + esc(M.base_date) + ' · 在 walk-forward 样本外证明' +
+    '有稳定增量之前，绝不改 8 指标等权。</div>';
+  html += '</div></div>';
+
+  root.innerHTML = html;
+
+  /* ---------------- 图表 ---------------- */
+  var charts = [];
+  function init(id) {
+    var el = document.getElementById(id);
+    if (!el || !window.echarts) return null;
+    try { var c = echarts.init(el); charts.push(c); return c; } catch (e) { return null; }
+  }
+  function draw() {
+    var t = theme();
+    charts.forEach(function (c) { try { c.dispose(); } catch (e) {} });
+    charts = [];
+    var base = {
+      textStyle: { color: t.t2, fontSize: 11 },
+      tooltip: { backgroundColor: t.tipBg, borderColor: t.line, textStyle: { color: t.tipFg, fontSize: 11 } },
+      grid: { containLabel: true }
+    };
+
+    // 1) 12 种变换的跨年 KS
+    var c1 = init("faChartKs");
+    if (c1) {
+      var ks = L0.charts.ks_by_transform || [];
+      c1.setOption(Object.assign({}, base, {
+        grid: { left: 12, right: 24, top: 26, bottom: 8, containLabel: true },
+        title: { text: "跨年分布漂移 · KS 均值（越低越平稳）", left: 0,
+          textStyle: { color: t.t2, fontSize: 12, fontWeight: 600 } },
+        xAxis: { type: "category", data: ks.map(function (x) { return x.key; }),
+          axisLabel: { color: t.t3, fontSize: 10, rotate: 32 },
+          axisLine: { lineStyle: { color: t.line } }, axisTick: { show: false } },
+        yAxis: { type: "value", min: 0, max: 0.6,
+          axisLabel: { color: t.t3, fontSize: 10 },
+          splitLine: { lineStyle: { color: t.split } }, axisLine: { show: false } },
+        series: [{ type: "bar", barWidth: "56%",
+          data: ks.map(function (x) {
+            var hi = (x.key === "raw" || x.key === "pct_exp");
+            return { value: x.ks_mean, itemStyle: { color: hi ? t.brand : t.neu, opacity: hi ? 1 : 0.72 } };
+          }),
+          label: { show: true, position: "top", fontSize: 9, color: t.t3,
+            formatter: function (p) { return p.value === null ? "" : p.value; } }
+        }],
+        tooltip: { trigger: "axis", backgroundColor: t.tipBg, borderColor: t.line,
+          textStyle: { color: t.tipFg, fontSize: 11 },
+          formatter: function (ps) {
+            var i = ps[0].dataIndex;
+            return ks[i].name + "<br/>跨年 KS " + ks[i].ks_mean + "（" + ks[i].n + " 因子）";
+          } }
+      }));
+    }
+
+    // 2) 代表因子逐年路径（左轴原始值 / 右轴分位 0-100）
+    var rp = (L0.charts.year_paths || [])[0];
+    var c2 = init("faChartPath");
+    if (c2 && rp) {
+      var path = rp.path || [];
+      c2.setOption(Object.assign({}, base, {
+        grid: { left: 20, right: 20, top: 40, bottom: 10, containLabel: true },
+        legend: { top: 0, textStyle: { color: t.t2, fontSize: 11 },
+          data: ["原始值中位数", "expanding 分位中位", "rolling126 分位中位"] },
+        xAxis: { type: "category", data: path.map(function (x) { return x.year; }),
+          axisLabel: { color: t.t3, fontSize: 10 }, axisLine: { lineStyle: { color: t.line } },
+          axisTick: { show: false } },
+        yAxis: [
+          { type: "value", name: "原始值", nameTextStyle: { color: t.t3, fontSize: 10 },
+            axisLabel: { color: t.t3, fontSize: 10 }, splitLine: { lineStyle: { color: t.split } } },
+          { type: "value", name: "分位", min: 0, max: 100,
+            nameTextStyle: { color: t.t3, fontSize: 10 },
+            axisLabel: { color: t.t3, fontSize: 10 }, splitLine: { show: false } }
+        ],
+        series: [
+          { name: "原始值中位数", type: "line", smooth: true, symbolSize: 5,
+            data: path.map(function (x) { return x.raw_med; }),
+            lineStyle: { color: t.brand, width: 2.4 }, itemStyle: { color: t.brand } },
+          { name: "expanding 分位中位", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 4,
+            data: path.map(function (x) { return x.pct_exp_med; }),
+            lineStyle: { color: t.neu, width: 1.8, type: "dashed" }, itemStyle: { color: t.neu } },
+          { name: "rolling126 分位中位", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 4,
+            data: path.map(function (x) { return x.pct_r126_med; }),
+            lineStyle: { color: t.down, width: 1.8 }, itemStyle: { color: t.down } }
+        ],
+        tooltip: { trigger: "axis", backgroundColor: t.tipBg, borderColor: t.line,
+          textStyle: { color: t.tipFg, fontSize: 11 } }
+      }));
+    }
+
+    // 3) 条件 IC 热力图
+    var c3 = init("faChartHeat");
+    if (c3) {
+      var cond = L1.conditional || [];
+      var stNames = [], fNames = [];
+      cond.forEach(function (x) {
+        if (stNames.indexOf(x.state) < 0) stNames.push(x.state);
+        if (fNames.indexOf(x.name) < 0) fNames.push(x.name);
+      });
+      var short = function (s) { return s.length > 10 ? s.slice(0, 9) + "…" : s; };
+      var data = cond.map(function (x) {
+        return [stNames.indexOf(x.state), fNames.indexOf(x.name),
+          x.ic60 === null || x.ic60 === undefined ? "-" : x.ic60];
+      });
+      c3.setOption(Object.assign({}, base, {
+        grid: { left: 10, right: 20, top: 10, bottom: 74, containLabel: true },
+        xAxis: { type: "category", data: stNames.map(short), splitArea: { show: true },
+          axisLabel: { color: t.t3, fontSize: 10, rotate: 26 },
+          axisLine: { lineStyle: { color: t.line } }, axisTick: { show: false } },
+        yAxis: { type: "category", data: fNames.map(short), splitArea: { show: true },
+          axisLabel: { color: t.t3, fontSize: 10 },
+          axisLine: { lineStyle: { color: t.line } }, axisTick: { show: false } },
+        visualMap: { min: -0.5, max: 0.5, calculable: true, orient: "horizontal",
+          left: "center", bottom: 0, itemWidth: 12, itemHeight: 130,
+          inRange: { color: [t.down, t.bgsoft, t.up] },
+          textStyle: { color: t.t3, fontSize: 10 } },
+        series: [{ name: "条件 IC(60日)", type: "heatmap", data: data,
+          label: { show: false },
+          emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,.25)" } } }],
+        tooltip: { position: "top", backgroundColor: t.tipBg, borderColor: t.line,
+          textStyle: { color: t.tipFg, fontSize: 11 },
+          formatter: function (p) {
+            return stNames[p.value[0]] + "<br/>" + fNames[p.value[1]] +
+              "<br/>IC(60日) " + p.value[2];
+          } }
+      }));
+    }
+  }
+
+  draw();
+  try {
+    new MutationObserver(function (ms) {
+      ms.forEach(function (m) { if (m.attributeName === "data-theme") draw(); });
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  } catch (e) {}
+  window.addEventListener("resize", function () {
+    charts.forEach(function (x) { try { x.resize(); } catch (e) {} });
+  });
+
+  // 最后重扫一次目录：把本层 4 张卡片连同确认层一起纳入
+  try {
+    if (window.mountToc) window.mountToc({ app: "#app", bar: "#tocBar", side: "#tocSide", prefix: "mood" });
+  } catch (e) {}
+})();

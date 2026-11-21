@@ -130,6 +130,19 @@ PIPELINES = {
         # 不单独登记：它依赖那些刚落盘的源缓存，并生成信号卡所需的 mood_tech.csv。
         # ERP 股债归因同样由 build_mood.py 同进程计算（复用已加载的 PE / 国债序列）。
         ("情绪面板(综合)", "build_mood.py"),
+        # 拐点确认层必须排在 build_mood.py 之后：它要读当天的 mood_data.json
+        # （composite.history 周频综合分）与 index_data.json（QVIX 因子降级源）。
+        # 该层只写 confirm_data.* 与 mood_confirm.csv，不改 mood_data.json / 综合分。
+        ("拐点确认层(背离/涨跌停/VRP)", "build_confirm.py"),
+        # L0 → L1 顺序不可颠倒：L1 的因子值唯一来源是 L0 的 data/factor_matrix.csv。
+        # 两步都只读现有产物、只写自己的文件，不回写 mood_data.json / 综合分 / 共振板。
+        ("L0 因子变换矩阵(双轨PIT)", "build_factor_matrix.py"),
+        ("L1 常驻效力审计(FDR/条件IC)", "audit_efficacy.py"),
+        # L2 只读 L0 产物与 mood_data.json，产出周期画像 JSON/JS（供页面标注"该指标在哪个尺度上说话"），
+        # 不回写 mood_data.json / 综合分 / 共振板。
+        ("L2 周期画像(18周期/可信度)", "build_horizon_profile.py"),
+        # L3 依赖 L2 的检验结论，产出每日可信度（元评分）JSON/JS，供 mood.html 的独立卡片渲染。
+        ("L3 每日可信度(元评分)", "build_daily_confidence.py"),
     ],
 }
 

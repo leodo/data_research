@@ -255,6 +255,8 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         <li><b>沪深300 RSI14。</b>Wilder RSI，30/70 阈值仅作参考（趋势中可长期钝化），附 BIAS20 与 MA20/MA60 位置。</li>
         <li><b>顶底共振信号板。</b>把 13 个维度统一成 fear 分位（0=极热/顶部、100=极冷/底部），输出底部/顶部共振度 + 价格与宽度的独立拐点确认，并用沪深300 未来 20/60 日收益做历史胜率回测。这是赔率统计而非择时信号，阈值未经样本外检验。</li>
         <li><b>2026-11-20 新增指标。</b>ERP 股债归因（把 rp 变动拆成股票端与债券端，专门识别低利率造成的「便宜错觉」）、基金股票仓位、M1-M2 剪刀差、A股回购规模；阿姆氏指标 TRIN（双口径）、市场宽广度综合分、麦克莱伦摆动值与 Zweig 宽度推力。口径与局限见各卡片「数据源」及页面底部注意事项。</li>
+        <li><b>2026-11-21 新增「拐点确认层」（页面底部独立栏目）。</b>三项指标——情绪-价格底背离（周频）、涨跌停家数与缩量止跌（日频）、波动率风险溢价 VRP（QVIX−RV20）——补的是「时点确认 / 结构热度 / 尾部定价」，不是再加一个水平分位。<b>全部不计入综合情绪分，也不改变 13 维共振板</b>，数据文件独立为 data/confirm_data.json(.js)。回测严格 PIT（t+N ≤ 末日）、20 观测去重、附阈值稳健性与方向自证伪；涨跌停为未复权保守下界，VRP 隐波源端滞后 1~2 日，卡片内读数已统一截到同一观测日。口径与局限见各卡片说明。</li>
+        <li><b>2026-11-21 新增「因子研究层」（页面最底部独立栏目）。</b>L0 因子变换层把 25 个因子统一成 12 种 PIT 变换的双轨矩阵（保留现用全历史分位 `pct_exp` 保证历史可比，并列 rolling126/250、Z-score、双尺度差等），补齐单位/类型/窗口/数据日/滞后天数元数据；因源端无发布日期，`publish_date` 如实留空、用 `as_of + stale_days` 近似，月/周频因子不进日频矩阵以免 ffill 造伪观测。L1 常驻效力审计统一读取该矩阵，除单因子 IC/IR/分层与 BH-FDR 外，把 8 状态 × 17 因子的条件 IC 也纳入多重校正（族内 + 联合 187 次），并给出多轨道稳健性与试验日志。<b>两层都只读、不进综合分、不改 13 维共振板</b>；当前主检验 51 次 FDR 后 0 显著，条件 IC 联合校正后仅 2 个格子显著，均属探索性假设而非可交易信号。在 walk-forward 样本外证明有稳定增量之前绝不改 8 指标等权。</li>
       </ul>
       <p>综合情绪分为 8 个指标情绪分的等权平均；页面上其余所有独立观察卡片（交易拥挤度、结构观察、顶底信号、共振信号板）<b>均不计入综合分</b>。8 个指标中 4 个为公开数据精确自算，4 个因原站依赖主动基金全样本/全收益指数等不可公开获取的数据，采用<b>合理代理</b>并在卡片上标注。「近似」项表示口径接近但做了简化。历史走势按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个，跨时代比较时请注意口径差异；当前值始终为全部有效指标等权。</p>
       <p><b>每张卡片的「详细解读」包含什么：</b>① 当前读数（原始值分位 / 情绪分 / 状态三者区别）；② 跨周期窗口分位与口径提醒；③ 最近 20 个观测点的方向与分位变化；④ 全历史数值区间位置（与分位的区别）；⑤ 历史上落在同一分位区间时，沪深300 其后 20 / 60 交易日的收益统计与全历史基准对照（样本不足直接不出统计量）；⑥ 判读逻辑、⑦ 联动该看的卡片、⑧ 使用边界与常见误读。所有统计量都在浏览器端用页面自带序列现算，可按注意事项⑬的口径复现。</p>
@@ -264,6 +266,11 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
 </div>
 
 <script src="data/mood_data.js"></script>
+<script src="data/confirm_data.js"></script>
+<script src="data/factor_matrix.js"></script>
+<script src="data/horizon_profile.js"></script>
+<script src="data/confidence_data.js"></script>
+<script src="data/efficacy_audit.js"></script>
 <script>
 (function(){
   "use strict";
@@ -922,7 +929,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     var h = "";
     h += '<div class="panel" data-panel="'+esc(k)+'" style="border-style:dashed" data-toc="'+esc(p.name)+'" data-toc-group="'+esc(group)+'" id="toc_'+k+'">';
     var freqTag = p.freq ? '<span class="ptag" style="margin-left:6px">'+(p.freq==="monthly"?"月频":(p.freq==="weekly"?"周频":esc(p.freq)))+'</span>' : '';
-    h += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">'+esc(tag)+'</span>'+freqTag+staleTag(p,p.freq)+'</div></div>';
+    h += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag exact">公开自算</span><span class="ptag proxy" style="margin-left:6px">'+esc(tag)+'</span>'+freqTag+staleTag(p,p.freq)+scaleBadge(k)+'</div></div>';
     h += '<span class="pstate" data-cell="badge" style="background:var(--bg-soft);color:var(--text-2)">'+esc(badge||group)+'</span></div>';
     h += '<div class="panel-body"><div class="panel-val"><div class="v"><span data-cell="value">'+fmt(p.value,2)+'</span><span class="u">'+esc(p.unit||"")+'</span></div>';
     h += '<div class="score-line">'+esc(p.score_label||"历史分位")+' <b style="color:var(--ink)" data-cell="score">'+fmt(p.pct_all,0)+'</b> / 100'+esc(p.score_hint||"")+'</div></div>';
@@ -1062,6 +1069,30 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     return h;
   }
 
+
+  // 展示标准 v1：只给粗粒度尺度，不给精确带宽（R2 已证明精确带不可移植）
+  function scaleBadge(k){
+    var H = window.HORIZON_PROFILE; if(!H || !H[k]) return "";
+    var s = H[k], t, c, tip;
+    if(s.regime === "状态依赖（方向反转）"){
+      t = "尺度·状态依赖"; c = "proxy";
+      tip = "高/低波动、均线上/下四种状态下 IC 方向相反：牛市偏动量、熊市偏反转，不能当单一方向信号";
+    } else if(s.verdict === "可用尺度"){
+      t = "尺度·长端" + (s.onset ? ("（起效 " + s.onset + " 日）") : ""); c = "exact";
+      tip = "长端有效；微观与短周期已检验，无预测力";
+    } else if(s.verdict === "待验证"){
+      t = "尺度·长端（待验证）"; c = "proxy";
+      tip = "剖面形状成立但未过严格显著，只能当假设";
+    } else if(s.verdict === "效应可见·统计不可证"){
+      t = "尺度·长端（弱证据）"; c = "proxy";
+      tip = "|IC| 大，但循环平移零分布同样宽：慢变量与趋势共线，单市场无法区分";
+    } else {
+      t = "尺度·不明确"; c = "proxy";
+      tip = "换任何周期都没有稳定结构";
+    }
+    return '<span class="ptag '+c+'" title="'+esc(tip)+'" style="margin-left:6px;cursor:help">'+esc(t)+'</span>';
+  }
+
   function render(){
     var html = "";
     html += '<div class="replay-banner" id="replayBanner" style="display:none">'+
@@ -1096,8 +1127,13 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     html += '综合情绪分由 8 个指标的<b>情绪分位</b>等权平均得到。分数越低代表市场情绪越悲观（往往对应底部区域），越高代表越亢奋（往往对应顶部区域）。';
     html += '</div><div class="scale"><div class="pin" style="left:calc('+cs+'% - 1.5px)"></div></div>';
     html += '<div class="scale-labels"><span>0 极度悲观/冰点</span><span>50 中立</span><span>100 极度乐观/亢奋</span></div>';
+    html += '<div style="margin-top:10px;color:var(--text-2);font-size:12px;line-height:1.75;background:var(--bg-soft);border-radius:8px;padding:8px 10px;border-left:3px solid var(--cau)">'+
+      '<b>尺度定位：</b>这是 <b>1–2 年</b>的位置指标（60 日 IC≈0、500 日最强），<b>不能用于周级择时</b>；'
+      + '历史检验显示<b>高波动期信号更强</b>（−0.76 vs −0.46）。微观（1–5 日）与短周期已检验：无预测力。</div>';
     html += '<div style="margin-top:14px;color:var(--text-3);font-size:11.5px">共 '+order.length+' 个指标 · '+Object.keys(panels).length+' 个有效 · <span class="how" id="howBtn"><span class="q">?</span>查看计算口径</span></div>';
     html += '</div></div>' + compDetailHtml() + '</div>';
+    // 每日可信度（L3 元评分）：独立渲染器 confidence_card.js 填充此占位
+    html += '<div id="confidenceRoot"></div>';
 
     // 时间范围切换（作用于全部分项）
     html += '<div class="card range-card"><div class="range-row"><span class="range-label">查看区间</span><div class="ranges" id="rangeBtns">';
@@ -1140,7 +1176,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
       var flag = flags[k] || "精确";
       var flagCls = (flag==="精确") ? "exact" : "proxy";
       html += '<div class="panel" data-panel="'+esc(k)+'" data-toc="'+esc(p.name)+'" data-toc-group="分项指标" id="toc_'+k+'">';
-      html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag '+flagCls+'">'+esc(flag)+'自算</span>'+staleTag(p)+'</div></div>';
+      html += '<div class="panel-hd"><div><div class="panel-name">'+esc(p.name)+'</div><div class="panel-tags"><span class="ptag '+flagCls+'">'+esc(flag)+'自算</span>'+staleTag(p)+scaleBadge(k)+'</div></div>';
       html += '<span class="pstate '+stateCls(p.state)+'" data-cell="state">'+esc(p.state)+'</span></div>';
       html += '<div class="panel-body"><div class="panel-val"><div class="v"><span data-cell="value">'+fmt(p.value, p.unit==="个"?0:2)+'</span><span class="u">'+esc(p.unit||"")+'</span></div>';
       html += '<div class="score-line">情绪分 <b style="color:'+stateColor(p.state)+'" data-cell="score">'+fmt(p.score,1)+'</b> / 100</div></div>';
@@ -1210,6 +1246,15 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     html += backtestHtml();
     html += '<div class="note" style="margin-top:18px" data-toc="指标口径说明" data-toc-group="说明" id="toc_note1"><b>说明：</b>「精确自算」= 用公开数据按原站口径直接计算；「代理自算」= 原站依赖不可公开获取的主动基金全样本/全收益指数，此处用可公开获取的同类指数合理替代；「近似自算」= 口径接近但有简化（如以价格分位近似估值分位）。分位为全历史 expanding 口径，会随数据更新略有变化。本页面为透明复刻，非官方数值，仅供研究参考，不构成投资建议。</div>';
     html += '<div class="note" style="margin-top:12px" data-toc="注意事项" data-toc-group="说明" id="toc_note2"><b>注意事项：</b>① 各指标历史起点不同（新基金发行数据源仅回溯至 <b>2023-01</b>、PCR 2021 起、风险溢价 2010 起、换手率 2015 起、部分代理指标可回溯至 2000 年前），选择更长区间时起点晚的指标仅显示其已有数据；② 4 个代理/近似指标与原站口径存在差异，解读仅作方向参考，不宜当作精确择时信号；③ 情绪分越低代表越悲观（常对应底部区域）、越高代表越亢奋（常对应顶部区域），但极值可长期钝化，不等于立刻反转；④ 综合情绪分为 8 项等权平均，未做相关性去重，可能削弱单一极端指标的指示意义；⑤ 交易拥挤度、头部300ETF占比、两融增速、市场宽度、全A PB、破净率、新高新低差、上涨家数占比、RSI14、ERP股债归因、基金股票仓位、M1-M2剪刀差、回购规模、重要股东增减持、阿姆氏指标、宽度综合分、麦克莱伦摆动与共振信号板均为独立观察卡片，不计入综合分；市场宽度与拥挤度的股票池为当前在市A股、存在轻微幸存者偏差，收盘价为未复权口径，除权跳空对横截面统计影响有限；全A PB 为月频（约263个月点），与日频指标不同频，区间切换按数据点计；这些结构指标可作为风险参考但非择时信号；⑥ 顶底信号板的共振度是「多维度同时处于历史极值」的占比，只回答赔率不回答时点：极值可长期钝化，确认条件滞后、回测样本重叠且未计交易成本，阈值未经样本外检验；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。所有信号仅供研究参考，不构成投资建议。⑦ ERP 股债归因把 rp 变动拆成股票端(1/PE)与债券端(国债收益率)：只有前者上行才代表股票真的变便宜，后者下行只是无风险利率更低；PE 为月频 ffill，股票端贡献呈阶梯状属正常。共振信号板 2026-11-20 由 11 维扩到 13 维（新增 TRIN10 与麦克莱伦摆动值），历史共振度与回测已同步重算，请勿与此前数值直接比较。⑧ 阿姆氏指标 TRIN 主口径为「近似成交量」：用成交额÷收盘价反推股数（实测误差 &lt;0.5%），另附成交额口径(Dollar TRIN)对照。TRIN=(涨家数/跌家数)÷(涨股总量/跌股总量)，代数上等价于「平均每只下跌股量 ÷ 平均每只上涨股量」，衡量的是量在涨跌两组间的分配、不是全市场抛压总量；家数比在极端单边日失去上界会造成两种镜像失真：普跌日（上涨家数占比低于 20%）TRIN 机械偏低，不等于买盘强劲；普涨日（高于 80%）TRIN 机械偏高，不等于恐慌抛售或「超卖底部」。{@arms_sentence}，务必结合上涨家数占比与指数位置一起读。⑨ 基金股票仓位是第三方净值回归的测算值（非季报披露真实持仓，起点 2017-12、周频）；M1-M2 为月频且央行 2024 年调整过 M1 统计范围，前后绝对值不可比；回购规模按方案起始月归档、计划金额未必全部实施且未经市值归一化，长期有规模膨胀趋势；重要股东增减持按<b>公告日</b>归档、金额为「变动股数 × 收盘价」估算且含协议划转与内部转让（会虚增增减持总额），当月为未完结月。这四项请以历史分位与方向为主，勿跨时代比绝对值。⑩ 综合情绪分历史按「当日已有数据的指标等权」还原到 2000 年代，早期参与指标少于 8 个（新基金发行 2023-01 才有数据），与当前 8 指标等权口径不完全可比，当前值不受影响；⑪ 共振信号板的 13 个维度统一对齐到 2015 年起交易日历、分位用 expanding(min_periods=250)，而各单卡用自身全历史、min_periods=20，因此<b>同一指标在两处分位略有差异属口径不同、并非计算错误</b>；⑫ 极端单边日（上涨家数占比低于 20% 或高于 80%）TRIN 会机械失真，该情形下 TRIN 维度已从共振板极值判定中剔除（维度明细标注具体原因），避免与阿姆氏卡片的警示自相矛盾。⑬ 每张卡片的「详细解读」中，<b>同类位置的历史表现</b>由 build_mood.py 注入的沪深300收盘价序列（2002 起交易日）计算：取原始值历史分位落在当前 ±7.5 区间内的历史观测日，按至少间隔 20 个交易日去重，要求有效样本 ≥8 个且具备完整 60 个交易日前瞻数据，再统计其后 20 / 60 交易日收益的均值、中位与上涨概率，并与「每 20 交易日取一个样本」的全历史基准对照；样本不足时本页直接不出统计量。这是<b>描述性统计而非预测</b>：样本区间重叠、未计交易成本与分红、宏观环境不同，分组依据为原始值分位（不区分指标方向），请勿把「同区间均值高于基准」直接读成看涨信号。另注意三套数字不可混用：<b>当前情绪分</b>是绝对水平（0=极悲观、100=极乐观），<b>近3/5/10年分位</b>是情绪分在各自窗口内的相对排名，<b>全历史分位</b>是原始值的 expanding 分位（反向指标方向与窗口分位相反），三者既不能直接相减，也不能横向比较；历史不足 10 年的指标，其 5/10 年窗口覆盖同一段样本，不构成时代对照。详细解读默认全部展开，可用顶部按钮一键收起。⑭ 新增<b>历史回放</b>：开启后把鼠标移到任意走势图（或用日期框）即可重现该日的读数与解读，全部按 point-in-time 重算——原始值分位、近 3/5/10 年窗口分位、近期变化、历史区间与前瞻统计只用该日及之前的数据，前瞻样本还要求「样本日+60 交易日 ≤ 回放日」，无未来函数；数据源起点晚于回放日的卡片明确标注「当日无数据」，不会静默显示当前值。注意判读逻辑/联动/使用边界是<b>现行规则</b>，重现的是「用今天的规则套当日数据」，而非「当天页面真实写过什么」，这样后视验证才不会用到事后修订过的规则。回放默认跟随鼠标，<b>单击走势图任意位置即可锁定该日</b>（锁定后移动鼠标不会再切换日期，点别处可换日），也可用工具条的「上一天 / 下一天」或键盘 ← → 按交易日逐日切换、用日期框跳转（选完自动锁定）；顶部状态条为<b>不透明浮层</b>，点「收起」可缩成右上小角标以免遮挡内容，Esc 退出回放。⑮ 新增<b>解读有效性后视回测</b>：按每个历史日的 PIT 情绪分分「悲观&lt;35 / 亢奋&gt;65」两组，统计其后 20/60 交易日沪深300收益，用「悲观组−亢奋组」60 日均<b>价差</b>判定方向（&gt;1pp 符合预期、&lt;−1pp 方向相反、任一组样本 &lt;8 记样本不足）。这是方向一致性检验而非策略回测：样本重叠、阈值为设定值、未做样本外检验、未计成本，且 A 股中短期动量可能使不少指标呈「方向相反」——那是解读的适用边界，不是计算错误。</div>';
+
+    // 拐点确认层：独立渲染器 confirm_cards.js 在本脚本执行完后填充此占位，
+    // 不复用本页 render()/renderOneChart()，不改变任何现有卡片与综合分口径。
+    html += '<div id="confirmRoot"></div>';
+    // 因子研究层（L0 变换矩阵 + L1 常驻审计）：独立渲染器 factor_audit_cards.js，
+    // 在本脚本与 confirm_cards.js 之后执行，最后再重扫一次目录。
+    html += '<div id="factorAuditRoot"></div>';
+    // L2 周期画像 / L3 每日可信度：独立渲染器 horizon_cards.js
+    html += '<div id="horizonRoot"></div>';
 
     app.className = "";   // 移除初始 loading 态（padding/text-align 会压缩卡片）
     app.innerHTML = expandFacts(html);
@@ -1506,5 +1551,9 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
   renderCharts();
 })();
 </script>
+<script src="confirm_cards.js"></script>
+<script src="factor_audit_cards.js"></script>
+<script src="confidence_card.js"></script>
+<script src="horizon_cards.js"></script>
 </body>
 </html>

@@ -1,0 +1,271 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A股顶底指标扩展选型 · 数据可得性实测</title><style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1f2430;--sub:#5b6472;--line:#e3e6ec;
+--red:#e23b2e;--green:#12864f;--brand:#ff5b2e;--blue:#2f6fd0;--amber:#d98a00;--purple:#7a56c2;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:27px;margin:0 0 6px}h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--brand)}
+h3{font-size:15px;margin:20px 0 8px}.lead{color:var(--sub);margin:0 0 14px}
+.sub{color:var(--sub);font-size:13px;margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;
+box-shadow:0 1px 3px rgba(0,0,0,.03)}
+.badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;margin:2px 6px 2px 0}
+.b-red{background:var(--red)}.b-green{background:var(--green)}.b-amber{background:var(--amber)}
+.b-blue{background:var(--blue)}.b-purple{background:var(--purple)}.b-gray{background:#7b8492}
+.verdict{font-size:19px;font-weight:700;margin:10px 0 8px;line-height:1.55}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin:14px 0}
+.kv div{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:12px}
+.kv .k{color:var(--sub);font-size:12px}.kv .v{font-size:20px;font-weight:700;margin-top:3px}
+.kv .n{font-size:11px;color:#8a93a0;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{background:#f0f2f5;font-weight:600}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:#fff4ec}
+.p0{color:var(--red);font-weight:700}.p1{color:var(--amber);font-weight:700}
+.p2{color:var(--blue);font-weight:700}.px{color:var(--sub);font-weight:700}
+.chart{width:100%;height:320px}.chart.sm{height:270px}
+.note{background:#fff8f0;border:1px solid #f0d9bd;border-radius:9px;padding:12px 15px;color:#7a5a2a;font-size:13px;margin:14px 0}
+.crit{background:#fef2f1;border:1px solid #f3c9c4;border-radius:9px;padding:12px 15px;color:#8a3029;font-size:13px;margin:14px 0}
+.good{background:#f0f8f3;border:1px solid #c6e5d2;border-radius:9px;padding:12px 15px;color:#1e6b45;font-size:13px;margin:14px 0}
+.scroll{overflow-x:auto}
+ul{margin:8px 0;padding-left:22px}li{margin:6px 0}
+.foot{color:#8a93a0;font-size:12px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+.src{font-size:11.5px;color:#8a93a0;margin:6px 0 0}
+.tag{font-size:11px;color:var(--sub);background:#eef1f5;border-radius:5px;padding:2px 7px;margin-left:5px}
+.btn{display:inline-block;border:1px solid var(--line);background:#fafbfc;border-radius:7px;padding:4px 12px;
+font-size:12px;cursor:pointer;color:var(--sub)}.btn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+</style></head><body>
+<div class="wrap">
+<h1>A股顶底指标扩展选型</h1>
+<p class="lead">哪些指标既有增量信息、又能在你这套系统里真正采集并算出来</p>
+<p class="sub">数据基准 2026-11-20 收盘（最近交易日）｜实测日 2026-11-21｜环境：本地 akshare 1.20.65 + 项目现有缓存｜所有接口均为本机实际调用，非文档推断</p>
+
+<div class="card">
+<span class="badge b-red">核心判断</span><span class="badge b-blue">18+12 个接口实测</span><span class="badge b-green">8 类零请求可算</span>
+<div class="verdict">别再加第 14 个「水平分位」了。系统真正空着的是三层：① 时点确认（变化率 / 背离 / 缩量止跌）② 增量资金行为（杠杆交易占比、ETF 净申购、IPO 人气）③ 尾部风险定价（隐波 vs 已实现波动、信用利差）。<br>继续堆同源估值与情绪分位，只会稀释现有 8 分项和 13 维共振板。</div>
+<div class="kv">
+<div><div class="k">现有卡片</div><div class="v">24 张</div><div class="n">8 主 + 9 结构 + 7 顶底</div></div>
+<div><div class="k">共振维度</div><div class="v">13 维</div><div class="n">12 有效（TRIN 双向剔除）</div></div>
+<div><div class="k">实测可用新指标</div><div class="v">11 项</div><div class="n">P0 5 / P1 4 / P2 2</div></div>
+<div><div class="k">明确排除</div><div class="v">5 类</div><div class="n">停更 / 无历史 / 口径不可比</div></div>
+<div><div class="k">零新增请求可算</div><div class="v">8 类</div><div class="n">复用 5579×2 逐股缓存等</div></div>
+</div>
+<div class="note"><b>一句话建议：</b>先做 <b>P0-1 情绪‑价格底背离</b>、<b>P0-2 涨跌停家数 / 缩量止跌</b>、<b>P0-3 波动率风险溢价 VRP</b>——三项都不需要新抓任何数据、都能做 PIT 回放、且都补在「确认层」而不是「水平层」。之后再接 P1 的两个新数据源（沪深两市两融日频全历史、中证指数日频 PE/成交额）。</div>
+</div>
+
+<h2>一、先诊断：现在到底缺什么</h2>
+<div class="card">
+<p class="lead">用「市场状态 / 危机拐点 / 技术信号」三层框架对照现有 24 张卡片，覆盖率很不均衡：<b>水平与位置类严重拥挤，变化率与确认类几乎空白</b>。</p>
+<div class="two">
+<div><div id="c_cover" class="chart sm"></div><p class="src">图 1：现有卡片按信息层级分布（来源：本地 mood_data.json 卡片清单，2026-11-21）</p></div>
+<div><div id="c_matrix" class="chart sm"></div><p class="src">图 2：候选指标「增量信息 × 落地成本」定位（来源：本次接口实测与本地复算，2026-11-21）</p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>信息层级</th><th>已有</th><th>代表卡片 / 维度</th><th>缺口</th></tr></thead><tbody>
+<tr><td><b>水平 / 估值位置</b></td><td class="num">密集（10+）</td><td>ERP、破净率、全A PB、低估行业、股基年化、MA200 宽度、NH‑NL、RSI14、BIAS20</td><td>已饱和，再加只是同源重复</td></tr>
+<tr><td><b>资金存量 / 结构</b></td><td class="num">中等（6）</td><td>两融余额增速、基金仓位、ETF 占比、回购、增减持、M1‑M2</td><td>缺「流量」：融资买入额、ETF 净申购、IPO 抽血</td></tr>
+<tr><td><b>波动 / 尾部定价</b></td><td class="num">仅间接（1）</td><td>恐贪指数内含 QVIX 因子（未独立成卡）</td><td>缺隐波‑已实现波动价差、下行波动占比、信用利差</td></tr>
+<tr class="hl"><td><b>变化率 / 背离 / 确认</b></td><td class="num">很薄（2）</td><td>confirm 0/3（价格/宽度/NH‑NL 5 日动量）、价格‑宽度背离</td><td><b>最大缺口</b>：情绪‑价格背离、缩量止跌、涨停跌停扩散、量价背离</td></tr>
+<tr><td><b>跨市场 / 跨资产</b></td><td class="num">几乎没有</td><td>10Y 国债仅作 ERP 分母</td><td>信用利差、期指基差（数据其实已在系统内）</td></tr>
+</tbody></table></div>
+<div class="crit"><b>反向声音（重要）：</b>机构主流做法是「多指标分位等权合成情绪总指数」（中信建投 5 维 12 指标、渤海 5 维、财信三维），但你已经有 8 分项综合分 + 13 维共振板，<b>再往这个池子里加指标，边际信息接近零，还会把 8 指标等权的口径越改越不可比</b>。更关键的是：项目自己的 25 项后视判定里，当前 15 项悲观读数中 9 项「方向相反」——A 股 60 日尺度是动量延续而非均值回归；外部研究也提示情绪指标「先动量、后反转」。因此新指标必须挂在<b>确认层</b>（是否转向），而不是去加强「是否便宜」的判断，<b>并且一律不进综合分</b>。</div>
+</div>
+
+<h2>二、实测清单：能不能采到、能不能算</h2>
+<div class="card">
+<h3>2.1 A 组 · 零新增网络请求（复用现有缓存，最快可落地）</h3>
+<div class="scroll"><table><thead><tr><th>候选指标</th><th>数据源（项目内）</th><th>实测覆盖</th><th>本次算出的样例值（2026-11-20）</th><th>评级</th></tr></thead><tbody>
+<tr class="hl"><td><b>情绪‑价格底背离</b></td><td>composite.history 1192 周点（2003‑06‑27 起）+ hs300_close 6035 日</td><td>2003 起；8 主指标日频序列也都在 json 内，可重算日频综合分</td><td>当前 <b>未触发</b>：近 4 周情绪分 −4.11、价格 −3.67%（两者同向下行）</td><td class="p0">P0</td></tr>
+<tr class="hl"><td><b>涨停 / 跌停家数、涨跌停占比</b></td><td>data/breadth_prices 5579 只逐股收盘价</td><td>2887 交易日（2015 起）；全量向量化约 24 秒（同 build_breadth_extra）</td><td>抽样 310 只：涨停 0 只、跌停 12 只（3.87%）；11‑19 为 1 / 3 只</td><td class="p0">P0</td></tr>
+<tr class="hl"><td><b>波动率风险溢价 VRP / 下行波动占比</b></td><td>QVIX（恐贪链已抓，index_option_50etf/300etf_qvix 实测 2853 行 2015‑02‑09~11‑19）+ hs300_close</td><td>10 年日频；隐波末行 NaN，有效至 11‑18，需沿用缓存兜底</td><td>RV20 年化 <b>14.33%</b>（历史分位 24.7%）、下行波动占比 <b>59.9%</b>（6015 日）</td><td class="p0">P0</td></tr>
+<tr><td>全市场成交额 / 前高、量能比、缩量止跌</td><td>data/crowding_amounts 5579 只逐股成交额（或中证指数官方成交金额）</td><td>2887 日；抽样 310 只汇总 11‑20 = 723.2 亿（仅量级校验，全量约 1.3 万亿）</td><td>官方口径 11‑20 沪深300 成分成交 4411.08 亿（中证指数）</td><td class="p0">P0</td></tr>
+<tr><td>申万行业横截面离散度 / 轮动速度</td><td>data/sw_industries 31 个一级行业指数</td><td>6503 日（2000‑01‑04 起），全项目最长序列之一</td><td>收益离散度 1.92，<b>历史分位 97.6%</b>（极致分化）</td><td class="p1">P1</td></tr>
+<tr><td>ETF 净申购（份额变动）</td><td>mood_etf_shares_raw.csv（510300/510310/510330）</td><td>2155 日（2018‑01‑02~2026‑11‑20）</td><td>3 只 300ETF 份额可直接算日度净申购</td><td class="p1">P1</td></tr>
+<tr><td>期指年化基差 / 持仓量变化</td><td>恐贪链已抓 futures_main_sina(IF0)，实测 1668 行（2020‑01‑02~11‑20）</td><td>6 年日频，含持仓量；恐贪里已有 premium 因子但未独立成卡</td><td>11‑20 IF 主力收 3869.0 vs 现货 3954.57</td><td class="p1">P1</td></tr>
+<tr><td>价格‑宽度背离升级版</td><td>mood_breadth.csv 2688 日 + mood_breadth_extra.csv + hs300_close</td><td>2015 起；现有 build_turning 只做「价格新低 vs NH‑NL 未新低」</td><td>11‑20 MA200 宽度 5.957%（5439 只中 324 只）</td><td class="p2">P2</td></tr>
+</tbody></table></div>
+<p class="src">来源：本地 data/ 缓存与 akshare 1.20.65 本机实测，实测日 2026-11-21；抽样值仅用于验证可算性，不作为全市场正式读数。</p>
+</div>
+
+<div class="card">
+<h3>2.2 B 组 · 需新增数据源，但实测确认可得</h3>
+<div class="scroll"><table><thead><tr><th>候选指标</th><th>接口（akshare 1.20.65）</th><th>实测行数 / 起止</th><th>频率 / 最新</th><th>成本与坑</th><th>评级</th></tr></thead><tbody>
+<tr class="hl"><td><b>融资买入额占成交额比 / 两融占流通市值</b></td><td>stock_margin_sse_js、stock_margin_szse_js；stock_margin_sse 补最近</td><td>4027 / 3829 行，<b>2010‑03‑31~2026‑11‑05</b>；sse 分段：2000 行(2018‑08~11‑20) + 887 行(2015‑01~2018‑08)</td><td>日频；_js 止于 11‑05，sse 已到 11‑20</td><td>_js 一次给全历史；sse 单次上限 2000 行需分 2 段；深市单日接口 11‑20 报错需重试降级</td><td class="p1">P1</td></tr>
+<tr class="hl"><td><b>指数 PE(TTM) / 成交额 / 多指数分化</b></td><td>index_hist_csindex（000300 / 000905 / 000852）</td><td>2888~2889 行，<b>2015‑01‑01~2026‑11‑20</b></td><td>日频，含滚动市盈率、成交金额、OHLC</td><td>中证指数官网一手口径；11‑20 收盘 3954.57、最低 3894.47 与本地 hs300_close 完全一致，交叉校验通过</td><td class="p1">P1</td></tr>
+<tr><td>信用利差（AAA 商业银行债 − 国债）</td><td>bond_china_yield</td><td>短区间 657 行（2026‑01‑04~11‑20，多曲线）；长区间直接报 IndexError</td><td>日频，11‑20 已到</td><td>需按年分段抓；10Y AAA 1.7908% vs 国债 1.5803%，利差 0.21pp</td><td class="p1">P1</td></tr>
+<tr><td>IPO 首日涨幅 / 中签率 / 破发率（顶部人气）</td><td>stock_xgsglb_em</td><td>4039 行，<b>2010‑01‑04~2026‑11‑26</b></td><td>按月聚合，含发行价、首日收盘、连板数、中签率</td><td>一次全量；月频，时点价值低于日频，宜作反向拥挤度</td><td class="p2">P2</td></tr>
+<tr><td>估值分化度（等权 PE / 整体 PE）</td><td>stock_index_pe_lg(沪深300)</td><td>260 行，<b>2005‑04‑29~2026‑11‑20</b></td><td>月频</td><td>一次全量，21 年历史；但月频且与现有 ERP 同源，边际有限</td><td class="p2">P2</td></tr>
+<tr><td>全市场 ETF 份额（净申购全景）</td><td>fund_etf_scale_sse / fund_scale_daily_szse</td><td>927 / 772 行，均为单日快照（11‑20）</td><td>日频，但一次只给一天</td><td>历史需逐日回溯约 1700 次请求，不现实；<b>建议只从今日起增量积累</b>，历史用现有 3 只 300ETF 代替</td><td class="p2">P2</td></tr>
+<tr><td>解禁规模 / 股权质押比例</td><td>stock_restricted_release_summary_em / stock_gpzy_pledge_ratio_em</td><td>解禁 500 行(2015‑01~2017‑02，分段可得)；质押 2265 行单日(11‑20)</td><td>日/月频</td><td>供给冲击类，顶底时点价值一般；质押需逐日抓才有历史</td><td class="p2">P2</td></tr>
+</tbody></table></div>
+<p class="src">来源：akshare 1.20.65 本机逐接口实际调用，实测日 2026-11-21；行数与截止日以本次返回为准，接口可能随上游调整。</p>
+</div>
+
+<div class="card">
+<h3>2.3 C 组 · 实测排除 / 不建议接入</h3>
+<div class="scroll"><table><thead><tr><th>候选</th><th>实测结果</th><th>结论</th></tr></thead><tbody>
+<tr><td>北向资金日频净流入</td><td>stock_hsgt_hist_em 返回 2794 行（2014‑11‑17~2026‑11‑20），但有效净买额仅 <b>2264 行、止于 2024‑08‑16</b>，其后全为 NaN、持股市值 0</td><td class="px">排除：日频明细已改季度披露，只能做 2014–2024 历史标定，不能做实时卡</td></tr>
+<tr><td>新增开户数 / 新增投资者</td><td>stock_account_statistics_em 仅 101 行、<b>止于 2023‑08</b>（2015‑04 起）</td><td class="px">排除：接口停更；外部月度数据（上交所/中国结算）滞后 1~2 月且口径为「账户数≠投资者」，只能人工录入作反向拥挤度</td></tr>
+<tr><td>东财涨停池历史</td><td>stock_zt_pool_em：11‑20 返回 28 只（含连板/炸板），但 2018‑01‑02、2024‑11‑01、2025‑10‑15 <b>全部返回 0 行</b></td><td class="px">排除：无法算历史分位。历史涨停/跌停家数只能由本地逐股收盘价反推</td></tr>
+<tr><td>主力 / 超大单资金净流入</td><td>stock_fund_flow_market_em 仅 120 行（2026‑05‑28~11‑20）</td><td class="px">排除：历史太短无法算分位；且各家分单阈值不同，跨源不可比，只能同源自比</td></tr>
+<tr><td>指数股息率日频历史</td><td>akshare 现有接口未返回 free 的日频指数股息率；中证指数行情接口含 PE 但不含股息率</td><td class="px">暂缓：外部「统一估值查询」有 5/10 年股息率分位（需核实原文，连接器 disabled），项目内暂无可自动采集的免费日频历史</td></tr>
+</tbody></table></div>
+<div class="note"><b>为什么列排除项：</b>这五类恰好是外部研报最常提到、也最容易让人误以为「加上就有用」的指标。实测后确认它们在你这套「必须能算历史分位 + 必须 PIT 可回放」的体系里不成立，避免以后重复踩坑。</div>
+</div>
+
+<h2>三、最值得做的三个：不只是能算，还要有增量</h2>
+<div class="card">
+<h3>3.1 P0‑1　情绪‑价格底背离（补「时点」的唯一入口）</h3>
+<p><b>定义</b>：近 8 周情绪分曾进入悲观区（≤35），随后情绪分 4 周回升 ≥3 分，而同期沪深300 价格仍未上涨 → 「情绪已转向、价格滞后」。与系统现有「价格新低 vs 宽度未新低」的背离是<b>两个不同维度</b>，不重复。</p>
+<p><b>为什么值得做</b>：外部独立研究（渤海证券，2016–2026 共 2581 个交易日，检测出 13 次顶背离 / 16 次底背离）认为底背离择时效果优于顶背离，成因是底部情绪 V 型修复而价格受套牢盘拖累滞后。<span class="tag">非一手来源 · 需核实原文（新浪财经 2026-08-20 转载）</span></p>
+<div class="good"><b>本次粗测（仅证明可算，不是策略结论）：</b>2016‑01 起 557 个周频点，原始触发 17 次，按 20 周去重后 <b>5 次</b>；前瞻 12 周（≈60 交易日）胜率 <b>80.0%</b>、均收益 <b>+9.97%</b>、中位 +3.99%，对照基准（每 20 周取样）n=28、胜率 50.0%、均 −0.32%。历史信号：2018‑07‑06、2019‑01‑04、2019‑08‑02、2022‑10‑28、2023‑10‑27。<b>当前未触发</b>（情绪分与价格同向下行），与 confirm=0／「拐点未确认」一致。</div>
+<div class="crit"><b>样本量警告：</b>去重后只有 5 个信号，95%CI 极宽，周频 composite 早期还是「≥4 指标即出分」的混合口径，且未计成本/分红。这个数字<b>只能用来说明「值得正式做一遍严格 PIT 回测」，绝不能写进结论或当成胜率</b>。正式版应改用 8 主指标日频重算综合分、按 20 交易日去重、样本要求 t+60 ≤ 今日、并做阈值/窗口稳健性。</div>
+</div>
+
+<div class="card">
+<h3>3.2 P0‑2　涨跌停家数 + 缩量止跌（补「结构热度 / 赚钱效应」）</h3>
+<p>渤海五维情绪体系里的「结构热度、赚钱效应」在系统里目前是空的。涨停/跌停家数是最直接的可算代理，且与现有「上涨家数占比」不同——它刻画的是<b>极端尾部</b>而非中位数。</p>
+<div class="two">
+<div><div id="c_limit" class="chart sm"></div>
+<p class="src">图 3：抽样 310 只个股近 6 交易日涨停/跌停占比（来源：本地 breadth_prices 逐股收盘价，2026-11-21 本机复算）</p>
+<p style="margin-top:8px"><button class="btn on" id="btnChart" onclick="toggleView('chart')">看图</button> <button class="btn" id="btnTable" onclick="toggleView('table')">看表</button></p>
+</div>
+<div><div id="limitTable" style="display:none"><table><thead><tr><th>日期</th><th>样本数</th><th>涨停(≥9.8%)</th><th>跌停(≤−9.8%)</th><th>跌停占比</th></tr></thead><tbody>
+<tr><td>11-13</td><td class="num">310</td><td class="num">3</td><td class="num">2</td><td class="num">0.65%</td></tr>
+<tr><td>11-16</td><td class="num">310</td><td class="num">1</td><td class="num">8</td><td class="num">2.58%</td></tr>
+<tr><td>11-17</td><td class="num">310</td><td class="num">2</td><td class="num">4</td><td class="num">1.29%</td></tr>
+<tr><td>11-18</td><td class="num">310</td><td class="num">3</td><td class="num">6</td><td class="num">1.94%</td></tr>
+<tr><td>11-19</td><td class="num">310</td><td class="num">1</td><td class="num">3</td><td class="num">0.97%</td></tr>
+<tr class="hl"><td>11-20</td><td class="num">310</td><td class="num">0</td><td class="num">12</td><td class="num">3.87%</td></tr>
+</tbody></table></div>
+<div class="note" style="margin-top:14px"><b>接入三个坑：</b>① 涨跌停阈值必须按板块区分（主板 10%、创业板/科创 20%、ST 5%），不能一刀切 9.8%；② 收盘价缓存无复权标记，除权日会产生假跌停，需与成交额/振幅交叉过滤；③ 全量 5579 只按 date 内连接向量化（照 build_breadth_extra 的 bincount 范式，约 24 秒），不要逐股循环。</div>
+</div>
+</div>
+<p><b>配套「缩量止跌」</b>：用中证指数官方成交金额（11‑20 沪深300 成分 4411.08 亿）或逐股成交额汇总，算「成交额 / 过去 250 日前高」「20 日量能比」，再叠加「指数不再创新低」形成确认条件。外部框架普遍把「放量下跌 → 缩量企稳 → 放量突破」当作底部链条，而系统目前只有换手率水平分位，没有量能的<b>变化</b>。<span class="tag">方法论参考 · 需核实原文（中信建投 2025-12-16 / 广发金工 2026-11-10 转载）</span></p>
+</div>
+
+<div class="card">
+<h3>3.3 P0‑3　波动率风险溢价 VRP（补「尾部风险定价」）</h3>
+<p><b>定义</b>：QVIX（期权隐含波动率）− 沪深300 20 日已实现波动率；再配「下行波动占比」「波动率与价格背离」。QVIX 数据恐贪链已经在抓，只是被压成了一个因子，没有独立卡片。</p>
+<div class="kv">
+<div><div class="k">QVIX 历史</div><div class="v">2853 日</div><div class="n">2015-02-09 ~ 2026-11-19（有效至 11-18）</div></div>
+<div><div class="k">RV20 年化</div><div class="v">14.33%</div><div class="n">历史分位 24.7%（6015 日样本）</div></div>
+<div><div class="k">下行波动占比</div><div class="v">59.9%</div><div class="n">下跌贡献了近六成波动</div></div>
+<div><div class="k">增量信息</div><div class="v">定价 ≠ 现实</div><div class="n">隐波高而 realized 低 = 恐慌溢价/拐点前兆</div></div>
+</div>
+<p class="src">来源：本地 akshare 实测 index_option_50etf_qvix / 300etf_qvix + 本地 hs300_close 复算，2026-11-21。</p>
+<div class="note"><b>为什么是增量而不是重复：</b>现有 13 维里所有波动相关信号（RSI、BIAS）都是「已实现价格」的函数，QVIX 是<b>市场为未来波动付的钱</b>，属于前瞻定价。两者价差在恐慌顶点/底部转向时通常先动。注意隐波末行 NaN、源端滞后 1~2 日，必须沿用「抓取成功才更新、失败用缓存兜底」的现有策略，且要按项目踩过的坑——凡用官方交易日历构造 index，一律截断到最后有真实数据的日期，避免幽灵交易日。</div>
+</div>
+
+<div class="card">
+<h3>3.4 P1 两项：真正值得新增抓取的数据源</h3>
+<div class="scroll"><table><thead><tr><th>指标</th><th>为什么有增量</th><th>可得性（本次实测）</th><th>建议口径</th></tr></thead><tbody>
+<tr class="hl"><td><b>融资买入额占成交额比<br>两融余额 / 流通市值</b></td><td>系统现在只有「两融余额 60 日增速」（存量变化），缺「杠杆交易活跃度」（流量）。中信建投 5 维 12 指标、长江证券双条件模型都把它列为独立维度；且能直接观察「杠杆出清是否结束」这一 confirm 前置条件</td><td>stock_margin_sse_js / szse_js 一次返回 <b>4027 / 3829 行，2010‑03‑31 起</b>，含融资买入额；sse 分段可补到 11‑20</td><td>日频 expanding 分位；融资买入额 / 全市场成交额、两融余额 / 流通市值两条；<b>不进综合分</b>，放「结构观察」</td></tr>
+<tr class="hl"><td><b>中证指数日频 PE / 成交额 / 多指数分化</b></td><td>现有 ERP 用月频全A平均 PE ffill 到日频，月内不变；中证官网给的是<b>日频滚动 PE</b>，且是交易所一手口径，可校验 ERP 口径分歧。多指数成交金额还能算大小盘资金分化</td><td>index_hist_csindex：000300 2888 行 / 000905 2889 行 / 000852 2889 行，均 <b>2015‑01‑01~2026‑11‑20</b>；11‑20 沪深300 收盘 3954.57、最低 3894.47 与本地完全一致</td><td>沪深300 PE(TTM) 日频分位、PE 与 PB 分位背离、成交额 / 前高、中证1000−沪深300 收益差；一次抓 3 个指数，成本极低</td></tr>
+</tbody></table></div>
+<p class="src">来源：akshare 1.20.65 本机实测 2026-11-21；方法论参考中信建投（2025-12-16）、长江证券情绪+融资双条件框架，均为转载/非一手来源，需核实原文。</p>
+<div class="note"><b>顺带解决一个老问题：</b>项目 11-20 调研时记录「rp 口径修复」用的是月频全A PE（348 行）ffill 到日频，月内数值不变；中证指数日频滚动 PE 可作为独立交叉校验源，用来定位「项目 ERP 分位 98% vs 外部研报 78~81%」这类口径分歧到底来自 PE 口径还是分位窗口。<b>建议先做校验卡，不要直接替换现有 rp 主口径</b>，否则会动综合分的历史可比性。</div>
+</div>
+
+<h2>四、落地路线与三条纪律</h2>
+<div class="card">
+<div class="scroll"><table><thead><tr><th>批次</th><th>内容</th><th>接入范式（沿用项目现有约定）</th><th>验收</th></tr></thead><tbody>
+<tr><td class="p0">P0（先做）</td><td>情绪‑价格背离、涨跌停/缩量止跌、VRP</td><td>新建 1 个 <code>build_confirm.py</code>（零网络，读现有 CSV/JSON）→ <code>config.py</code> 加阈值常量 → <code>start_site.py</code> DAG 在 build_mood 前加一行 → <code>build_mood.py</code> 加面板 → <code>mood.html</code> 加卡片（<code>data-toc</code> 自动收录）</td><td>严格 PIT 回测（t+60 ≤ 今日）、20 日去重、阈值 3 档稳健性、浅/暗双主题渲染、js/json 精确同步</td></tr>
+<tr><td class="p1">P1</td><td>两融流量、中证指数 PE/成交额、ETF 净申购、行业分化度</td><td>各建 1 个 build 脚本（_js 一次全历史 + 增量回看 15 天，复用 build_holder_change 的断点续传范式）→ 卡片放「结构观察」</td><td>分段拼接无重复日期、末日与官方交易日对齐、失败沿用旧缓存降级</td></tr>
+<tr><td class="p2">P2</td><td>信用利差、IPO 人气、估值分化度、解禁/质押</td><td>按月/按年分段抓；只做历史标定与观察，不进信号</td><td>标注频率与滞后，卡片显示真实截止日</td></tr>
+</tbody></table></div>
+<div class="crit"><b>三条纪律（比加哪个指标更重要）：</b><br>① <b>不进综合分</b>：新指标全部挂在「确认层 / 结构观察」，8 指标等权口径保持不变，否则历史情绪分不可比、已交付的三份评估报告全部要重算。<br>② <b>必须 PIT 可回放</b>：所有分位用 expanding（min_periods=250），回测样本严格满足 t+N ≤ 目标日，绝不用未来数据；项目已有 <code>snapshot()</code> / <code>fwdCalc(...,maxIx)</code> 可直接复用。<br>③ <b>先验证再上线</b>：新卡先做「同档前瞻收益 vs 基准」和 25 项后视判定式的自证伪，若方向相反要如实标注（现有体系 15 项悲观读数里 9 项方向相反，这个反面证据必须保留），不要只报好看的胜率。</div>
+</div>
+
+<h2>五、口径与风险边界</h2>
+<div class="card"><ul>
+<li><b>来源分级</b>：本报告所有行数、起止日、样例值均为 2026-11-21 本机 akshare 1.20.65 实调或本地缓存复算（一手/自算）；外部机构方法论与回测结论来自 domain_search 汇总的研报转载与财经媒体，<b>属非一手来源、需核实原文</b>，仅作方法论参照，未用于任何数值结论。</li>
+<li><b>不混用口径</b>：外部研报的两市成交额、两融余额、新开户数等当前数值与本项目口径不同（分单规则、账户 vs 投资者、全A成分），本报告未引用这些数字；系统内数值一律以本地卡片截止日为准。</li>
+<li><b>样本与统计</b>：3.1 的粗测 n=5、周频、混合口径、未计成本与分红，只用于证明可算；任何正式结论都需重做严格 PIT 回测与稳健性检验。回测触发日按 20 日去重但样本仍重叠，阈值未经样本外检验。</li>
+<li><b>指标钝化与失效</b>：极端情绪可长期维持，极值≠反转；指标被广泛采用后存在信号衰减，投资者结构变化会造成情绪中枢漂移。全A 长序列还受注册制扩容、成分调整影响，10 年与 5 年分位可能给出相反结论。</li>
+<li><b>接口风险</b>：_js 系列止于 11-05、深市单日接口 11-20 报错、涨停池历史返回空、隐波末行 NaN——上游不稳定是常态，须沿用「抓取成功才更新 / 失败兜底 / 拒绝源端回退」的既有策略。</li>
+<li><b>本文是指标选型研究</b>，不含买卖判断、目标价位或仓位建议；所有指标为描述性历史标定，不构成收益预测。</li>
+</ul></div>
+
+<div class="foot">生成时间 2026-11-21 · 数据基准 2026-11-20 收盘 · 本地环境 akshare 1.20.65 / pandas / numpy · 图表依赖本地 vendor/echarts.min.js · 本报告为量化研究方法梳理，非投资建议。</div>
+<div class="foot" style="border:none;padding-top:4px"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+<script src="vendor/echarts.min.js"></script>
+<script>
+var COVER = {
+  layers: ['水平 / 估值位置', '资金存量 / 结构', '波动 / 尾部定价', '变化率 / 背离 / 确认', '跨市场 / 跨资产'],
+  have:   [10, 6, 1, 2, 0],
+  add:    [1, 4, 3, 4, 2]
+};
+var MATRIX = [
+  {n:'情绪-价格底背离', x:1, y:5, g:'P0'},
+  {n:'涨跌停/缩量止跌', x:2, y:5, g:'P0'},
+  {n:'VRP 波动率溢价', x:1, y:4, g:'P0'},
+  {n:'行业离散度',     x:1, y:3, g:'P1'},
+  {n:'ETF 净申购',     x:2, y:3, g:'P1'},
+  {n:'期指基差',       x:1, y:3, g:'P1'},
+  {n:'融资买入额占比', x:3, y:5, g:'P1'},
+  {n:'中证日频PE',     x:2, y:4, g:'P1'},
+  {n:'信用利差',       x:4, y:3, g:'P2'},
+  {n:'IPO 人气',       x:3, y:2, g:'P2'},
+  {n:'北向/新开户',    x:5, y:1, g:'排除'}
+];
+var LIMIT = {
+  dates: ['11-13','11-16','11-17','11-18','11-19','11-20'],
+  up: [0.97,0.32,0.65,0.97,0.32,0.00],
+  dn: [0.65,2.58,1.29,1.94,0.97,3.87]
+};
+var AX = { axisLabel:{color:'#777',fontSize:11}, axisLine:{lineStyle:{color:'#d9dee6'}}, axisTick:{show:false} };
+function mk(id, opt){ var el=document.getElementById(id); if(!el) return null; var ch=echarts.init(el); ch.setOption(opt);
+  window.addEventListener('resize', function(){ ch.resize(); }); return ch; }
+
+mk('c_cover', {
+  tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+  legend:{data:['现有卡片','本次建议新增'],textStyle:{color:'#555',fontSize:11},top:0},
+  grid:{left:130,right:24,top:34,bottom:24},
+  xAxis:Object.assign({type:'value',splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+  yAxis:Object.assign({type:'category',data:COVER.layers,axisLabel:{color:'#555',fontSize:11}},AX),
+  series:[
+    {name:'现有卡片',type:'bar',stack:'a',data:COVER.have,itemStyle:{color:'#9aa4b2'},barWidth:'55%',
+     label:{show:true,position:'inside',formatter:'{c}',fontSize:10,color:'#fff'}},
+    {name:'本次建议新增',type:'bar',stack:'a',data:COVER.add,itemStyle:{color:'#ff5b2e'},barWidth:'55%',
+     label:{show:true,position:'inside',formatter:'{c}',fontSize:10,color:'#fff'}}
+  ]
+});
+var GC = {'P0':'#e23b2e','P1':'#d98a00','P2':'#2f6fd0','排除':'#9aa4b2'};
+mk('c_matrix', {
+  tooltip:{trigger:'item',formatter:function(p){ return p.data.n+'<br/>落地成本 '+p.data.x+'/5 · 增量信息 '+p.data.y+'/5 · '+p.data.g; }},
+  grid:{left:44,right:24,top:18,bottom:38},
+  xAxis:Object.assign({type:'value',min:0,max:6,name:'落地成本 →',nameLocation:'middle',nameGap:24,
+    splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+  yAxis:Object.assign({type:'value',min:0,max:6,name:'增量信息 →',nameLocation:'middle',nameGap:30,
+    splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+  series:[{type:'scatter',symbolSize:16,
+    data:MATRIX.map(function(d){ return {name:d.n,value:[d.x,d.y],n:d.n,x:d.x,y:d.y,g:d.g,
+      itemStyle:{color:GC[d.g]}}; }),
+    label:{show:true,position:'right',fontSize:10,color:'#666',formatter:function(p){return p.data.n;}}
+  }]
+});
+var limitChart = mk('c_limit', {
+  tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+  legend:{data:['涨停占比','跌停占比'],textStyle:{color:'#555',fontSize:11},top:0},
+  grid:{left:44,right:20,top:34,bottom:26},
+  xAxis:Object.assign({type:'category',data:LIMIT.dates},AX),
+  yAxis:Object.assign({type:'value',name:'%',splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+  series:[
+    {name:'涨停占比',type:'bar',data:LIMIT.up,itemStyle:{color:'#e23b2e'},barWidth:'32%'},
+    {name:'跌停占比',type:'bar',data:LIMIT.dn,itemStyle:{color:'#12864f'},barWidth:'32%'}
+  ]
+});
+function toggleView(v){
+  var c=document.getElementById('c_limit'), t=document.getElementById('limitTable'),
+      bc=document.getElementById('btnChart'), bt=document.getElementById('btnTable');
+  if(v==='chart'){ c.style.display='block'; t.style.display='none'; bc.className='btn on'; bt.className='btn';
+    if(limitChart) limitChart.resize(); }
+  else { c.style.display='none'; t.style.display='block'; bc.className='btn'; bt.className='btn on'; }
+}
+</script></body></html>

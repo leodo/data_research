@@ -1,0 +1,302 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>指标效力审计与回测方案 · 2026-11-21</title><style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1f2430;--sub:#5b6472;--line:#e3e6ec;
+--red:#e23b2e;--green:#12864f;--brand:#ff5b2e;--blue:#2f6fd0;--amber:#d98a00;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:14px/1.72 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1160px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:27px;margin:0 0 6px}h2{font-size:19px;margin:36px 0 12px;padding-left:11px;border-left:4px solid var(--brand)}
+h3{font-size:15px;margin:22px 0 8px}.lead{color:var(--sub);margin:0 0 16px}
+.sub{color:var(--sub);font-size:13px;margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+.badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.b-red{background:var(--red)}.b-green{background:var(--green)}.b-amber{background:var(--amber)}.b-blue{background:var(--blue)}.b-gray{background:#7b8492}
+.verdict{font-size:19px;font-weight:700;margin:10px 0 8px;line-height:1.55}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin:14px 0}
+.kv div{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+.kv .k{color:var(--sub);font-size:12px}.kv .v{font-size:21px;font-weight:700;margin-top:2px}
+.kv .n{font-size:11px;color:#8a93a0;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}th{background:#f0f2f5;font-weight:600}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.hl td{background:#fff4ec;font-weight:600}
+.pos{color:var(--red);font-weight:600}.neg{color:var(--green);font-weight:600}
+.ok{color:var(--green);font-weight:600}.warn{color:var(--amber);font-weight:600}.bad{color:var(--red);font-weight:600}
+.strong{font-weight:700;background:#f2f7ff}.ic{font-weight:700;color:var(--blue)}
+.na{color:#aab1bb;text-align:center}
+.chart{width:100%;height:300px}.chart.sm{height:260px}
+.note{background:#fff8f0;border:1px solid #f0d9bd;border-radius:9px;padding:12px 15px;color:#7a5a2a;font-size:13px;margin:14px 0}
+.crit{background:#fef2f1;border:1px solid #f3c9c4;border-radius:9px;padding:12px 15px;color:#8a3029;font-size:13px;margin:14px 0}
+.good{background:#f0f8f3;border:1px solid #c6e5d2;border-radius:9px;padding:12px 15px;color:#1e6b45;font-size:13px;margin:14px 0}
+.blue{background:#f1f6fd;border:1px solid #c9ddf5;border-radius:9px;padding:12px 15px;color:#24527f;font-size:13px;margin:14px 0}
+ul{margin:8px 0;padding-left:22px}li{margin:6px 0}
+.foot{color:#8a93a0;font-size:12px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.scroll{overflow-x:auto}
+.src{font-size:11.5px;color:#9098a4;margin:4px 0 12px}
+.layers{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:16px 0}
+.layer{background:#fafbfc;border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:9px;padding:12px 11px;position:relative}
+.layer .lno{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:var(--blue);border-radius:4px;padding:1px 6px;margin-bottom:6px}
+.layer b{display:block;font-size:13.5px;margin-bottom:5px}.layer p{font-size:11.5px;color:var(--sub);margin:0;line-height:1.55}
+.layer:nth-child(3){border-top-color:var(--amber)}.layer:nth-child(3) .lno{background:var(--amber)}
+.layer:nth-child(4){border-top-color:var(--brand)}.layer:nth-child(4) .lno{background:var(--brand)}
+.layer:nth-child(5){border-top-color:var(--green)}.layer:nth-child(5) .lno{background:var(--green)}
+.q{border-left:3px solid var(--brand);padding:2px 0 2px 13px;margin:18px 0 8px;font-weight:700;font-size:15px}
+@media(max-width:900px){.two,.layers{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<h1>指标效力审计与回测方案</h1>
+<p class="lead">数据基准 <b>2026-11-20 收盘</b>（最近交易日）｜编制 2026-11-21（周六休市）｜范围：现有 25 个指标序列 + 3 项确认层信号</p>
+<p class="sub">本文回答一个问题：指标越来越多，到底哪些有效、怎么验证。结论来自对本地真实数据的一次<strong>只读体检</strong>，不是文献综述；本轮<strong>没有改动任何现有口径、没有接入 DAG</strong>。</p>
+
+<div class="card">
+<span class="badge b-red">无条件线性：51/51 不显著</span><span class="badge b-green">条件状态：IC 最高 +0.46</span><span class="badge b-blue">17 因子 ≈ 3~5 维</span>
+<div class="verdict">核心判断：这批指标不是「无效」，而是<strong>线性无条件检验问错了问题</strong>。它们的信息集中在<b>尾部档位</b>和<b>特定市场状态</b>里；直接做因子矩阵回归或全样本相关，会把有效信号平均成噪声。</div>
+<div class="kv">
+<div><div class="k">纳入审计的因子</div><div class="v">25</div><div class="n">17 个日频入模 / 8 个因混频或短史排除</div></div>
+<div><div class="k">单因子检验次数</div><div class="v">51</div><div class="n">17 因子 × 20/60/120 日窗口</div></div>
+<div><div class="k">raw p&lt;0.05</div><div class="v">2</div><div class="n">BH-FDR 校正后剩 <b>0</b> 个</div></div>
+<div><div class="k">前 3 主成分解释</div><div class="v">65.2%</div><div class="n">前 5 达 80.4%</div></div>
+<div><div class="k">最强条件 IC</div><div class="v">+0.46</div><div class="n">恐慌档 A股风险溢价，n=471</div></div>
+<div><div class="k">完全共线对</div><div class="v">1</div><div class="n">ERP 与 ERP 股债归因 r=1.00</div></div>
+</div>
+<div class="crit"><b>三个最该先接受的事实：</b>① 用「单因子线性 IC」判有效性，51 次检验里 51 次都是「不显著」，但这不等于指标没用——5 档分层里神奇指标 / NH-NL / 麦克莱伦的单调性达 −0.9~−1.0，尾部档位差异明显；② 17 个日频指标只有 3~5 个独立维度，且存在 r=1.0 的重复卡片，全指标一起回归必然病态；③ 分层到状态后，估值类因子在「下跌 / 高波动 / 底部共振≥60」时 IC 达 +0.34~+0.46，在常态只有 ±0.1 级别 —— <b>「不同情况下哪些因子有效」才是这套体系真正的答案</b>。</div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；未来收益由本地 hs300_close 计算，Spearman IC + 60 日块 bootstrap（B=1200）+ BH-FDR。</p>
+</div>
+
+<h2>一、先分清：你做的是「时序择时因子」，不是「截面选股因子」</h2>
+<div class="card">
+<p>这是整套方案里最容易照错模板的地方。经典多因子框架（IC / IR / 行业中性化 / 每截面 ≥5 个标的 / 分层持有）是给<b>选股</b>设计的：每个时点有一堆股票横截面。而你的系统每个时点只有<b>一个观测——市场本身</b>，所以所有概念都要重新映射：</p>
+<div class="scroll"><table><thead><tr><th>概念</th><th>截面选股因子</th><th>你的时序择时因子</th><th>后果</th></tr></thead><tbody>
+<tr><td>观测单位</td><td>股票 × 日期</td><td>日期（1 个标的）</td><td>样本数 = 交易日数，不是股票数</td></tr>
+<tr><td>IC 含义</td><td>同一天因子值与个股收益的横截面相关</td><td>整段历史上因子值与<b>未来 N 日</b>市场收益的时序相关</td><td>IC 不再是「每天一个值」，IR 只能在分块后算</td></tr>
+<tr><td>分层回测</td><td>按因子把股票分 5 组持有多空</td><td>按因子把<b>时间</b>分 5 档，比较各档后续市场收益</td><td>没有多空组合，只有条件收益分布</td></tr>
+<tr><td>中性化</td><td>行业 / 市值中性</td><td>不适用；要控的是<b>市场状态</b>与<b>时间趋势</b></td><td>直接用行业中性化是无意义的</td></tr>
+<tr><td>有效样本</td><td>数千股票 × 数千日</td><td>2016 起 2638 日，但 h=120 时独立样本仅 ~22</td><td>长窗口几乎必然「样本不足」</td></tr>
+<tr><td>重叠样本</td><td>较弱</td><td>极强（20/60/120 日前瞻重叠）</td><td>普通 t 检验会严重高估显著性，必须块自助法</td></tr>
+<tr><td>多重检验</td><td>已严重</td><td>更严重，且是<b>序贯</b>的（不断加指标边看边改）</td><td>固定样本 BH 仍偏乐观，需补试验日志</td></tr>
+</tbody></table></div>
+<div class="blue"><b>目标变量也不能只有「未来收益」。</b>顶底指标的价值往往不在方向或幅度，而在路径与尾部。建议同时标定 5 类标签：① sign(r<sub>20/60/120</sub>)；② r<sub>60</sub> 幅度；③「不破位 −2% 且上涨」；④「落在前后 120 日最低 10% 分位带」；⑤ 前瞻窗口内最大不利偏移 / 最大有利偏移。你项目里已有的 A/B/C/D 四种底部定义正好可直接复用 —— 这比只回归收益更能检验「顶底指标」是否称职。</div>
+</div>
+
+<h2>二、三个会直接毁掉结论的坑（本地实测证据）</h2>
+<div class="card">
+<h3>坑 1 · 同源共线与重复卡片</h3>
+<p>17 个日频因子的 Spearman 相关矩阵里，<b>「A股风险溢价」与「ERP 股债归因」r = 1.000</b>（两者 value 完全相同，是同一底层序列的两张卡）。层次聚类（1−|r| 距离、average linkage）分成 5 簇，前 3 主成分解释 <b>65.2%</b>、前 5 解释 <b>80.4%</b>：</p>
+<div class="scroll"><table><thead><tr><th>个数</th><th>簇</th><th>成员</th><th>组内平均 |r|</th><th>经济含义</th></tr></thead><tbody><tr><td class="num">1</td><td><b>第 1 簇</b></td><td>麦克莱伦摆动指标（市场宽广度动能）</td><td class="num">1.000</td><td>独立的宽度动能（自身即一个维度）</td></tr>
+<tr><td class="num">2</td><td><b>第 2 簇</b></td><td>上涨家数占比与动能广度、阿姆氏指标 TRIN（Arms Index）</td><td class="num">0.743</td><td>涨跌家数类（同源宽度）</td></tr>
+<tr><td class="num">4</td><td><b>第 3 簇</b></td><td>沪深300 RSI14（超卖/超买）、全A站上200日均线占比、新高新低差（NH-NL）、市场宽广度综合指标</td><td class="num">0.616</td><td>价格位置 / 宽度动量</td></tr>
+<tr><td class="num">2</td><td><b>第 4 簇</b></td><td>全市场换手率、两融余额60日增速</td><td class="num">0.489</td><td>交投活跃度与杠杆资金</td></tr>
+<tr><td class="num">8</td><td><b>第 5 簇</b></td><td>低估指数行业、破净率（全A破净个股占比）、正收益偏股基金占比、头部300ETF占沪深300流通市值比例、股基滚动年化收益、神奇指标、A股风险溢价、ERP 股债归因（便宜是真便宜吗）</td><td class="num">0.597</td><td>估值 / 赚钱效应 / 基金行为</td></tr></tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；2016-01-11 起共同交易日，pairwise Spearman（min_periods=250）。</p>
+<div class="note"><b>结论：</b>「24 张卡片」实际约等于 4~5 个信息维度。直接把 24 个指标塞进多元线性回归 / 贝叶斯模型，系数会被共线彻底污染；正确顺序是<b>先去重 → 聚类 → 组内合成 → 再进模型</b>。外部方法论也用层次聚类估计「有效独立试验数 N」，而不是用原始检验次数（该引用需核实原文）。</div>
+</div>
+
+<div class="card">
+<h3>坑 2 · 混频与短历史：8 个因子这次被排除</h3>
+<div class="scroll"><table><thead><tr><th>因子</th><th>频率</th><th>观测数</th><th>2016 起覆盖率</th><th>区间</th><th>排除原因</th></tr></thead><tbody><tr><td>新基金发行</td><td>日频</td><td class="num">792</td><td class="num">34.5%</td><td>2023-02-21 ~ 2026-11-17</td><td>历史过短，2016 起覆盖不足</td></tr>
+<tr><td>PCR</td><td>日频</td><td class="num">1406</td><td class="num">53.3%</td><td>2021-01-29 ~ 2026-11-20</td><td>历史过短，2016 起覆盖不足</td></tr>
+<tr><td>全A市净率中位数（月频）</td><td>月频</td><td class="num">244</td><td class="num">100.0%</td><td>2006-08-31 ~ 2026-11-20</td><td>混频，日频 ffill 会造伪观测</td></tr>
+<tr><td>公募基金股票仓位</td><td>周频</td><td class="num">442</td><td class="num">79.2%</td><td>2018-04-13 ~ 2026-11-13</td><td>混频，日频 ffill 会造伪观测</td></tr>
+<tr><td>M1-M2 剪刀差（资金活化）</td><td>月频</td><td class="num">207</td><td class="num">86.9%</td><td>2009-08-01 ~ 2026-10-01</td><td>混频，日频 ffill 会造伪观测</td></tr>
+<tr><td>A股回购规模（滚动12月）</td><td>月频</td><td class="num">124</td><td class="num">81.7%</td><td>2016-08-01 ~ 2026-11-01</td><td>混频，日频 ffill 会造伪观测</td></tr>
+<tr><td>重要股东增减持（滚动12月净额）</td><td>月频</td><td class="num">113</td><td class="num">73.5%</td><td>2017-07-01 ~ 2026-11-01</td><td>混频，日频 ffill 会造伪观测</td></tr>
+<tr><td>综合情绪分(8等权)</td><td>周频</td><td class="num">1192</td><td class="num">100.0%</td><td>2003-06-27 ~ 2026-11-20</td><td>混频，日频 ffill 会造伪观测</td></tr></tbody></table></div>
+<p>月频因子若用 ffill 铺成日频，会造出二十几个「伪独立观测」，让 p 值凭空变小；综合分是周频 1192 点， PCR 2021 才有、新基金发行 2023 才有，硬塞进 2016 起的统一矩阵会引入大量缺失与选择性偏差。</p>
+<div class="note"><b>正确做法（工程规范）：</b>① 每个因子记录 <code>publish_date</code>，<b>发布日 + 1 个交易日</b>才允许生效，杜绝把当月数据提前用到月初；② 记录 <code>stale_days</code>，超过该频率 1.5 个周期的观测不进模型；③ 低频因子<b>按自身频率采样</b>（月频就做月度 IC），不要强行升频；④ 每个因子标注 <code>history_start</code>，回测统一取所有入模因子的最大公约起点，或做「因子逐一生效」的 expanding 面板。</div>
+</div>
+
+<div class="card">
+<h3>坑 3 · 多重检验：51 次里「显著」的 2 个，校正后全部消失</h3>
+<p>17 因子 × 3 窗口 = <b>51</b> 次检验。60 日块 bootstrap 得到的经验 p 值中，只有 2 个 &lt;0.05；经 Benjamini–Hochberg 校正后 q 值分别为 0.255 / 0.850，<b>全部不显著</b>：</p>
+<div class="scroll"><table><thead><tr><th>因子</th><th>窗口</th><th>IC</th><th>raw p</th><th>BH q</th><th>IR</th><th>结论</th></tr></thead><tbody><tr><td>上涨家数占比与动能广度</td><td class="num">60</td><td class="num">-0.0439</td><td class="num">0.0050</td><td class="num">0.2550</td><td class="num">-0.73</td><td>FDR 后不显著</td></tr>
+<tr><td>麦克莱伦摆动指标（市场宽广度动能）</td><td class="num">60</td><td class="num">-0.0939</td><td class="num">0.0467</td><td class="num">0.8500</td><td class="num">-0.56</td><td>FDR 后不显著</td></tr></tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；块长 60 交易日、重采样 1200 次；IR 为不重叠 60 日块 IC 的均值/标准差。</p>
+<div class="crit"><b>更隐蔽的是「序贯检验」：</b>我们这段时间一直在「跑一批 → 看结果 → 再加指标 → 再跑」，这是边看数据边扩张搜索空间，违反固定样本 FDR 假设。外部方法论给出的补充工具包括 HLZ 的 t&gt;3 门槛、Deflated Sharpe Ratio（N 用聚类估有效试验数）、PBO / 组合提纯交叉验证，以及 online FDR / anytime-valid inference（这些方法出处为非一手来源，需核实原文）。<b>最便宜也最有效的一条：边跑边写试验日志</b>，把试过又丢掉的变体也记进去，否则 N 永远算不准。</div>
+</div>
+
+<h2>三、但「不显著」不等于「无效」：线性检验漏掉了什么</h2>
+<div class="two">
+<div class="card"><h3>3.1 IC 随窗口衰减（20 / 60 / 120 日）</h3><div id="c_ic" class="chart sm"></div>
+<p class="lead" style="margin-top:4px">|IC| 均值从 20 日的 0.035 升到 120 日的 0.098 —— <b>信号在更长的窗口才展开</b>，与项目已有的「20 日无优势、60 日赔率改善」一致。但 h=120 的独立样本只有约 22 个，越长的窗口越要收缩结论。</p></div>
+<div class="card"><h3>3.2 主成分解释率</h3><div id="c_pca" class="chart sm"></div>
+<p class="lead" style="margin-top:4px">柱=单个主成分解释率，线=累计。3 个主成分已覆盖 65.2%，再次说明「指标多」≠「信息多」。</p></div>
+</div>
+<div class="card">
+<h3>3.3 分层单调性：线性 IC 看不见的尾部结构</h3>
+<p>按因子 PIT 分位固定切 5 档（0–20 / … / 80–100），看每档后续 60 日平均收益。虽然 51 次线性检验全部不显著，但单调性暴露了明确结构：</p>
+<div class="scroll"><table><thead><tr><th>因子</th><th>5 档 60 日均收益（%，低分位 → 高分位）</th><th>档位单调性</th><th>线性 IC</th></tr></thead><tbody>
+<tr class="hl"><td>神奇指标</td><td class="num">— / 3.04 / 1.67 / −0.50 / −0.61</td><td class="num pos">−1.0</td><td class="num">−0.155</td></tr>
+<tr class="hl"><td>新高新低差 NH-NL</td><td class="num">1.65 / 1.43 / 1.15 / 1.40 / −0.45</td><td class="num pos">−0.9</td><td class="num">−0.069</td></tr>
+<tr class="hl"><td>麦克莱伦摆动</td><td class="num">1.82 / 1.67 / 1.16 / 1.58 / −0.65</td><td class="num pos">−0.9</td><td class="num">−0.094</td></tr>
+<tr><td>全市场换手率</td><td class="num">2.96 / 1.61 / 1.58 / 1.72 / −0.14</td><td class="num">−0.7</td><td class="num">−0.128</td></tr>
+<tr><td>两融余额 60 日增速</td><td class="num">2.87 / 1.35 / −0.02 / −0.24 / 1.07</td><td class="num">−0.7</td><td class="num">−0.102</td></tr>
+<tr><td>沪深300 RSI14</td><td class="num">3.17 / 0.03 / 1.13 / 1.70 / −0.01</td><td class="num">−0.6</td><td class="num">−0.033</td></tr>
+<tr><td>A股风险溢价</td><td class="num">−0.95 / 3.48 / 1.74 / −2.23 / 2.45</td><td class="num">0.0</td><td class="num">+0.086</td></tr>
+</tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；单调性为档位序号与档内均收益的 Spearman 相关；「—」表示该档样本 &lt;20。</p>
+<div class="good"><b>这是全篇最关键的一点：</b>最高分位档（≥80）普遍对应负的后续收益，且前三名近乎完美单调，但线性 IC 只有 −0.07~−0.16、校正后不显著。说明<b>信息是非线性、集中在尾部的</b>——顶底指标本来就是「极端状态」指标，用全样本线性相关去判它们，等于把信号淹没在中间 80% 的常态噪声里。正确工具是<b>分档条件概率 + 事件研究</b>，而不是相关分析。</div>
+</div>
+
+<div class="card">
+<h3>3.4 h=60 全量单因子审计明细</h3>
+<div class="scroll"><table><thead><tr><th>因子</th><th>组</th><th>IC</th><th>95% bootstrap CI</th><th>p</th><th>q</th><th>IR</th><th>单调</th><th>首→末档</th><th>判定</th></tr></thead><tbody><tr><td>A股风险溢价</td><td>主指标</td><td class="num pos">+0.086</td><td class="num">[-0.184, +0.341]</td><td class="num">0.527</td><td class="num">0.866</td><td class="num">+0.79</td><td class="num ">+0.0</td><td class="num">-0.95 → 2.45</td><td>不显著</td></tr>
+<tr><td>低估指数行业</td><td>主指标</td><td class="num neg">-0.022</td><td class="num">[-0.245, +0.193]</td><td class="num">0.873</td><td class="num">0.963</td><td class="num">+0.61</td><td class="num ">+0.4</td><td class="num">—</td><td>不显著</td></tr>
+<tr><td>正收益偏股基金占比</td><td>主指标</td><td class="num neg">-0.132</td><td class="num">[-0.380, +0.116]</td><td class="num">0.262</td><td class="num">0.866</td><td class="num">-0.13</td><td class="num ">-0.1</td><td class="num">0.84 → -3.20</td><td>不显著</td></tr>
+<tr><td>全市场换手率</td><td>主指标</td><td class="num neg">-0.128</td><td class="num">[-0.346, +0.070]</td><td class="num">0.208</td><td class="num">0.866</td><td class="num">-0.65</td><td class="num strong">-0.7</td><td class="num">2.96 → -0.14</td><td>不显著</td></tr>
+<tr><td>股基滚动年化收益</td><td>主指标</td><td class="num pos">+0.041</td><td class="num">[-0.212, +0.280]</td><td class="num">0.795</td><td class="num">0.963</td><td class="num">-0.88</td><td class="num ">+0.0</td><td class="num">—</td><td>不显著</td></tr>
+<tr><td>神奇指标</td><td>主指标</td><td class="num neg">-0.155</td><td class="num">[-0.376, +0.076]</td><td class="num">0.190</td><td class="num">0.866</td><td class="num">-2.19</td><td class="num strong">-1.0</td><td class="num">—</td><td>不显著</td></tr>
+<tr><td>头部300ETF占沪深300流通市值比例</td><td>结构</td><td class="num pos">+0.097</td><td class="num">[-0.144, +0.339]</td><td class="num">0.437</td><td class="num">0.866</td><td class="num">+0.17</td><td class="num ">+0.4</td><td class="num">—</td><td>不显著</td></tr>
+<tr><td>两融余额60日增速</td><td>结构</td><td class="num neg">-0.102</td><td class="num">[-0.274, +0.082]</td><td class="num">0.298</td><td class="num">0.866</td><td class="num">-0.38</td><td class="num strong">-0.7</td><td class="num">2.87 → 1.07</td><td>不显著</td></tr>
+<tr><td>全A站上200日均线占比</td><td>结构</td><td class="num pos">+0.014</td><td class="num">[-0.241, +0.248]</td><td class="num">0.963</td><td class="num">0.963</td><td class="num">-0.76</td><td class="num ">-0.2</td><td class="num">2.89 → 1.30</td><td>不显著</td></tr>
+<tr><td>ERP 股债归因（便宜是真便宜吗）</td><td>结构</td><td class="num pos">+0.086</td><td class="num">[-0.164, +0.341]</td><td class="num">0.448</td><td class="num">0.866</td><td class="num">+0.79</td><td class="num ">+0.0</td><td class="num">-0.95 → 2.45</td><td>不显著</td></tr>
+<tr><td>破净率（全A破净个股占比）</td><td>顶底</td><td class="num pos">+0.076</td><td class="num">[-0.156, +0.317]</td><td class="num">0.505</td><td class="num">0.866</td><td class="num">+0.65</td><td class="num ">-0.4</td><td class="num">—</td><td>不显著</td></tr>
+<tr><td>新高新低差（NH-NL）</td><td>顶底</td><td class="num neg">-0.069</td><td class="num">[-0.234, +0.086]</td><td class="num">0.380</td><td class="num">0.866</td><td class="num">-0.87</td><td class="num strong">-0.9</td><td class="num">1.65 → -0.45</td><td>不显著</td></tr>
+<tr><td>上涨家数占比与动能广度</td><td>顶底</td><td class="num neg">-0.044</td><td class="num">[-0.080, -0.011]</td><td class="num">0.005</td><td class="num">0.255</td><td class="num">-0.73</td><td class="num strong">-0.7</td><td class="num">1.73 → 1.22</td><td>不显著</td></tr>
+<tr><td>沪深300 RSI14（超卖/超买）</td><td>顶底</td><td class="num neg">-0.033</td><td class="num">[-0.207, +0.113]</td><td class="num">0.652</td><td class="num">0.963</td><td class="num">-1.55</td><td class="num ">-0.6</td><td class="num">3.17 → -0.01</td><td>不显著</td></tr>
+<tr><td>阿姆氏指标 TRIN（Arms Index）</td><td>顶底</td><td class="num neg">-0.019</td><td class="num">[-0.053, +0.015]</td><td class="num">0.292</td><td class="num">0.866</td><td class="num">-0.13</td><td class="num ">+0.0</td><td class="num">0.69 → 1.13</td><td>不显著</td></tr>
+<tr><td>市场宽广度综合指标</td><td>顶底</td><td class="num neg">-0.058</td><td class="num">[-0.259, +0.115]</td><td class="num">0.522</td><td class="num">0.866</td><td class="num">-0.85</td><td class="num ">-0.4</td><td class="num">1.55 → -0.09</td><td>不显著</td></tr>
+<tr><td>麦克莱伦摆动指标（市场宽广度动能）</td><td>顶底</td><td class="num neg">-0.094</td><td class="num">[-0.180, -0.002]</td><td class="num">0.047</td><td class="num">0.850</td><td class="num">-0.56</td><td class="num strong">-0.9</td><td class="num">1.82 → -0.65</td><td>不显著</td></tr></tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；2016-01-11 起，前瞻 60 交易日收益；判定按 FDR 后 q&lt;0.05 且 |IC|≥0.03 且 |IR|≥0.5 分档。51 次检验的判定分布：<b>全部「不显著」</b>。</p>
+</div>
+
+<h2>四、直接回答你的三个问题</h2>
+<div class="card">
+<div class="q">Q1：回测该用单个指标，还是多个指标？</div>
+<p><b>答案是分阶段，而且顺序不能反：先单后多，但「多」不等于「全指标一起上」。</b></p>
+<ul>
+<li><b>阶段 A（单）：逐因子审计</b>——每个因子独立算多窗口 IC / IR / 分档单调性 / 事件研究，产出「有效 / 弱有效 / 不显著 / 方向相反 / 样本不足」6 档清单（沿用项目已有的自证伪判定格式）。目的是<b>去伪和留证</b>，不是选冠军。</li>
+<li><b>阶段 B（多·降维）</b>——按聚类把 17 个因子合成 4~5 个组内等权因子，或做 Gram–Schmidt 正交化 / 稀疏 PCA。<b>先在组内合成、再跨组组合</b>，避免共线；组合权重只能用<b>过去 250 日滚动 IC</b> 估计（walk-forward），绝不能用全样本 IC 加权，那是前视。</li>
+<li><b>阶段 C（多·条件）</b>——不做「一个模型全天候预测」，而做「状态 → 哪组因子有效」的路由表。这一步才是增量信息所在（见 Q2）。</li>
+<li><b>明确不要做：</b>把 24 个 pct 一起丢进一个 logistic / XGBoost 求「上涨概率」。样本 2638 日、特征 24 维且高度共线、正类比例约 55%，几乎必然过拟合；即使样本内漂亮，也过不了后面第五节的多重检验与样本外。</li>
+</ul>
+<div class="note"><b>关于「有效性」的判定门槛：</b>建议同时满足 ① FDR 后 q&lt;0.05；② |IC|≥0.03 且 |IR|≥0.5；③ 分档单调性 |ρ|≥0.6；④ 至少 2 个不重叠时段方向不翻转；⑤ 样本外（2022 起）方向一致。任何一条不满足就归入「观察项」而非「有效项」——本轮体检里<strong>没有任何因子能全部通过</strong>。</div>
+</div>
+
+<div class="card">
+<div class="q">Q2：做成因子矩阵、对市场做相关性分析，看不同情况哪些因子相关性最高？</div>
+<p><b>方向对，但要拆成三件不同的事，混在一起就会答非所问：</b></p>
+<div class="scroll"><table><thead><tr><th>要算的矩阵</th><th>回答什么问题</th><th>本轮实测</th><th>用途</th></tr></thead><tbody>
+<tr><td>因子 × 因子 相关矩阵</td><td>哪些指标其实是同一件事</td><td>r=1.0 一对；前 3 PC 65.2%；5 簇</td><td><b>只用于降维、去重、估有效检验数 N</b></td></tr>
+<tr><td>因子 × 未来收益 IC 矩阵（按窗口）</td><td>哪个指标在哪个周期有线性预测力</td><td>51 次全不显著；|IC| 随窗口 0.035→0.098</td><td>粗筛，会漏掉非线性</td></tr>
+<tr class="hl"><td><b>因子 × 市场状态 条件 IC 矩阵</b></td><td><b>不同情况下哪些因子最有效</b></td><td>恐慌档 ERP +0.46；高波动换手率 −0.44</td><td><b>这才是你真正要的主结果</b></td></tr>
+</tbody></table></div>
+<h3>条件 IC 热力（h=60；红=因子分位越高未来收益越高，绿=越低）</h3>
+<div class="scroll"><table><thead><tr><th>市场状态</th><th>A股风险溢价</th><th>破净率（全A破净个</th><th>神奇指标</th><th>全市场换手率</th><th>沪深300 RSI</th><th>麦克莱伦摆动指标（</th><th>新高新低差（NH-</th><th>两融余额60日增速</th></tr></thead><tbody><tr><td><b>上涨(60日动量>0)</b></td><td class="num" style="background:rgba(18,134,79,0.165)">-0.16</td><td class="num" style="background:rgba(18,134,79,0.193)">-0.20</td><td class="num" style="background:rgba(226,59,46,0.065)">+0.02</td><td class="num" style="background:rgba(18,134,79,0.226)">-0.25</td><td class="num" style="background:rgba(18,134,79,0.058)">-0.01</td><td class="num" style="background:rgba(18,134,79,0.095)">-0.06</td><td class="num" style="background:rgba(18,134,79,0.123)">-0.10</td><td class="num" style="background:rgba(18,134,79,0.132)">-0.12</td></tr>
+<tr><td><b>下跌(60日动量<=0)</b></td><td class="num" style="background:rgba(226,59,46,0.289)">+0.34</td><td class="num" style="background:rgba(226,59,46,0.315)">+0.38</td><td class="num" style="background:rgba(18,134,79,0.270)">-0.31</td><td class="num" style="background:rgba(226,59,46,0.079)">+0.04</td><td class="num" style="background:rgba(18,134,79,0.068)">-0.03</td><td class="num" style="background:rgba(18,134,79,0.133)">-0.12</td><td class="num" style="background:rgba(18,134,79,0.062)">-0.02</td><td class="num" style="background:rgba(18,134,79,0.093)">-0.06</td></tr>
+<tr><td><b>高波动(RV20分位>=70)</b></td><td class="num" style="background:rgba(226,59,46,0.191)">+0.20</td><td class="num" style="background:rgba(226,59,46,0.076)">+0.04</td><td class="num" style="background:rgba(18,134,79,0.206)">-0.22</td><td class="num" style="background:rgba(18,134,79,0.357)">-0.44</td><td class="num" style="background:rgba(18,134,79,0.347)">-0.42</td><td class="num" style="background:rgba(18,134,79,0.273)">-0.32</td><td class="num" style="background:rgba(18,134,79,0.199)">-0.21</td><td class="num" style="background:rgba(18,134,79,0.242)">-0.27</td></tr>
+<tr><td><b>低波动(RV20分位<30)</b></td><td class="num" style="background:rgba(226,59,46,0.052)">+0.00</td><td class="num" style="background:rgba(226,59,46,0.058)">+0.01</td><td class="num" style="background:rgba(18,134,79,0.135)">-0.12</td><td class="num" style="background:rgba(18,134,79,0.170)">-0.17</td><td class="num" style="background:rgba(226,59,46,0.095)">+0.06</td><td class="num" style="background:rgba(18,134,79,0.070)">-0.03</td><td class="num" style="background:rgba(18,134,79,0.108)">-0.08</td><td class="num" style="background:rgba(18,134,79,0.203)">-0.22</td></tr>
+<tr><td><b>底部共振>=60</b></td><td class="num" style="background:rgba(226,59,46,0.368)">+0.46</td><td class="num" style="background:rgba(226,59,46,0.329)">+0.40</td><td class="num" style="background:rgba(18,134,79,0.341)">-0.42</td><td class="num" style="background:rgba(226,59,46,0.107)">+0.08</td><td class="num" style="background:rgba(18,134,79,0.177)">-0.18</td><td class="num" style="background:rgba(18,134,79,0.092)">-0.06</td><td class="num" style="background:rgba(18,134,79,0.074)">-0.03</td><td class="num" style="background:rgba(18,134,79,0.063)">-0.02</td></tr>
+<tr><td><b>底部共振<60</b></td><td class="num" style="background:rgba(18,134,79,0.062)">-0.02</td><td class="num" style="background:rgba(18,134,79,0.066)">-0.02</td><td class="num" style="background:rgba(18,134,79,0.112)">-0.09</td><td class="num" style="background:rgba(18,134,79,0.165)">-0.17</td><td class="num" style="background:rgba(226,59,46,0.075)">+0.04</td><td class="num" style="background:rgba(18,134,79,0.106)">-0.08</td><td class="num" style="background:rgba(18,134,79,0.082)">-0.04</td><td class="num" style="background:rgba(18,134,79,0.112)">-0.09</td></tr>
+<tr><td><b>confirm>=1</b></td><td class="num" style="background:rgba(226,59,46,0.105)">+0.08</td><td class="num" style="background:rgba(226,59,46,0.077)">+0.04</td><td class="num" style="background:rgba(18,134,79,0.156)">-0.15</td><td class="num" style="background:rgba(18,134,79,0.149)">-0.14</td><td class="num" style="background:rgba(226,59,46,0.058)">+0.01</td><td class="num" style="background:rgba(18,134,79,0.111)">-0.09</td><td class="num" style="background:rgba(18,134,79,0.090)">-0.06</td><td class="num" style="background:rgba(18,134,79,0.128)">-0.11</td></tr>
+<tr><td><b>confirm=0</b></td><td class="num" style="background:rgba(226,59,46,0.128)">+0.11</td><td class="num" style="background:rgba(226,59,46,0.189)">+0.20</td><td class="num" style="background:rgba(18,134,79,0.164)">-0.16</td><td class="num" style="background:rgba(18,134,79,0.103)">-0.08</td><td class="num" style="background:rgba(18,134,79,0.154)">-0.15</td><td class="num" style="background:rgba(18,134,79,0.107)">-0.08</td><td class="num" style="background:rgba(18,134,79,0.102)">-0.07</td><td class="num" style="background:rgba(18,134,79,0.107)">-0.08</td></tr></tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；状态全部用 T 日及以前信息构造（60 日动量 / RV20 expanding 分位 / 共振板 bottom / confirm）。<b>条件 IC 未做多重校正、样本重叠，只能当线索，不能当结论。</b></p>
+<div class="scroll"><table><thead><tr><th>状态</th><th>条件 IC 最强的前三因子</th></tr></thead><tbody><tr><td><b>上涨(60日动量>0)</b></td><td>全市场换手率 <span class='ic'>-0.25</span> (n=1352) ／ 股基滚动年化收益 <span class='ic'>+0.21</span> (n=1386) ／ 破净率（全A破净个股占比 <span class='ic'>-0.20</span> (n=1386)</td></tr>
+<tr><td><b>下跌(60日动量<=0)</b></td><td>破净率（全A破净个股占比 <span class='ic'>+0.38</span> (n=1192) ／ A股风险溢价 <span class='ic'>+0.34</span> (n=1192) ／ ERP 股债归因（便宜是 <span class='ic'>+0.34</span> (n=1192)</td></tr>
+<tr><td><b>高波动(RV20分位>=70)</b></td><td>全市场换手率 <span class='ic'>-0.44</span> (n=340) ／ 沪深300 RSI14（ <span class='ic'>-0.42</span> (n=340) ／ 麦克莱伦摆动指标（市场宽 <span class='ic'>-0.32</span> (n=340)</td></tr>
+<tr><td><b>低波动(RV20分位<30)</b></td><td>两融余额60日增速 <span class='ic'>-0.22</span> (n=1461) ／ 全市场换手率 <span class='ic'>-0.17</span> (n=1375) ／ 股基滚动年化收益 <span class='ic'>+0.12</span> (n=1461)</td></tr>
+<tr><td><b>底部共振>=60</b></td><td>A股风险溢价 <span class='ic'>+0.46</span> (n=471) ／ ERP 股债归因（便宜是 <span class='ic'>+0.46</span> (n=471) ／ 神奇指标 <span class='ic'>-0.42</span> (n=471)</td></tr>
+<tr><td><b>底部共振<60</b></td><td>全市场换手率 <span class='ic'>-0.17</span> (n=1982) ／ 低估指数行业 <span class='ic'>-0.09</span> (n=2107) ／ 神奇指标 <span class='ic'>-0.09</span> (n=2107)</td></tr>
+<tr><td><b>confirm>=1</b></td><td>神奇指标 <span class='ic'>-0.15</span> (n=2027) ／ 全市场换手率 <span class='ic'>-0.14</span> (n=1931) ／ 正收益偏股基金占比 <span class='ic'>-0.14</span> (n=2027)</td></tr>
+<tr><td><b>confirm=0</b></td><td>破净率（全A破净个股占比 <span class='ic'>+0.20</span> (n=551) ／ 神奇指标 <span class='ic'>-0.16</span> (n=551) ／ 沪深300 RSI14（ <span class='ic'>-0.15</span> (n=551)</td></tr></tbody></table></div>
+<div class="crit"><b>三个反直觉但一致的条件结论：</b>① <b>估值类只在坏时候有用</b>——ERP / 破净率在「下跌 + 底部共振≥60」时 IC 达 +0.34~+0.46，常态只有 ±0.1；② <b>高波动里量价类最强</b>——全市场换手率 −0.44、RSI14 −0.42（过热 → 后续收益低），是「顶部/拥挤」而非「底部」信号；③ <b>confirm≥1 之后所有因子都失效</b>（|IC|≤0.15），因为拐点被确认时价格已经反映信息 —— 这解释了为什么体系必须区分「位置」与「时点」。另外恐慌档因子间平均 |r| 从 0.248 升到 0.291，危机时相关性趋同确实存在但幅度温和。</div>
+<div class="note"><b>状态划分的前视红线：</b>若用 HMM 识别区制，只能用 <b>filtered probability（滚动/扩展窗口实时推断）</b>，绝不能用全样本 smoothed probability —— 后者本身偷看了未来，会让「状态依赖有效性」整个虚高。用可观测阈值（波动分位、动量、共振度）切分虽然朴素，但天然 PIT 可回放，<b>在你这套系统里更合适</b>。条件有效性还应补交互项回归 + Wald 检验，或 Henriksson–Merton / Treynor–Mazuy 条件择时检验（HAC 标准误），方法出处需核实原文。</div>
+</div>
+
+<div class="card">
+<div class="q">Q3：贝叶斯模型能怎么用？</div>
+<p><b>最不该做的，是拿贝叶斯去「提高收益预测精度」。它在这套体系里最值钱的三个用途，恰好都对应你现有的痛点：</b></p>
+<h3>用途 ① 小样本档位的收缩（最该先用）</h3>
+<p>项目已交付的概率评估里，同档样本常常只有 n=15 甚至 n=2。以「共振≥85 且 confirm=0 → 60 日不破位且上涨」为例，n=15 / k=3、原始 20.0%、Wilson 95%CI [7.0, 45.2]，基准率 24.0%。取 Beta 先验 κ（等效先验样本量）：</p>
+<div class="scroll"><table><thead><tr><th>先验强度 κ</th><th>先验均值</th><th>后验均值</th><th>后验 95% 可信区间</th><th>P(p &gt; 基准)</th></tr></thead><tbody><tr><td class="num">5</td><td class="num">24.0%</td><td class="num"><b>21.0%</b></td><td class="num">[6.6, 40.8]</td><td class="num">0.337</td></tr>
+<tr><td class="num">10</td><td class="num">24.0%</td><td class="num"><b>21.6%</b></td><td class="num">[8.2, 39.3]</td><td class="num">0.354</td></tr>
+<tr><td class="num">25</td><td class="num">24.0%</td><td class="num"><b>22.5%</b></td><td class="num">[11.1, 36.5]</td><td class="num">0.385</td></tr>
+<tr><td class="num">50</td><td class="num">24.0%</td><td class="num"><b>23.1%</b></td><td class="num">[13.8, 34.0]</td><td class="num">0.410</td></tr></tbody></table></div>
+<p>κ 从 5 加到 50，后验均值只从 21.0% 移到 23.1%，区间收窄但仍跨过基准率；<b>无论先验怎么设，P(p&gt;24%) 都只有 0.34~0.41</b>。贝叶斯因子 BF<sub>10</sub> = <b>0.669</b>（&lt;1），数据更支持「该档与基准无差别」。<b>这个结论对先验不敏感，比单点 20% 或宽 CI 更可辩护</b>，且直接支撑项目已有的「位置像底、时点不像底」。</p>
+<h3>用途 ② 层次部分池化：让小样本档不再乱跳</h3>
+<p>把共振度分 4 档、按 60 日去重重算「未来 60 日正收益」。经验贝叶斯用矩估计求全局先验（μ=57.8%、κ≈41.9，α=24.2 / β=17.69），各档后验均值在「自身原始率」与「全局率」之间自适应收缩：</p>
+<div class="scroll"><table><thead><tr><th>共振档</th><th>n</th><th>成功 k</th><th>原始率</th><th>完全池化</th><th>部分池化后验</th><th>收缩幅度</th></tr></thead><tbody><tr><td>共振<30</td><td class="num">18</td><td class="num">8</td><td class="num">44.4%</td><td class="num">57.8%</td><td class="num"><b>53.8%</b></td><td class="num ">-9.4pp</td></tr>
+<tr><td>30<=共振<60</td><td class="num">18</td><td class="num">10</td><td class="num">55.6%</td><td class="num">57.8%</td><td class="num"><b>57.1%</b></td><td class="num ">-1.5pp</td></tr>
+<tr><td>60<=共振<85</td><td class="num">7</td><td class="num">6</td><td class="num">85.7%</td><td class="num">57.8%</td><td class="num"><b>61.8%</b></td><td class="num warn">+23.9pp</td></tr>
+<tr><td>共振>=85</td><td class="num">2</td><td class="num">2</td><td class="num">100.0%</td><td class="num">57.8%</td><td class="num"><b>59.7%</b></td><td class="num warn">+40.3pp</td></tr></tbody></table></div>
+<p class="src">数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21；共振板 bottom 序列 + hs300_close，2016-01-11 起、按 60 交易日去重；与已交付报告的 n=15 档口径不同（去重方式/标签不同），不可混用。</p>
+<div id="c_bayes" class="chart"></div>
+<div class="good"><b>最刺眼的一行：</b>「共振≥85」原始 100%（n=2）被收缩到 <b>59.7%</b>，收缩 40.3pp。<b>n=2 的 100% 胜率不是证据，是噪声</b> —— 这正是项目里所有「同档概率」都该换成后验区间而非点估计的理由。层次模型的价值不是让数字好看，而是让小样本档自动向全局基准靠拢、并诚实报告「我们其实不知道」。</div>
+<h3>用途 ③ 在线更新「这个指标现在还灵不灵」</h3>
+<p>把「因子有效性」当作随时间漂移的隐状态（IC<sub>t</sub>），用贝叶斯在线更新 / 状态空间模型滚动估计，替代现在「一次性全历史标定」。这能回答一个目前完全没覆盖的问题：<b>指标是否衰减或失效</b>。因子拥挤、制度变化都会让历史 IC 失去意义；外部方法论里的经验贝叶斯 IC 收缩（按 σ<sub>IC</sub>≈1/√n 拉向族均值）和 BMA / spike-and-slab 先验也可用于「相对已有信号是否新增信息」的判断（出处需核实原文）。</p>
+<div class="note"><b>边界：</b>先验必须由<b>全局基准率</b>或<b>同类因子族</b>估计，不能用待检验档位自己的数据（否则循环论证）；必须做先验敏感性分析（本文 κ=5/10/25/50 四档）；共轭 Beta-Binomial 有解析解，不需要 MCMC。样本量小、CI 宽时，<b>「区间很宽」本身就是结论</b>，不要靠调先验把它变窄。</div>
+</div>
+
+<h2>五、建议的五层架构与落地路线</h2>
+<div class="card">
+<div class="layers">
+<div class="layer"><span class="lno">L0</span><b>因子矩阵</b><p>PIT 分位、发布日+1 生效、stale 标记、逐频率采样、去重、方向统一、试验日志</p></div>
+<div class="layer"><span class="lno">L1</span><b>单因子审计</b><p>IC decay 曲面 / IR / 5 档单调性 / 事件研究 / 6 档判定清单 / 反面证据留档</p></div>
+<div class="layer"><span class="lno">L2</span><b>结构降维</b><p>相关矩阵 → 聚类 → 组内合成 → 正交化；滚动 IC 加权（walk-forward）</p></div>
+<div class="layer"><span class="lno">L3</span><b>状态依赖</b><p>条件 IC 矩阵（因子×状态）、filtered 区制、交互项 Wald、条件择时检验</p></div>
+<div class="layer"><span class="lno">L4</span><b>贝叶斯 + 验证</b><p>Beta-Binomial / 层次池化 / BMA / 在线衰减；DSR + PBO + CPCV + 样本外</p></div>
+</div>
+<div class="scroll"><table><thead><tr><th>阶段</th><th>交付物</th><th>回答什么</th><th>前置 / 红线</th></tr></thead><tbody>
+<tr><td>① 常驻审计</td><td><code>audit_efficacy.py</code> + <code>data/efficacy_audit.json</code>（本轮已可跑，未接 DAG）</td><td>每个指标现在多大 IC、单调性、样本够不够</td><td>只读、零网络、不进综合分；每次跑写试验日志</td></tr>
+<tr><td>② 条件 IC 面板</td><td>状态定义固化 + 因子×状态矩阵 + 分层事件研究</td><td>「什么情况下哪个因子有效」</td><td>状态必须 T 日可知；条件 IC 也要做 FDR 校正</td></tr>
+<tr><td>③ 贝叶斯档位替换</td><td>把报告里的 Wilson 点估计换成后验均值 + 可信区间 + BF</td><td>小样本结论到底有多可信</td><td>先验来自全局基准，报敏感性；不缩窄 CI 造假</td></tr>
+<tr><td>④ 组合与样本外</td><td>walk-forward 组合、DSR / PBO、2022 起样本外、成本与换手</td><td>是否值得改综合分权重</td><td><b>这一步之前，绝不改 8 指标等权</b></td></tr>
+</tbody></table></div>
+<div class="crit"><b>路线里最重要的一条纪律：</b>综合分 34.65（8/8）与 13 维共振板是已交付评估报告的口径基线，任何权重调整都会破坏历史可比性。新结论先以「独立审计层」存在；只有当 ④ 的样本外证明有稳定增量，才讨论是否、以及如何变更口径，并且必须保留旧口径并行输出一段时间。</div>
+</div>
+
+<h2>六、本轮体检的边界与反面证据</h2>
+<div class="card"><ul>
+<li><b>「51/51 不显著」是方法设定下的结论，不是对指标的终审。</b>本轮只用了 expanding 分位的<b>线性 Spearman IC</b>，没有测阈值型 / 非线性 / 交互效应；分层单调性和条件 IC 已经显示被漏掉的结构。</li>
+<li><b>条件 IC 全部未做多重校正</b>（8 状态 × 17 因子 = 136 次额外检验），且样本重叠、n 最小仅 340。<b>热力图只能用于生成假设，不能用于下结论</b>；阶段 ② 必须补校正与 block bootstrap。</li>
+<li><b>长窗口几乎无独立样本：</b>h=120 时 2638/120 ≈ 22 个不重叠观测；即使 |IC| 均值升到 0.098，也不该据此宣称「长周期更有效」。</li>
+<li><b>执行假设理想化：</b>因子按 T 日收盘可得、收益按 T 日收盘买入计算，未计滑点 / 成本 / 停牌 / 数据补录；低频源端还有 1~2 日发布滞后。正式回测需改为 T+1 生效并留出发布缓冲。</li>
+<li><b>方向假设未复核：</b>按系统 <code>reverse</code> 标记把 pct 翻成情绪分方向后，17 个因子里 h=60 的 score_IC 有 12 个为负、5 个为正，与已交付报告里「极端悲观读数后常继续动量下跌」的<b>尾部事件</b>判定并不等价 —— 全样本线性方向与极端条件方向不一致，本身就在提示不能用线性相关一刀切。这块需要专门的 PIT 事件研究来判定，本轮不下结论。</li>
+<li><b>混频因子未参与主分析：</b>8 个因子（4 个月/周频、2 个短历史、综合分周频、PCR）被排除；结论只覆盖 17 个日频指标，不能外推到全部 25 个。</li>
+<li><b>外部方法论均为非一手来源、需核实原文：</b>Harvey–Liu–Zhu (2016) 多重检验门槛、Bailey &amp; López de Prado (2014) DSR、Hamilton (1989) 区制转换、Henriksson–Merton (1981) / Treynor–Mazuy 条件择时、Chen–Velikov (2019) 经验贝叶斯收缩、Feng–Giglio–Xiu (2020) 双选择 LASSO / BMA 等，本文只借用方法框架，未采用其数值结论。</li>
+<li><b>统计口径：</b>browser 块自助法 B=1200、块长 60；BH-FDR 按 51 次检验；PCA 对标准化因子矩阵的协方差做特征分解；聚类为 1−|r| 距离的 average linkage。所有阈值均未经样本外检验。</li>
+</ul>
+<div class="note"><b>非预测声明：</b>本文的 IC、分层收益、条件 IC 与贝叶斯后验均为描述性历史标定，不是收益预测，也不是对任何指标「有效 / 无效」的最终裁决。</div>
+</div>
+
+<div class="foot">生成 2026-11-21 · 数据来源：项目本地 data/mood_data.json（数据基准 2026-11-20 收盘）· 本次计算 2026-11-21 · 图表使用本地 vendor/echarts.min.js · 本轮为只读体检，未修改 mood_data.json / 综合分 / 共振板 / DAG / README。<br>
+> <b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+</div>
+<script src="vendor/echarts.min.js"></script>
+<script>
+var D={"ic_names":["神奇指标","A股风险溢价","破净率（全A破净","全市场换手率","沪深300 RS","麦克莱伦摆动指标"],"ic_series":[{"name":"神奇指标","data":[-0.0493,-0.1553,-0.2659]},{"name":"A股风险溢价","data":[0.0148,0.0862,0.1855]},{"name":"破净率（全A破净","data":[0.0588,0.0764,0.2353]},{"name":"全市场换手率","data":[-0.059,-0.1276,-0.0838]},{"name":"沪深300 RS","data":[0.0229,-0.0333,-0.0131]},{"name":"麦克莱伦摆动指标","data":[-0.0144,-0.0939,-0.0479]}],"ic_abs_mean":[0.0355,0.0739,0.0978],"hs":[20,60,120],"pca":[29.6,23.0,12.6,9.1,6.1,4.5,3.9,2.5],"pca_cum":[29.6,52.6,65.2,74.3,80.4,84.9,88.8,91.3],"bayes_bands":["共振<30","30<=共振<60","60<=共振<85","共振>=85"],"bayes_raw":[44.4,55.6,85.7,100.0],"bayes_partial":[53.8,57.1,61.8,59.7],"bayes_pool":[57.8,57.8,57.8,57.8]};
+function C(id,opt){var el=document.getElementById(id);if(!el)return;var ch=echarts.init(el);ch.setOption(opt);window.addEventListener('resize',function(){ch.resize();});}
+var AX={axisLabel:{color:'#777',fontSize:11},axisLine:{lineStyle:{color:'#d9dee6'}},axisTick:{show:false}};
+var PALETTE=['#ff5b2e','#2f6fd0','#12864f','#d98a00','#8b5cf6','#0891b2'];
+C('c_ic',{
+ grid:{left:48,right:20,top:34,bottom:30},
+ tooltip:{trigger:'axis'},
+ legend:{data:D.ic_names.concat(['|IC| 均值']),top:0,textStyle:{fontSize:10},itemWidth:14,itemHeight:8},
+ xAxis:Object.assign({type:'category',data:['20 日','60 日','120 日'],boundaryGap:false},AX),
+ yAxis:Object.assign({type:'value',name:'IC',splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+ series:D.ic_series.map(function(s,i){return {name:s.name,type:'line',data:s.data,smooth:true,symbolSize:6,lineStyle:{width:1.8,color:PALETTE[i%6]},itemStyle:{color:PALETTE[i%6]}};}).concat([
+  {name:'|IC| 均值',type:'line',data:D.ic_abs_mean,smooth:true,symbolSize:8,lineStyle:{width:3,type:'dashed',color:'#1f2430'},itemStyle:{color:'#1f2430'}}
+ ])
+});
+C('c_pca',{
+ grid:{left:48,right:48,top:26,bottom:30},
+ tooltip:{trigger:'axis'},
+ legend:{data:['单个解释率','累计解释率'],top:0,textStyle:{fontSize:10}},
+ xAxis:Object.assign({type:'category',data:['PC1','PC2','PC3','PC4','PC5','PC6','PC7','PC8']},AX),
+ yAxis:[Object.assign({type:'value',name:'%',max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+        Object.assign({type:'value',name:'累计%',max:100,splitLine:{show:false}},AX)],
+ series:[{name:'单个解释率',type:'bar',data:D.pca,barWidth:'52%',itemStyle:{color:'#7fa8e8'}},
+         {name:'累计解释率',type:'line',yAxisIndex:1,data:D.pca_cum,smooth:true,symbolSize:6,
+          lineStyle:{width:2.4,color:'#ff5b2e'},itemStyle:{color:'#ff5b2e'}}]
+});
+C('c_bayes',{
+ grid:{left:48,right:20,top:30,bottom:34},
+ tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+ legend:{data:['原始率','部分池化后验','完全池化(全局)'],top:0,textStyle:{fontSize:10}},
+ xAxis:Object.assign({type:'category',data:D.bayes_bands},AX),
+ yAxis:Object.assign({type:'value',name:'60日正收益 %',max:110,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+ series:[{name:'原始率',type:'bar',data:D.bayes_raw,barWidth:'22%',itemStyle:{color:'#e23b2e'}},
+         {name:'部分池化后验',type:'bar',data:D.bayes_partial,barWidth:'22%',itemStyle:{color:'#2f6fd0'}},
+         {name:'完全池化(全局)',type:'bar',data:D.bayes_pool,barWidth:'22%',itemStyle:{color:'#9aa4b2'}}]
+});
+</script></body></html>

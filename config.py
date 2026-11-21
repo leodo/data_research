@@ -83,3 +83,78 @@ REPURCHASE_ROLL = 12            # 回购规模滚动窗口（月）
 HOLDER_CHANGE_START = "2015-01-01"
 HOLDER_CHANGE_ROLL = 12         # 滚动窗口（月），与回购一致
 HOLDER_CHANGE_LOOKBACK = 15     # 增量回看天数，覆盖盘后补录/修订的公告
+
+# ---------------- 拐点确认层（build_confirm.py，2026-11-21 新增）----------------
+# 三项 P0 指标全部挂在「确认层」，不进 8 指标等权综合分、不改 13 维共振板。
+# 集中放阈值是为了做三档稳健性检验时不必翻脚本；改动请同步更新卡片口径说明。
+CONFIRM_START = "2015-01-01"    # 日频序列起点，与逐股价格缓存 / 宽度体系对齐
+CONFIRM_FWD_WINS = (20, 60)     # 日频前瞻收益窗口（交易日）
+CONFIRM_TRIGGER_GAP = 20        # 触发日去重间隔（交易日 / 周，按各自序列频率）
+CONFIRM_MIN_HIST = 250          # expanding 分位最小样本
+
+# P0-1 情绪-价格底背离（周频，composite.history + 沪深300 周收盘）
+# 定义：近 8 周情绪分曾进悲观区(<=35)，随后 4 周回升 >=3 分，同期价格仍未上涨。
+DIV_PESSIMIST = 35.0            # 悲观区阈值（综合情绪分绝对水平）
+DIV_LOOKBACK_W = 8              # 悲观区回看窗口（周）
+DIV_REBOUND_W = 4               # 情绪分回升窗口（周）
+DIV_REBOUND_MIN = 3.0           # 4 周回升幅度阈值（分）
+DIV_PRICE_MAX = 0.0             # 同期沪深300 涨幅上限(%)，<=0 表示价格滞后
+DIV_FWD_W = (4, 12)             # 前瞻窗口（周），12 周≈60 交易日
+DIV_ROBUST = ((2.0, 35.0), (3.0, 35.0), (4.0, 35.0), (3.0, 30.0), (3.0, 40.0))
+                                # 稳健性档位：(回升阈值, 悲观阈值)
+
+# P0-2 涨跌停家数 / 缩量止跌（逐股未复权收盘价 + 逐股成交额）
+LIMIT_MAIN = 10.0               # 主板涨跌停幅度(%)
+LIMIT_GEM = 20.0                # 创业板 / 科创板
+LIMIT_BJ = 30.0                 # 北交所
+LIMIT_TOL = 1.5                 # 判定容差(百分点)：收盘价取整 + 四舍五入会偏离理论价
+LIMIT_EXFAT_MAX = -35.0         # 单日跌幅小于此值判为除权/重组异常，不计入跌停
+LIMIT_MIN_PRICE = 2.0           # 低价股取整误差过大，不参与涨跌停判定
+LIMIT_MIN_STOCKS = 100          # 当日有效股票数下限
+VOL_RATIO_WIN = 20              # 20 日量能比窗口（成交额 / 过去20日均额）
+VOL_HIGH_WIN = 250              # 成交额相对前高的回看窗口
+VOL_SHRINK_MAX = 0.80           # 量能比 <= 此值视为缩量
+LIMIT_DOWN_EASE = 1.0           # 跌停占比较 5 日前回落 >= 此值(pp) 视为恐慌缓解
+
+# P0-3 波动率风险溢价 VRP（QVIX 隐含波动 - 沪深300 已实现波动）
+VRP_RV_WIN = 20                 # 已实现波动窗口（交易日），年化按 244 日
+VRP_DOWNSIDE_WIN = 60           # 下行波动贡献占比窗口
+VRP_ANNUAL_DAYS = 244           # A股年化交易日数
+VRP_EXTREME_LOW = 20            # VRP 历史分位 <=20：隐波相对已实现波动偏便宜
+VRP_EXTREME_HIGH = 80           # VRP 历史分位 >=80：恐慌溢价高
+VRP_PANIC_EASE_WIN = 5          # VRP 由高位回落的观察窗口（交易日）
+
+# ---------------- L0 因子变换层 / L1 常驻效力审计（build_factor_matrix.py / audit_efficacy.py，2026-11-21 新增）----------------
+# 双轨原则：保留 pct_exp（= 卡片 history.pct，全历史 expanding PIT）作为生产主口径，
+# 保证综合分 34.65 与已交付三份评估报告的历史可比性；并列生成其它变换进独立因子矩阵，
+# 绝不替换、绝不回写 mood_data.json。所有变换只用 t 及之前的信息。
+FACTOR_START = "2016-01-11"     # 统一审计起点：与两份诊断报告一致
+FACTOR_FFILL_LIMIT = {"日": 5, "周": 12, "月": 45}
+                                # 混频对齐的前向填充上限（交易日）；低频因子不靠 ffill 造伪独立观测
+FACTOR_MIN_COVERAGE = 0.80      # 日频因子入模的 2016 起覆盖率下限
+FACTOR_MAIN_TRACK = "pct_exp"   # L1 主检验轨道（生产口径，保持历史可比）
+FACTOR_ROBUST_TRACKS = ("raw", "pct_exp", "pct_r126", "pct_r250", "dual_gap", "chg60")
+                                # 多轨道稳健性对照；变换按经济含义先验指定，不按样本内 IC 挑
+FACTOR_PRIORITY_KS = (0.30, 0.50)   # 跨年 KS 的中/高漂移分界
+
+# 按经济含义分类（决定变换策略，不是数据驱动挑选的结果）
+FACTOR_KINDS = {
+    "rp": "比率·有理论锚", "dgz": "计数·趋势", "fx_fe": "金额·规模", "pgjj_zsy": "占比·bounded",
+    "qschsl": "比率·体制切换", "pcr": "比率·bounded", "zzpgnh": "收益率·均值回复",
+    "magic": "复合价差·体制切换", "etf300_ratio": "占比·结构趋势", "margin_growth": "增速·已去量纲",
+    "breadth_ma200": "占比·bounded", "a_pb": "估值·有理论锚", "erp_attrib": "比率·有理论锚",
+    "fund_position": "占比·bounded", "m1m2": "宏观·月频", "repurchase": "金额·规模",
+    "holder_change": "金额·规模", "below_net": "占比·结构趋势", "nhnl": "占比·bounded",
+    "adv_ratio": "占比·bounded", "hs300_rsi": "技术指标·已 0-100", "arms": "比率·厚尾",
+    "breadth_score": "复合分·bounded", "mcclellan": "摆动量·均值回复",
+    "composite": "复合分·bounded",
+}
+
+# L1 审计统计口径（与 audit_efficacy.py 首版保持一致，改动会使历史结论不可比）
+AUDIT_HORIZONS = (20, 60, 120)
+AUDIT_BLOCK = 60                # 移动块 bootstrap 块长（交易日）
+AUDIT_BOOT = 1200               # 单因子主检验重采样次数
+AUDIT_BOOT_COND = 300           # 条件 IC 重采样次数（136 个格子，控制 DAG 耗时）
+AUDIT_MIN_OBS = 120             # 单因子最小有效样本
+AUDIT_COND_MIN_OBS = 60         # 条件 IC 最小有效样本
+AUDIT_SEED = 20261121           # 固定随机种子，保证审计结果可复跑

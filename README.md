@@ -55,20 +55,26 @@ python serve.py                 # 只起静态服务，不更新数据（调试�
          build_holder_change.py          重要股东增减持(月频)            ┘
          build_turning.py                顶底共振信号板 + 回测（由 build_mood 调用）
          build_mood.py                   情绪面板汇总 + ERP 股债归因 + 输出
+         build_confirm.py                拐点确认层：背离/涨跌停/VRP（独立输出，排在 build_mood 之后）
+         build_factor_matrix.py          L0 因子变换层：25 因子 × 12 种 PIT 变换 → 统一因子矩阵
+         audit_efficacy.py               L1 常驻效力审计：IC/IR/分层/FDR/条件IC/多轨道稳健性
 公共层   config.py                        全局口径系数、抓取参数、端口
          core.py                          路径/日期/日志/缓存/分位/交易日历
+         factor_utils.py                  L0/L1 研究公共层：PIT 变换、统计检验、json/js 双写
          app.js                           前端公共层：十字准星 helper + 二级目录组件 mountToc()
          app.css                          三页共用主题变量（浅/暗双主题）+ 目录样式
 数据层   data/                            CSV 缓存 + JSON/JS 输出（派生产物，不入库）
 展示层   index.html / indicators.html / mood.html / vendor/
+         confirm_cards.js                 拐点确认层独立渲染器（读 data/confirm_data.js）
+         factor_audit_cards.js           因子研究层独立渲染器（读 factor_matrix.js + efficacy_audit.js）
 archive/                                治理前旧版脚本快照（可回溯）
 ```
 
 `build_mood.py` 内部按「取数 `load_sources()` → ERP 股债归因 `build_erp_attrib(src)` → 指标注册表 `METRIC_BUILDERS` / `MACRO_BUILDERS` / `SIGNAL_BUILDERS` → 共振板 `build_turning.build()` → 组装 `build_composite()` → 输出 `write_output()`」组织，每个指标一个 `calc_*` 函数。**新增指标只需写一个 `calc_*` 并在注册表登记一行**，不用动 `main()`；卡片带 `data-toc` / `data-toc-group` 后会自动进入二级目录。ERP 归因复用 `load_sources()` 已加载的 PE / 国债序列，落盘 `mood_erp_attrib.csv` 供归因卡片与 rp 主卡警示读取，故由 `main()` 同进程调用、不单独占 DAG 节点。
 
 `start_site.py` 的 `PIPELINES` 定义了显式依赖顺序，情绪链必须按
-`rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_mood`
-执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）。新增构建脚本时要同步登记到这里。
+`rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_holder_change → build_mood → build_confirm → build_factor_matrix → audit_efficacy`
+执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。新增构建脚本时要同步登记到这里。
 
 `build_turning.py` 不单独列入 DAG：它由 `build_mood.main()` 在 `load_sources()` 之后同进程调用（此时各源缓存已落盘），并生成信号卡要读的 `mood_tech.csv`。也可 `python build_turning.py` 单独重算。
 
@@ -158,6 +164,66 @@ archive/                                治理前旧版脚本快照（可回溯�
 - **申万行业**、**50ETF QVIX**、**两融账户统计**等源可能滞后数日；`allmarket` 恐贪常因此停在前一交易日。这属于数据源节奏差异，不是脚本故障。
 - 口径系数（换手率桥接、市值锚、均线窗口、抓取参数等）集中在 `config.py`，注释里写明了实测依据。中证1000 QVIX 回归系数是运行时拟合的，不是固定常量。
 
+## 拐点确认层（2026-11-21 新增）
+
+系统原来的 24 张卡片 + 13 维共振板回答的都是「水平 / 位置」，确认层几乎是空的。本层补三项、**全部不计入综合情绪分、不改动 8 指标等权与 13 维共振板**：
+
+| 指标 | 口径 | 数据源 | 当前（2026-11-20） |
+|---|---|---|---|
+| 情绪-价格底背离 | 近 8 周综合分曾 ≤35、随后 4 周回升 ≥3 分、同期沪深300 涨幅 ≤0 | `mood_data.json` composite.history（1192 周点）+ `mood_hs300.csv` | 未触发（情绪分与价格同向下行） |
+| 涨跌停家数 / 缩量止跌 | 板块阈值主板 10% / 双创 20% / 北交 30%；缩量止跌 = 20 日量能比 ≤0.8 + 未创 20 日新低 + 跌停占比较 5 日前回落 ≥1pp | `breadth_prices` / `crowding_amounts` 各 5579 只逐股缓存 | 涨停 28 / 跌停 148（2.72%），量能比 0.87，未成立 |
+| 波动率风险溢价 VRP | 300ETF QVIX − 沪深300 RV20（年化 244 日），配 60 日下行波动占比 | `mood_qvix.csv`（`--qvix-full` 生成）或 `index_data.json` volatility 因子降级 | VRP 3.83pp、分位 53.9，下行占比 73.9%（隐波止于 11-18） |
+
+**运行方式**
+
+```bash
+python build_confirm.py              # 默认零网络请求，纯本地；逐股矩阵结果缓存到 data/mood_confirm_limits.csv
+python build_confirm.py --qvix-full  # 可选：一次性抓 50/300/500ETF QVIX 全历史落 data/mood_qvix.csv
+python build_confirm.py --force      # 强制重算逐股矩阵（约 24 秒），日常增量直接复用缓存
+```
+
+输出 `data/confirm_data.json` / `.js`（`window.CONFIRM_DATA`）与 `data/mood_confirm.csv`（日频留档）。`mood.html` 只加了一个 `#confirmRoot` 占位、两个 script 引用和一条口径说明，由独立的 `confirm_cards.js` 渲染，不复用主页面的 `render()`；卡片带 `data-toc` 并在填充后重扫目录，浅/暗主题通过 `MutationObserver` 监听 `data-theme` 重绘图表。
+
+**口径取舍（实测）**
+
+- QVIX 主口径用 **300ETF 真实序列**（2019-12 起 1663 行）配沪深300 RV，标的匹配优先。50ETF 虽有 2015 起 2851 行长历史，但当前读数 14.8 比 300ETF 的 20.46 低约 5.7pp，拼接会污染 VRP 绝对水平，故只作对照、不做回归延拓、不混用口径。
+- 涨跌停为**未复权保守下界**：已剔除单日跌幅 <−35% 的除权异常、价格 <2 元的低价股、停牌跨日样本；ST 股 5% 限制无法从代码识别。全市场成交额由逐股汇总，只看相对变化、不与交易所官方口径比绝对值。
+- 卡片内 QVIX / RV20 / VRP / 指数读数**统一截到同一隐波观测日**（11-18），不拿 11-20 的 RV 配 11-18 的隐波。
+
+**验收与反面证据（必须保留）**：所有分位 expanding(min_periods=250)；前瞻统计用 `shift(-N)` 保证 t+N ≤ 末日、按 20 观测去重；背离做了 5 档阈值稳健性。当前结果并不都好看：背离 7 次信号 12 周胜率 71.4% / 均 +9.39%（基准 55.9% / +2.74%）但样本极小；缩量止跌 19 次信号 **20 日胜率仅 31.6% < 基准 49.3%**、60 日才 72.2%；VRP 高−低分位组 60 日价差 −0.41pp 属**不显著**。三项当前均 0/3 触发，与共振板 confirm=0 一致。
+
+详见 `顶底指标扩展选型-20261121.html`。本层为描述性历史标定，不是收益预测，不构成投资建议。
+
+## 因子研究层：L0 变换 / L1 常驻审计（2026-11-21 新增）
+
+解决的问题：24 张卡片 + 确认层的 `history.pct` 都是「全历史 expanding 分位」，但跨年分布并不平稳（跨年 KS 均值 0.435，ERP 与时间秩相关 +0.793、头部300ETF占比 +0.838）。直接把不同量纲、不同漂移类型的原始值或单一分位丢进相关/回归，会同时踩同源共线、混频错配、多重检验三个坑。本层把「因子预处理」和「效力判定」拆成两级常驻模块，**只读、零网络、不进综合分、不改共振板**。
+
+| 层 | 脚本 | 输入 | 输出 |
+|---|---|---|---|
+| L0 变换 | `build_factor_matrix.py` | `mood_data.json`（卡片 `history.value` + `history.pct`、`composite`、`hs300_close`） | `data/factor_matrix.csv`（2638 交易日 × 205 列）、`factor_matrix.json/.js` |
+| L1 审计 | `audit_efficacy.py` | **L0 的 CSV（因子值唯一来源）** + L0 元数据 + `mood_data.json` 的市场状态 | `data/efficacy_audit.json/.js`（`window.EFFICACY_AUDIT`） |
+| 公共层 | `factor_utils.py` | — | PIT 变换、KS / Spearman / BH-FDR / 块 bootstrap、json/js 精确双写 |
+
+**L0 双轨原则**：`pct_exp` 就是卡片现用分位，原样保留以保证综合分 34.65(8/8) 与已交付报告的历史可比性；并列生成 `raw / pct_r126 / pct_r250 / pct_r500 / z_r250 / robust_r250 / detrend_r500 / chg60 / logmod / logit_pct / dual_gap` 共 12 种变换，全部 trailing/expanding、只用 t 及之前信息。启动时做 64 次「截至 t 的子样本重算末值 vs 全量序列」PIT 回放（本次最大差 0），并校验生产轨道与卡片 `pct` 的 ffill 完全一致。25 个因子全部补齐 `unit / kind / transform / window / freq / history_start / as_of / publish_date / stale_days / coverage_pct` 元数据；**源端确实没有 `publish_date`，如实写 `null`**，用 `as_of` + `stale_trade_days` 近似。月/周频 8 个因子只登记元数据、不进日频矩阵，避免 ffill 造伪独立观测。
+
+> `factor_matrix.json` 的 `factors` 数组必须保持生产卡片顺序（`panels → macro → signal → composite`）。L1 的块 bootstrap 按此顺序消耗随机数，重排会使首版 51 次主检验的 p 值不可复现；需要排序请在展示层做。
+
+**L1 相对首版的升级**：① 因子值统一从 L0 CSV 取，输入口径唯一；② 条件 IC（8 状态 × 17 因子 = 136 次）也纳入 BH-FDR，给出族内校正 + 与主检验合并的联合校正（187 次）；③ 新增多轨道稳健性（换变换后 IC 秩相关与符号翻转率）；④ 写试验日志登记每轮检验族系，应对「跑一批 → 看结果 → 加指标 → 再跑」的序贯检验；⑤ 保留首版全部字段与贝叶斯示范，51 次主检验可逐条复现。
+
+**运行方式**
+
+```bash
+python build_factor_matrix.py    # L0，约 2 秒，零网络
+python audit_efficacy.py         # L1，约 35 秒（块 bootstrap 1200 + 条件 300）
+python start_site.py             # 正常启动会自动带上这两步（DAG 末尾）
+```
+
+**当前结果（基准 2026-11-20）**：主检验 51 次 raw `p<0.05` 仅 2 个、BH-FDR 后 **0 个**；条件 IC 136 次 raw 17 个、族内 FDR 后 **2 个**、联合 187 次校正后仍是这 2 个（均在「高波动 × 宽度类」，IC 为负）。条件 IC 的 p 用 300 次块 bootstrap，分辨率下限 1/300，`q=0` 应读作「低于分辨率下限」而非精确 0。多轨道显示换变换会显著改变结论（`dual_gap` 与主轨道 IC 秩相关 −0.583、符号翻转 58.8%），印证变换必须按经济含义先验指定。**在 walk-forward 样本外证明有稳定增量之前，绝不改 8 指标等权。**
+
+`mood.html` 底部新增独立栏目「因子研究层」，由 `factor_audit_cards.js` 渲染（4 张卡片 + 3 图：变换 KS、代表因子逐年路径、条件 IC 热力），浅/暗主题跟随、自带 `data-toc` 并在填充后重扫目录；缺失数据只提示本层，不影响原有面板。
+
+**边界**：本层不证明任何变换更有效；KS 降低是分位压平分布的设计使然；条件 IC 状态含阈值、样本重叠、未经样本外检验，显著格子只作假设生成。详见 `指标效力审计与回测方案-20261121.html` 与 `因子预处理与量纲漂移诊断-20261121.html`。
+
 ## 常见问题
 
 - **双击 `启动.bat` 弹出「选择应用程序」**：改用 `启动.cmd`（关联与 `.bat` 独立），或双击 `修复双击关联.reg` 导入后重启资源管理器；也可右键 → 打开方式 → 选择「Windows 命令处理器 / 命令提示符」并勾选「始终使用此应用」。
@@ -181,6 +247,8 @@ archive/                                治理前旧版脚本快照（可回溯�
 - 2026-11-20 分项详细解读：25 个解读区（24 张分项卡 + 综合分），每卡 8 个板块，含跨周期口径辨析、近期变化、历史区间位置、同分位区间的沪深300前瞻收益统计与全历史基准；`build_mood.py` 注入 `hs300_close` 序列，浅/暗双主题无溢出验证
 - 2026-11-20 动态事实 / 历史回放 / 后视回测：`build_facts()` 消除源码中写死且已失真的历史数字；`{@key}` 占位符统一替换；基于 PIT expanding 分位实现任意历史日解读回放（含无数据保护、PIT 前瞻样本、局部刷新）；25 项「悲观−亢奋价差」方向一致性回测表；Python 独立复算逐项与页面一致
 - 2026-11-20 三批：数据更新至 11-20；全部 27 张走势图的滚动条默认窗口改为最近两年；新增第 9 张结构观察卡「重要股东增减持」，紧邻「A股回购规模」连排，附带口径估算、MARKET 二级市场占比与 PIT 公告日归档
-- 结构治理：`config.py` / `core.py` / `app.js` / `app.css`、`build_mood` 指标注册表、显式 DAG
+- 2026-11-21 拐点确认层：情绪-价格底背离、涨跌停家数/缩量止跌、VRP，独立 `build_confirm.py` + `confirm_cards.js`，不进综合分、不改共振板；严格 PIT 回测 + 阈值稳健性 + 方向自证伪，浅/暗主题与 TOC 均已验证
+- 2026-11-21 因子研究层：L0 双轨 PIT 因子矩阵（25 因子 × 12 变换 + 元数据 + PIT 回放自检）+ L1 常驻效力审计（统一输入、条件 IC 纳入 FDR、联合校正、试验日志、多轨道稳健性），独立 `factor_utils.py` / `build_factor_matrix.py` / `audit_efficacy.py` / `factor_audit_cards.js`，接入 DAG 末尾，浅/暗主题与 TOC 已验证
+- 结构治理：`config.py` / `core.py` / `factor_utils.py` / `app.js` / `app.css`、`build_mood` 指标注册表、显式 DAG
 - 工程配套：git 版本控制、`.gitignore`、`.gitattributes`、`requirements.txt`、本文档
 - 数据更新：PCR 真增量、申万缓存与回退保护、成分股滞后容忍、启动器今日去重

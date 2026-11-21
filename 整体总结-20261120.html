@@ -1,0 +1,227 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A股市场整体总结 · 数据基准 2026-11-20</title><style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1f2430;--sub:#5b6472;--line:#e3e6ec;
+--red:#e23b2e;--green:#12864f;--brand:#ff5b2e;--blue:#2f6fd0;--amber:#d98a00;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:27px;margin:0 0 6px}h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--brand)}
+h3{font-size:15px;margin:20px 0 8px}.lead{color:var(--sub);margin:0 0 18px}
+.sub{color:var(--sub);font-size:13px;margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;
+box-shadow:0 1px 3px rgba(0,0,0,.03)}
+.badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;margin-right:6px}
+.b-red{background:var(--red)}.b-green{background:var(--green)}.b-amber{background:var(--amber)}.b-blue{background:var(--blue)}.b-gray{background:#7b8492}
+.verdict{font-size:20px;font-weight:700;margin:10px 0 6px;line-height:1.5}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:14px 0}
+.kv div{background:#fafbfc;border:1px solid var(--line);border-radius:9px;padding:12px}
+.kv .k{color:var(--sub);font-size:12px}.kv .v{font-size:21px;font-weight:700;margin-top:3px}
+.kv .n{font-size:11px;color:#8a93a0;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}th{background:#f0f2f5;font-weight:600}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.hl td{background:#fff4ec;font-weight:600}
+.pos{color:var(--red)}.neg{color:var(--green)}
+.s-low{color:var(--red);font-weight:600}.s-mid{color:var(--sub)}.s-high{color:var(--blue);font-weight:600}
+.lag{display:inline-block;background:#fff2e0;color:#a06400;border:1px solid #f0d9bd;border-radius:5px;
+padding:1px 6px;font-size:11px;white-space:nowrap}
+.ok{color:var(--green);font-weight:600}.warn{color:var(--amber);font-weight:600}.bad{color:var(--red);font-weight:600}
+.chart{width:100%;height:300px}.chart.sm{height:260px}
+.note{background:#fff8f0;border:1px solid #f0d9bd;border-radius:9px;padding:12px 15px;color:#7a5a2a;font-size:13px;margin:14px 0}
+.crit{background:#fef2f1;border:1px solid #f3c9c4;border-radius:9px;padding:12px 15px;color:#8a3029;font-size:13px;margin:14px 0}
+.good{background:#f0f8f3;border:1px solid #c6e5d2;border-radius:9px;padding:12px 15px;color:#1e6b45;font-size:13px;margin:14px 0}
+ul{margin:8px 0;padding-left:22px}li{margin:6px 0}
+.foot{color:#8a93a0;font-size:12px;margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+.tag{font-size:11px;color:var(--sub);background:#eef1f5;border-radius:5px;padding:2px 7px;margin-left:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.two{grid-template-columns:1fr}}
+.scroll{overflow-x:auto}
+</style></head><body>
+<div class="wrap">
+<h1>A股市场整体总结</h1>
+<p class="lead">数据基准：<b>2026-11-20 收盘</b>（最近交易日）｜编制：2026-11-21（周六休市）｜用途：11.29 汇报底稿</p>
+<p class="sub">说明：11-29 为未来日期，本报告以最近交易日 11-20 收盘为基准，全部数值来自本地指标库当日快照；若需 11-29 终版，届时重跑数据链即可。报告含「数据完整性核查」与「市场整体判断」两部分。</p>
+
+<div class="card">
+<span class="badge b-red">数据：核心齐全（1 处缺口已修复）</span><span class="badge b-amber">市场：位置像底 · 时点不像底</span><span class="badge b-blue">信号：底部共振 91.7 / 确认 0</span>
+<div class="verdict">数据层面：8/8 主指标、9/9 结构卡、7/7 顶底卡、14/14 数据链产物齐备；唯一实质缺口「低估指数行业」已重跑恢复，综合分由 36.65(7/8) 回到 34.65(8/8)。剩余滞后全部来自源端发布节奏，非本地故障。<br>市场层面：情绪与估值被压到历史极值，位置是底、赔率改善，但拐点未确认、短线无优势，典型路径是先再跌一段再反弹。</div>
+<div class="kv">
+<div><div class="k">沪深300 收盘</div><div class="v">3954.57</div><div class="k">11-20，近5日 −1.54%</div></div>
+<div><div class="k">综合情绪分</div><div class="v">34.65</div><div class="k">8 指标等权 · 中立偏悲观</div></div>
+<div><div class="k">底部共振度</div><div class="v">91.7</div><div class="k">阈值≥60 强底部</div></div>
+<div><div class="k">顶部共振度</div><div class="v">0.0</div><div class="k">拐点确认 0/3</div></div>
+<div><div class="k">恐贪 7 指数</div><div class="v">1.12~12.84</div><div class="k">6 个极度恐惧 / 1 个恐惧</div></div>
+<div><div class="k">有效维度</div><div class="v">12/13</div><div class="k">11 维触发底部极值</div></div>
+</div>
+</div>
+
+<h2>一、数据完整性核查</h2>
+<div class="card">
+<h3>1.1 核查总览</h3>
+<div class="good"><b>结论：核心数据已全。</b>今日为周六休市，最新交易日是 11-20；本次核查以「各序列是否覆盖到 11-20、卡片是否齐全、文件是否同步」为准，不要求日历日期等于今天。</div>
+<div class="scroll"><table><thead><tr><th>核查项</th><th>应有</th><th>实到</th><th>判定</th><th>说明</th></tr></thead><tbody>
+<tr><td>情绪面板主指标</td><td class="num">8</td><td class="num">8</td><td class="ok">✓ 已修复</td><td>00:07 构建缺 dgz（7/8、36.65）；08:2x 重跑 build_mood.py，申万行业 31/31 成功，恢复 8/8、34.65</td></tr>
+<tr><td>结构观察卡</td><td class="num">9</td><td class="num">9</td><td class="ok">✓ 齐</td><td>含月频 / 周频指标，按各自发布节奏</td></tr>
+<tr><td>顶底信号卡</td><td class="num">7</td><td class="num">7</td><td class="ok">✓ 齐</td><td>破净率 / NH-NL / 上涨家数 / RSI / TRIN / 宽度分 / 麦克莱伦</td></tr>
+<tr><td>顶底共振板维度</td><td class="num">13</td><td class="num">12 有效</td><td class="ok">✓ 符合设计</td><td>TRIN10 在极端普跌/普涨日被双向剔除（全历史 717 日），非缺失</td></tr>
+<tr><td>数据链 DAG 产物</td><td class="num">14 步</td><td class="num">14 步</td><td class="ok">✓ 文件齐全</td><td>逐股缓存 5579×2、申万 31 个行业、沪深300 6035 交易日均在</td></tr>
+<tr><td>JSON / JS 同步</td><td class="num">一致</td><td class="num">一致</td><td class="ok">✓</td><td>mood_data.json 与 mood_data.js 精确字符串比对通过</td></tr>
+<tr class="hl"><td>恐贪指数 7 指数</td><td class="num">7</td><td class="num">7</td><td class="warn">⚠ 源端滞后</td><td>6 个止于 11-19、全市场止于 11-18；属申万/QVIX/两融账户等源发布节奏，非脚本故障</td></tr>
+<tr><td>今日更新标记</td><td class="num">ok=true</td><td class="num">ok=false</td><td class="warn">⚠ 待重置</td><td>last_update.json 记录 00:07:16 全链「部分失败」，本次仅补齐汇总脚本，未伪造全链成功</td></tr>
+<tr><td>data_date 字段</td><td class="num">真实末日</td><td class="num">2026-11-21</td><td class="warn">⚠ 展示口径</td><td>写的是运行日（周六），但所有序列末日 ≤ 11-20；看数应以各卡片截止日为准</td></tr>
+</tbody></table></div>
+</div>
+
+<div class="card">
+<h3>1.2 按发布节奏分类的滞后（均属正常，不是「数据没全」）</h3>
+<div class="scroll"><table><thead><tr><th>类别</th><th>指标</th><th>最新数据日</th><th>性质</th></tr></thead><tbody>
+<tr><td>日频 · 已到 11-20</td><td>ERP、低估行业、换手率、PCR、正收益基金占比、股基年化、ETF占比、MA200宽度、PB、NH-NL、上涨家数、RSI14、TRIN、宽度分、麦克莱伦、沪深300</td><td>11-20</td><td class="ok">✓ 主口径全部到位</td></tr>
+<tr><td>日频 · 滞后 1~3 日</td><td>破净率(11-19)、两融60日增速(11-19)、神奇指标(11-19)、新基金发行(11-17)、10年国债(11-18)、恐贪 7 指数(11-18~19)</td><td>11-17~19</td><td class="warn">源端未发布 / 接口节奏</td></tr>
+<tr><td>周频</td><td>公募基金股票仓位 97.06</td><td>11-13</td><td>周频序列，8 天内属正常</td></tr>
+<tr><td>月频</td><td>M1-M2 −2.7(10-01)、回购 1527.75 亿(11-01)、股东净增减持 −3368.22 亿(11-01)</td><td>10-01 / 11-01</td><td>月频序列，月内数值不变属正常</td></tr>
+<tr><td>已弃用 / 遗留缓存</td><td>mood_all_pe.csv(科创板 90.51 坏缓存)、mood_total_mv.csv、pcr_recent_probe.csv</td><td>—</td><td>不参与计算，勿据此判断缺失</td></tr>
+</tbody></table></div>
+<div class="note"><b>需要留意的两点：</b>① 恐贪 7 指数整体落后 1~2 个交易日，周六源端通常不会补发，强行 <code>--force</code> 全链重建大概率仍是同样末日且耗时约 38 分钟，不建议为此重跑；② <code>last_update.json</code> 的 ok=false 会让启动器提示「部分失败」，但今日已尝试过的标记会让重复启动直接跳过重建，不会造成反复抓取。若要刷新该标记，需显式跑一次完整 <code>start_site.py --force</code>。</div>
+</div>
+
+<h2>二、市场全景</h2>
+<div class="two">
+<div class="card"><h3>2.1 综合情绪分走势（近两年）</h3><div id="c_comp" class="chart sm"></div>
+<p class="lead" style="margin-top:4px">周频 1192 点序列的近两年切片；30 以下偏悲观、70 以上偏亢奋。当前 34.65，较 9 月初 50.43 持续下移。</p></div>
+<div class="card"><h3>2.2 恐贪指数 7 指数读数</h3><div id="c_fg" class="chart sm"></div>
+<p class="lead" style="margin-top:4px">0=极度恐惧、100=极度亢奋。7 个指数全部落在 13 以下，6 个处于「极度恐惧」。</p></div>
+</div>
+
+<div class="card">
+<h3>2.3 分项指标快照</h3>
+<p class="lead">情绪分统一口径：<b>越低越悲观/恐惧</b>（反向指标已翻转）；≤30 偏冷、30~70 中立、&gt;70 偏热。橙色日期标签表示该序列未到 11-20（源端节奏，见 1.2）。</p>
+<h3>① 综合分 8 大分项</h3>
+<div class="scroll"><table><thead><tr><th>指标</th><th>最新值</th><th>情绪分</th><th>数据日</th><th>状态</th></tr></thead><tbody><tr><td>A股风险溢价</td><td class="num">2.7119</td><td class="num s-low">1.97</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>低估指数行业</td><td class="num">9</td><td class="num s-low">20.64</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>新基金发行</td><td class="num">14.0443</td><td class="num s-low">0.49</td><td class="num"><span class="lag">2026-11-17</span></td><td>积极</td></tr>
+<tr><td>正收益偏股基金占比</td><td class="num">73.8095</td><td class="num s-mid">60.54</td><td class="num">11-20</td><td>中立</td></tr>
+<tr><td>全市场换手率</td><td class="num">1.5504</td><td class="num s-high">77.87</td><td class="num">11-20</td><td>谨慎</td></tr>
+<tr><td>PCR</td><td class="num">0.6408</td><td class="num s-low">9.05</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>股基滚动年化收益</td><td class="num">-0.2388</td><td class="num s-mid">33.56</td><td class="num">11-20</td><td>中立</td></tr>
+<tr><td>神奇指标</td><td class="num">1.1541</td><td class="num s-high">73.06</td><td class="num"><span class="lag">2026-11-19</span></td><td>谨慎</td></tr></tbody></table></div>
+<h3>② 结构观察 9 卡</h3>
+<div class="scroll"><table><thead><tr><th>指标</th><th>最新值</th><th>情绪分</th><th>数据日</th><th>状态</th></tr></thead><tbody><tr><td>头部300ETF占沪深300流通市值比例</td><td class="num">1.2282</td><td class="num s-high">77.87</td><td class="num">11-20</td><td>谨慎</td></tr>
+<tr><td>两融余额60日增速</td><td class="num">-16.9776</td><td class="num s-low">3.65</td><td class="num"><span class="lag">2026-11-19</span></td><td>积极</td></tr>
+<tr><td>全A站上200日均线占比</td><td class="num">5.957</td><td class="num s-low">2.31</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>全A市净率中位数（月频）</td><td class="num">2.11</td><td class="num s-low">11.98</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>ERP 股债归因（便宜是真便宜吗）</td><td class="num">2.7119</td><td class="num s-low">1.97</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>公募基金股票仓位</td><td class="num">97.06</td><td class="num s-high">99.35</td><td class="num"><span class="lag">2026-11-13</span></td><td>谨慎</td></tr>
+<tr><td>M1-M2 剪刀差（资金活化）</td><td class="num">-2.7</td><td class="num s-mid">66.59</td><td class="num"><span class="lag">2026-10-01</span></td><td>中立</td></tr>
+<tr><td>A股回购规模（滚动12月）</td><td class="num">1527.7537</td><td class="num s-high">92.31</td><td class="num"><span class="lag">2026-11-01</span></td><td>谨慎</td></tr>
+<tr><td>重要股东增减持（滚动12月净额）</td><td class="num">-3368.2166</td><td class="num s-mid">35.61</td><td class="num"><span class="lag">2026-11-01</span></td><td>中立</td></tr></tbody></table></div>
+<h3>③ 顶底信号 7 卡</h3>
+<div class="scroll"><table><thead><tr><th>指标</th><th>最新值</th><th>情绪分</th><th>数据日</th><th>状态</th></tr></thead><tbody><tr><td>破净率（全A破净个股占比）</td><td class="num">10.95</td><td class="num s-low">5.07</td><td class="num"><span class="lag">2026-11-19</span></td><td>积极</td></tr>
+<tr><td>新高新低差（NH-NL）</td><td class="num">-74.0513</td><td class="num s-low">0.21</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>上涨家数占比与动能广度</td><td class="num">5.5837</td><td class="num s-low">1.52</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>沪深300 RSI14（超卖/超买）</td><td class="num">30.9587</td><td class="num s-low">5.44</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>阿姆氏指标 TRIN（Arms Index）</td><td class="num">0.2259</td><td class="num s-low">0.14</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>市场宽广度综合指标</td><td class="num">3.4796</td><td class="num s-low">0.36</td><td class="num">11-20</td><td>积极</td></tr>
+<tr><td>麦克莱伦摆动指标（市场宽广度动能）</td><td class="num">-11.5252</td><td class="num s-low">1.14</td><td class="num">11-20</td><td>积极</td></tr></tbody></table></div>
+<div class="note"><b>读数要点：</b>极端冷的一组集中在「价格位置与宽度」——破净率 10.95%（全历史 94.93 分位）、NH-NL −74.05、上涨家数占比 5.58%、站上 200 日线占比 5.96%、RSI14 30.96、两融 60 日增速 −16.98%、PCR 0.641。同时也有几项不配合：全市场换手率 fear 仅 22.0（不冷）、公募仓位 97.06（99.35 分位，仍在高位）、重要股东滚动 12 月净减持 3368 亿。ERP 归因显示 Δrp +1.324pp 中股票端 +1.102pp（83.3%）、债券端仅 +0.222pp（16.7%），<b>不属于低利率造成的「便宜错觉」</b>；但 10 年国债处历史 0.1 分位，水平类分位读数仍被低利率系统性抬高。</div>
+</div>
+
+<h2>三、顶底判断：位置、时点与赔率</h2>
+<div class="card">
+<h3>3.1 13 维恐惧分位</h3>
+<div id="c_dims" class="chart"></div>
+<p class="lead" style="margin-top:4px">恐惧分位 ≥70 视为底部极值（红），≤20 为顶部极值（蓝）。12 个有效维度中 <b>11 维触发底部特征</b>，唯一未触发的是全市场换手率（fear 22.0）；TRIN10 因极端普跌/普涨日失真被剔除，不参与统计。</p>
+</div>
+
+<div class="card">
+<h3>3.2 历史标定：同类信号之后怎么走</h3>
+<div class="scroll"><table><thead><tr><th>分组</th><th>60日样本</th><th>20日胜率</th><th>20日均收益</th><th>60日胜率</th><th>60日均收益</th></tr></thead><tbody><tr><td>底部拐点触发</td><td class="num">40</td><td class="num">58.5%</td><td class="num">+0.28%</td><td class="num">52.5%</td><td class="num">+2.44%</td></tr>
+<tr class="hl"><td>底部极值(未确认)</td><td class="num">34</td><td class="num">54.3%</td><td class="num">+1.24%</td><td class="num">67.6%</td><td class="num">+4.10%</td></tr>
+<tr><td>顶部警戒</td><td class="num">4</td><td class="num">75.0%</td><td class="num">+3.10%</td><td class="num">50.0%</td><td class="num">+0.73%</td></tr>
+<tr><td>全样本基准(每20日)</td><td class="num">129</td><td class="num">51.9%</td><td class="num">+0.32%</td><td class="num">55.0%</td><td class="num">+1.19%</td></tr></tbody></table></div>
+<p class="lead">触发日按 20 交易日去重；基准为每 20 交易日取样的全样本。当前所处档位是「底部极值·未确认」：20 日几乎没有优势（54.3% vs 51.9%），优势集中在 60 日（67.6% vs 55.0%，均收益 +4.10% vs +1.19%）。</p>
+</div>
+
+<div class="card">
+<h3>3.3 概率评估与反直觉结论</h3>
+<p>把「底部」拆成四种事后定义（A：60 日不破位−2% 且上涨；B：不破位且涨超 3%；C：前后 120 日最低 10% 分位带；D：前后 40 日精确低点），用 2016-01-11~2026-08-20 的已完结样本、20 日去重 + Wilson CI 标定：</p>
+<div class="scroll"><table><thead><tr><th>口径</th><th>基准(n=129)</th><th>当前状态类(共振≥85 且 confirm=0, n=15)</th><th>相对倍数</th></tr></thead><tbody>
+<tr><td>A · 不破位且上涨</td><td class="num">24.0%</td><td class="num">20.0%</td><td class="num">0.83× <span class="neg">反而更低</span></td></tr>
+<tr><td>B · 不破位且涨超3%</td><td class="num">5.4%</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>C · 落在前后120日最低10%带</td><td class="num">7.8%</td><td class="num">20.0%</td><td class="num pos">2.56×</td></tr>
+<tr><td>D · 前后40日精确低点</td><td class="num">0.8%</td><td class="num">13.3%</td><td class="num pos">16.6×</td></tr>
+</tbody></table></div>
+<div class="crit"><b>核心反直觉结论（务必保留）：</b>C/D 大幅提升、A 反而低于随机 —— <b>位置像底部、时点不像底部</b>。60 日均收益 +5.21% / 胜率 60.0%（项目自带回测 +4.10% / 67.6%，基准 +1.19% / 55.0%）说明<b>改善的是赔率，不是时点</b>；20/40/60/90 日前瞻窗口下「不破位」概率全部 ≤ 随机基准，典型路径是先再跌一段再反弹，而非 V 型反转。事后回看属于底部区域约 <b>20~25%</b>（95%CI [7.0,45.2]），「跌完了直接反转」约 20%、与随机无差别。</div>
+<div class="note"><b>阶段性底部（放宽到大底以外）：</b>底部共振≥60 组的正收益概率 20 日 51.8%≈基准 51.1%、40 日 50.9%≈50.4%，但 60 日 59.3%、90 日 64.2%、120 日 66.0%（基准约 51%）；反弹≥5% 概率 90 日 69.8% vs 62.5%、120 日 73.6% vs 67.7%。confirm=0 压制短期（20 日正收益仅 41.4% vs confirm≥1 的 63.0%），不影响中期赔率。反证：60 日「不深跌 &gt;−3%」概率仅 33.3% ≈ 基准 32.4%，仍非 V 型。</div>
+<div class="crit"><b>体系自证伪（避免过度自信）：</b>25 项「解读有效性」后视判定中，方向相反 10 / 弱相反 1 / 不显著 6 / 样本不足 3 / 符合预期 4 / 弱符合 1。当前 15 项悲观判定里<b>仅 1 项弱符合、9 项方向相反</b>（破净率 −4.72pp、股基滚动年化 −6.81pp、RSI14 −3.90pp 最差）——A 股 60 日尺度是<b>动量延续而非均值回归</b>。极端读数不等于很快修复，只说明位置与赔率。</div>
+</div>
+
+<h2>四、结论与观察清单</h2>
+<div class="card">
+<div class="verdict">一句话：数据已齐，市场处在「极度悲观 + 估值/宽度历史极值」的底部区域，但拐点未确认，短期没有择时优势；未来 3~6 个月出现像样反弹的赔率明显改善，路径大概率是先再跌一段再反弹。</div>
+<ul>
+<li><b>定性判断：</b>倾向于是阶段性底部（3~6 个月维度有像样反弹），但不是即时底、更非大底；与「位置像底、时点不像底、改善的是赔率不是时点」一致。</li>
+<li><b>概率区间：</b>事后回看属于底部区域约 20~25%（CI 较宽）；上调到 40~50% 需要同时满足 <b>confirm=1 + 不破 3894.47 + 量能/两融回升</b>。</li>
+<li><b>短期风险：</b>confirm=0、20/40 日胜率与随机无异、60 日不深跌概率仅 33.3%；且历史自证伪显示悲观读数后常继续动量下跌。</li>
+</ul>
+<h3>接下来只需盯 5 个可验证信号（非投资建议）</h3>
+<div class="scroll"><table><thead><tr><th>#</th><th>观察项</th><th>当前值</th><th>触发含义</th></tr></thead><tbody>
+<tr><td class="num">1</td><td>拐点确认 confirm（价格20日动量 / 宽度5日 / NH-NL 5日）</td><td>0/3</td><td>由 0→1，是把「位置」转成「时点」的第一道门槛</td></tr>
+<tr><td class="num">2</td><td>沪深300 关键位</td><td>3954.57</td><td>不破 3894.47；跌破则底部区域判断需重估</td></tr>
+<tr><td class="num">3</td><td>两融 60 日增速 / 成交量能</td><td>−16.98%</td><td>由深度负增长回升，确认资金回流</td></tr>
+<tr><td class="num">4</td><td>全市场换手率恐惧分位（唯一未触发维度）</td><td>22.0</td><td>升至 ≥70 则 12 维全共振；目前是唯一不配合项</td></tr>
+<tr><td class="num">5</td><td>恐贪 7 指数数据补齐到 11-20</td><td>止于 11-18~19</td><td>源端发布后重跑恐贪链即可，不改变当前判读方向</td></tr>
+</tbody></table></div>
+</div>
+
+<h2>五、口径与风险边界</h2>
+<div class="card"><ul>
+<li><b>数据口径：</b>本次补齐后综合分为严格 8 指标等权 34.65；早前 00:07 快照的 36.65 是 <b>7/8 口径</b>，两者不可混用。已交付的《底部概率评估-20261120.html》用的是 7/8 口径，其概率结论不依赖综合分，仍成立。</li>
+<li><b>ERP 分位分歧：</b>项目口径 98.03%（2010 起全历史 expanding）vs 外部研报近十年 78~81%；破净率 10.95%（全A破净个股占比，11-19）vs 媒体约 9.2%。属样本区间/定义差异，外部数字需核实原文，勿混用。</li>
+<li><b>TRIN 双向失真：</b>A 股齐涨齐跌时家数比失去上界，普跌日 TRIN 机械偏低、普涨日机械偏高；全历史 TRIN&gt;2 的 96 日中 67 日(69.8%)是普涨日、仅 1 日是恐慌日。已在共振板双向剔除，教科书「&gt;2=恐慌超卖」在 A 股不成立。</li>
+<li><b>统计边界：</b>回测触发日按 20 日去重但样本仍重叠、未计交易成本/滑点/分红；阈值由 config.py 设定且未经样本外检验；顶部警戒样本仅 4 次；同档概率样本量小、CI 宽，方向可信、精度有限。</li>
+<li><b>非预测声明：</b>所有分位与前瞻统计都是描述性历史标定，不是收益预测；本报告为量化研究记录，<b>不构成投资建议</b>。市场有风险，投资需谨慎。</li>
+</ul></div>
+
+<div class="foot">生成时间 2026-11-21 · 数据来源：项目本地指标库（东方财富 / 交易所 / 乐咕 / akshare 等公开数据自算）· 图表依赖本地 vendor/echarts.min.js · 数据基准 2026-11-20 收盘。</div>
+</div>
+<script src="vendor/echarts.min.js"></script>
+<script>
+var D={"comp_dates":["2024-11-01","2024-11-08","2024-11-15","2024-11-22","2024-11-29","2024-12-06","2024-12-13","2024-12-20","2024-12-27","2025-01-03","2025-01-10","2025-01-17","2025-01-24","2025-01-31","2025-02-07","2025-02-14","2025-02-21","2025-02-28","2025-03-07","2025-03-14","2025-03-21","2025-03-28","2025-04-04","2025-04-11","2025-04-18","2025-04-25","2025-05-02","2025-05-09","2025-05-16","2025-05-23","2025-05-30","2025-06-06","2025-06-13","2025-06-20","2025-06-27","2025-07-04","2025-07-11","2025-07-18","2025-07-25","2025-08-01","2025-08-08","2025-08-15","2025-08-22","2025-08-29","2025-09-05","2025-09-12","2025-09-19","2025-09-26","2025-10-03","2025-10-10","2025-10-17","2025-10-24","2025-10-31","2025-11-07","2025-11-14","2025-11-21","2025-11-28","2025-12-05","2025-12-12","2025-12-19","2025-12-26","2026-01-02","2026-01-09","2026-01-16","2026-01-23","2026-01-30","2026-02-06","2026-02-13","2026-02-27","2026-03-06","2026-03-13","2026-03-20","2026-03-27","2026-04-03","2026-04-10","2026-04-17","2026-04-24","2026-05-01","2026-05-08","2026-05-15","2026-05-22","2026-05-29","2026-06-05","2026-06-12","2026-06-19","2026-06-26","2026-07-03","2026-07-10","2026-07-17","2026-07-24","2026-07-31","2026-08-07","2026-08-14","2026-08-21","2026-08-28","2026-09-04","2026-09-11","2026-09-18","2026-09-25","2026-10-02","2026-10-09","2026-10-16","2026-10-23","2026-10-30","2026-11-06","2026-11-13","2026-11-20"],"comp_vals":[41.85,48.19,44.37,41.23,49.59,50.55,47.84,48.11,50.51,41.69,40.97,43.59,48.61,47.11,52.16,50.04,52.76,47.8,49.93,51.43,45.96,43.74,41.82,43.68,40.93,46.95,50.8,50.84,49.6,50.07,47.66,50.19,51.79,45.59,49.36,50.83,52.47,51.32,55.81,52.63,57.66,60.14,62.36,63.52,61.7,63.09,63.76,63.81,64.81,65.71,63.71,65.39,63.22,62.13,61.3,56.01,60.47,61.79,62.24,59.49,60.47,59.04,62.61,60.92,62.91,61.0,57.97,60.64,65.57,62.47,61.34,57.84,56.06,51.75,57.39,58.77,56.29,58.67,58.87,55.61,56.77,58.0,56.81,55.97,58.83,56.07,58.48,57.32,50.64,53.94,49.25,50.7,48.35,47.72,52.02,48.4,47.04,48.21,45.18,41.59,41.69,37.67,38.76,36.48,36.82,36.54,34.65],"fg_names":["全市场(代理)","沪深300","中证500","中证1000","中证2000","创业板指","科创50"],"fg_vals":[4.05,12.84,3.01,2.22,1.12,2.23,4.02],"fg_dates":["2026-11-18","2026-11-19","2026-11-19","2026-11-19","2026-11-19","2026-11-19","2026-11-19"],"fg_desc":["极度恐惧","恐惧","极度恐惧","极度恐惧","极度恐惧","极度恐惧","极度恐惧"],"dim_names":["股债风险溢价","破净率","站上200日线占比","新高新低差","全市场换手率","PCR","两融60日增速","全A PB中位数","股基3年年化","沪深300 BIAS20","沪深300 RSI14","阿姆氏指标 TRIN10","麦克莱伦摆动值"],"dim_fears":[97.3,95.4,97.7,99.8,22.0,90.9,95.7,92.4,79.5,80.6,95.9,1.0,98.9],"dim_masked":[false,false,false,false,false,false,false,false,false,false,false,true,false]};
+function c(id,opt){var el=document.getElementById(id);if(!el)return;var ch=echarts.init(el);ch.setOption(opt);
+window.addEventListener('resize',function(){ch.resize()});}
+var AX={axisLabel:{color:'#777',fontSize:11},axisLine:{lineStyle:{color:'#d9dee6'}},axisTick:{show:false}};
+c('c_comp',{
+ grid:{left:44,right:20,top:16,bottom:30},
+ xAxis:Object.assign({type:'category',data:D.comp_dates,boundaryGap:false,
+   axisLabel:{color:'#888',fontSize:10,interval:Math.max(0,Math.floor(D.comp_dates.length/6))}},{axisLine:AX.axisLine,axisTick:{show:false}}),
+ yAxis:Object.assign({type:'value',min:0,max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+ series:[{type:'line',data:D.comp_vals,smooth:true,showSymbol:false,
+  lineStyle:{color:'#ff5b2e',width:2.2},areaStyle:{color:'rgba(255,91,46,0.10)'},
+  markLine:{silent:true,symbol:'none',label:{fontSize:10,color:'#999'},lineStyle:{type:'dashed',color:'#bbb'},
+   data:[{yAxis:30,name:'偏悲观 30'},{yAxis:70,name:'偏亢奋 70'}]},
+  markPoint:{symbolSize:44,label:{fontSize:10,color:'#fff'},
+   data:[{coord:[D.comp_dates.length-1,D.comp_vals[D.comp_vals.length-1]],value:D.comp_vals[D.comp_vals.length-1],itemStyle:{color:'#e23b2e'}}]}}],
+ tooltip:{trigger:'axis',axisPointer:{type:'line'}}
+});
+c('c_fg',{
+ grid:{left:96,right:44,top:12,bottom:26},
+ xAxis:Object.assign({type:'value',min:0,max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+ yAxis:Object.assign({type:'category',data:D.fg_names},AX),
+ series:[{type:'bar',data:D.fg_vals,barWidth:'58%',
+  itemStyle:{color:function(p){return p.value<10?'#e23b2e':'#d98a00'}},
+  label:{show:true,position:'right',formatter:'{c}',fontSize:11,color:'#555'}}],
+ tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var i=ps[0].dataIndex;
+  return D.fg_names[i]+'<br/>读数 '+D.fg_vals[i]+' · '+D.fg_desc[i]+'<br/>数据日 '+D.fg_dates[i];}}
+});
+c('c_dims',{
+ grid:{left:170,right:44,top:12,bottom:26},
+ xAxis:Object.assign({type:'value',min:0,max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
+ yAxis:Object.assign({type:'category',data:D.dim_names,axisLabel:{color:'#555',fontSize:11}},AX),
+ series:[{type:'bar',data:D.dim_fears.map(function(v,i){return {value:v,
+   itemStyle:{color:D.dim_masked[i]?'#c8cdd5':(v>=70?'#e23b2e':(v<=20?'#2f6fd0':'#9aa4b2'))}};}),
+  barWidth:'62%',label:{show:true,position:'right',formatter:function(p){return p.value===null?'—':p.value;},fontSize:10,color:'#666'}}],
+ tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){var i=ps[0].dataIndex;
+  return D.dim_names[i]+'<br/>恐惧分位 '+D.dim_fears[i]+(D.dim_masked[i]?'<br/>已剔除·极端普跌/普涨日':'');}}
+});
+</script></body></html>
