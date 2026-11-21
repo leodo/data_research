@@ -359,13 +359,13 @@
             axisLabel: { color: t.t3, fontSize: 10 }, splitLine: { show: false } }
         ],
         series: [
-          { name: "原始值中位数", type: "line", smooth: true, symbolSize: 5,
+          { name: "原始值中位数", type: "line", smooth: false, symbolSize: 5,
             data: path.map(function (x) { return x.raw_med; }),
             lineStyle: { color: t.brand, width: 2.4 }, itemStyle: { color: t.brand } },
-          { name: "expanding 分位中位", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 4,
+          { name: "expanding 分位中位", type: "line", yAxisIndex: 1, smooth: false, symbolSize: 4,
             data: path.map(function (x) { return x.pct_exp_med; }),
             lineStyle: { color: t.neu, width: 1.8, type: "dashed" }, itemStyle: { color: t.neu } },
-          { name: "rolling126 分位中位", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 4,
+          { name: "rolling126 分位中位", type: "line", yAxisIndex: 1, smooth: false, symbolSize: 4,
             data: path.map(function (x) { return x.pct_r126_med; }),
             lineStyle: { color: t.down, width: 1.8 }, itemStyle: { color: t.down } }
         ],

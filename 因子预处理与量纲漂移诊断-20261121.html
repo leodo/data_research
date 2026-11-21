@@ -184,9 +184,9 @@ c('c_erp',{
         Object.assign({type:'value',name:'分位',min:0,max:100,nameTextStyle:{fontSize:10,color:'#999'},splitLine:{show:false}},AX)],
  series:[
   {name:'ERP 原始值中位',type:'bar',data:D.erp_raw,itemStyle:{color:'#c9d4e4'},barWidth:'55%'},
-  {name:'expanding 分位',type:'line',yAxisIndex:1,data:D.erp_exp,smooth:true,
+  {name:'expanding 分位',type:'line',yAxisIndex:1,data:D.erp_exp,smooth:false,
    lineStyle:{color:'#e23b2e',width:2.4},itemStyle:{color:'#e23b2e'},symbolSize:6},
-  {name:'rolling250 分位',type:'line',yAxisIndex:1,data:D.erp_r250,smooth:true,
+  {name:'rolling250 分位',type:'line',yAxisIndex:1,data:D.erp_r250,smooth:false,
    lineStyle:{color:'#2f6fd0',width:2,type:'dashed'},itemStyle:{color:'#2f6fd0'},symbolSize:5}],
  tooltip:{trigger:'axis',axisPointer:{type:'cross'}}
 });

@@ -196,7 +196,7 @@ c('c_comp',{
  xAxis:Object.assign({type:'category',data:D.comp_dates,boundaryGap:false,
    axisLabel:{color:'#888',fontSize:10,interval:Math.max(0,Math.floor(D.comp_dates.length/6))}},{axisLine:AX.axisLine,axisTick:{show:false}}),
  yAxis:Object.assign({type:'value',min:0,max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
- series:[{type:'line',data:D.comp_vals,smooth:true,showSymbol:false,
+ series:[{type:'line',data:D.comp_vals,smooth:false,showSymbol:false,
   lineStyle:{color:'#ff5b2e',width:2.2},areaStyle:{color:'rgba(255,91,46,0.10)'},
   markLine:{silent:true,symbol:'none',label:{fontSize:10,color:'#999'},lineStyle:{type:'dashed',color:'#bbb'},
    data:[{yAxis:30,name:'偏悲观 30'},{yAxis:70,name:'偏亢奋 70'}]},

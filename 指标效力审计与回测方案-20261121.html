@@ -274,8 +274,8 @@ C('c_ic',{
  legend:{data:D.ic_names.concat(['|IC| 均值']),top:0,textStyle:{fontSize:10},itemWidth:14,itemHeight:8},
  xAxis:Object.assign({type:'category',data:['20 日','60 日','120 日'],boundaryGap:false},AX),
  yAxis:Object.assign({type:'value',name:'IC',splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
- series:D.ic_series.map(function(s,i){return {name:s.name,type:'line',data:s.data,smooth:true,symbolSize:6,lineStyle:{width:1.8,color:PALETTE[i%6]},itemStyle:{color:PALETTE[i%6]}};}).concat([
-  {name:'|IC| 均值',type:'line',data:D.ic_abs_mean,smooth:true,symbolSize:8,lineStyle:{width:3,type:'dashed',color:'#1f2430'},itemStyle:{color:'#1f2430'}}
+ series:D.ic_series.map(function(s,i){return {name:s.name,type:'line',data:s.data,smooth:false,symbolSize:6,lineStyle:{width:1.8,color:PALETTE[i%6]},itemStyle:{color:PALETTE[i%6]}};}).concat([
+  {name:'|IC| 均值',type:'line',data:D.ic_abs_mean,smooth:false,symbolSize:8,lineStyle:{width:3,type:'dashed',color:'#1f2430'},itemStyle:{color:'#1f2430'}}
  ])
 });
 C('c_pca',{
@@ -286,7 +286,7 @@ C('c_pca',{
  yAxis:[Object.assign({type:'value',name:'%',max:100,splitLine:{lineStyle:{color:'#eef0f4'}}},AX),
         Object.assign({type:'value',name:'累计%',max:100,splitLine:{show:false}},AX)],
  series:[{name:'单个解释率',type:'bar',data:D.pca,barWidth:'52%',itemStyle:{color:'#7fa8e8'}},
-         {name:'累计解释率',type:'line',yAxisIndex:1,data:D.pca_cum,smooth:true,symbolSize:6,
+         {name:'累计解释率',type:'line',yAxisIndex:1,data:D.pca_cum,smooth:false,symbolSize:6,
           lineStyle:{width:2.4,color:'#ff5b2e'},itemStyle:{color:'#ff5b2e'}}]
 });
 C('c_bayes',{

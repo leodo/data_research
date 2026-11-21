@@ -316,10 +316,10 @@ a{text-decoration:none;color:inherit}
       xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:cssVar("--chart-axis-line")}},axisLabel:{color:cssVar("--chart-axis-label"),fontSize:11}},
       yAxis:{type:"value",min:0,max:100,interval:20,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:11},splitLine:{lineStyle:{color:cssVar("--chart-split")}}},
       series:[
-        {name:"恐贪指数",type:"line",data:vals,showSymbol:false,smooth:true,lineStyle:{width:2,color:META[current].color},itemStyle:{color:META[current].color},
+        {name:"恐贪指数",type:"line",data:vals,showSymbol:false,smooth: false,lineStyle:{width:2,color:META[current].color},itemStyle:{color:META[current].color},
          areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:META[current].color+"44"},{offset:1,color:META[current].color+"05"}])},
          markArea:{silent:true,itemStyle:{color:"rgba(245,158,11,0.05)"},data:[[{yAxis:30},{yAxis:70}]]}},
-        {name:"MA20",type:"line",data:ma,showSymbol:false,smooth:true,lineStyle:{width:1.5,type:"dashed",color:"#f4c430"},itemStyle:{color:"#f4c430"}}
+        {name:"MA20",type:"line",data:ma,showSymbol:false,smooth: false,lineStyle:{width:1.5,type:"dashed",color:"#f4c430"},itemStyle:{color:"#f4c430"}}
       ]
     });
     charts.push(chart);
@@ -349,7 +349,7 @@ a{text-decoration:none;color:inherit}
         grid:{left:34,right:10,top:12,bottom:22},
         xAxis:{type:"category",data:dates,boundaryGap:false,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:9,interval:Math.max(0,Math.floor(dates.length/4))},axisLine:{lineStyle:{color:cssVar("--chart-axis-line")}}},
         yAxis:{type:"value",min:0,max:100,interval:50,axisLabel:{color:cssVar("--chart-axis-label"),fontSize:9},splitLine:{lineStyle:{color:cssVar("--chart-split")}}},
-        series:[{type:"line",data:pcts,showSymbol:false,smooth:true,lineStyle:{width:1.8,color:META[current].color},itemStyle:{color:META[current].color},areaStyle:{color:META[current].color+"22"},
+        series:[{type:"line",data:pcts,showSymbol:false,smooth: false,lineStyle:{width:1.8,color:META[current].color},itemStyle:{color:META[current].color},areaStyle:{color:META[current].color+"22"},
           markLine:{silent:true,symbol:"none",label:{show:false},lineStyle:{color:cssVar("--chart-mark"),type:"dashed",width:1},data:[{yAxis:50}]}}]
       });
       charts.push(c);

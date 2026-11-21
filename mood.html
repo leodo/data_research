@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
@@ -46,6 +46,16 @@ a{text-decoration:none;color:inherit}
 .scale-labels{display:flex;justify-content:space-between;color:var(--text-3);font-size:11px}
 .sec-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
 .sec-title{font-size:15px;font-weight:700}
+.sec-head.sec-a,.sec-head.sec-b,.sec-head.sec-c,.sec-head.sec-d{padding:2px 0 2px 11px;border-left:4px solid var(--acc);background:none;border-radius:0}
+.sec-head.sec-a{--acc:#c62828}
+.sec-head.sec-b{--acc:#1f5fb5}
+.sec-head.sec-c{--acc:#9a6100}
+.sec-head.sec-d{--acc:#0d6b40}
+.sec-head.sec-a .sec-title,.sec-head.sec-b .sec-title,.sec-head.sec-c .sec-title,.sec-head.sec-d .sec-title{color:var(--acc);font-weight:800;font-size:17px;letter-spacing:.3px}
+html[data-theme="dark"] .sec-head.sec-a{--acc:#ff6f61}
+html[data-theme="dark"] .sec-head.sec-b{--acc:#6ea8ff}
+html[data-theme="dark"] .sec-head.sec-c{--acc:#e8a93a}
+html[data-theme="dark"] .sec-head.sec-d{--acc:#4fce8e}
 .chart{width:100%;height:340px}
 /* range switcher */
 .range-card{padding:14px 20px;margin-bottom:18px}
@@ -215,7 +225,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
 
   <div class="main">
     <div class="topbar">
-      <div class="crumb">工具指标 / <b>情绪面板</b></div>
+      <div class="crumb">工具指标 / <b>情绪面板</b><span id="buildStamp" style="margin-left:10px;font-size:11px;font-weight:600;color:#fff;background:#12864f;border-radius:10px;padding:1px 8px;vertical-align:1px">构建 11-21 16:29 · 段头配色 v2</span></div>
       <div class="right"><span>公开数据自算</span><span>市场情绪 · 8大指标</span><button class="theme-toggle" id="themeToggle" title="切换主题"><span class="tt-ico">◐</span><span class="tt-label">暗色</span></button></div>
     </div>
     <div class="wrap">
@@ -270,6 +280,8 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
 <script src="data/factor_matrix.js"></script>
 <script src="data/horizon_profile.js"></script>
 <script src="data/confidence_data.js"></script>
+<script src="data/rsi_breadth.js"></script>
+<script src="data/composite_v2.js"></script>
 <script src="data/efficacy_audit.js"></script>
 <script>
 (function(){
@@ -1130,6 +1142,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     html += '<div style="margin-top:10px;color:var(--text-2);font-size:12px;line-height:1.75;background:var(--bg-soft);border-radius:8px;padding:8px 10px;border-left:3px solid var(--cau)">'+
       '<b>尺度定位：</b>这是 <b>1–2 年</b>的位置指标（60 日 IC≈0、500 日最强），<b>不能用于周级择时</b>；'
       + '历史检验显示<b>高波动期信号更强</b>（−0.76 vs −0.46）。微观（1–5 日）与短周期已检验：无预测力。</div>';
+    html += '<div id="compV2Tip" style="margin-top:8px;font-size:11.5px;color:var(--text-2)"></div>';
     html += '<div style="margin-top:14px;color:var(--text-3);font-size:11.5px">共 '+order.length+' 个指标 · '+Object.keys(panels).length+' 个有效 · <span class="how" id="howBtn"><span class="q">?</span>查看计算口径</span></div>';
     html += '</div></div>' + compDetailHtml() + '</div>';
     // 每日可信度（L3 元评分）：独立渲染器 confidence_card.js 填充此占位
@@ -1158,7 +1171,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     var T = D.turning_panel;
     var sp = D.signal_panels || {}, so = D.signal_order || Object.keys(sp);
     if(T || so.length){
-      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">顶底信号与转折点</span><span style="color:var(--text-3);font-size:12px">结论前置 · 赔率而非时点 · 全部不计入综合情绪分</span></div>';
+      html += '<div class="sec-head sec-a" style="margin-top:22px"><span class="sec-title">顶底信号与转折点</span><span style="color:var(--text-3);font-size:12px">结论前置 · 赔率而非时点 · 全部不计入综合情绪分</span></div>';
       html += turningHtml(T);
       if(so.length){
         html += '<div class="panel-grid">';
@@ -1168,7 +1181,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     }
 
     // 8个指标卡片
-    html += '<div class="sec-head" style="margin-top:24px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
+    html += '<div class="sec-head sec-b" style="margin-top:24px"><span class="sec-title">分项指标</span><span style="color:var(--text-3);font-size:12px">大图为该指标原始值走势，可拖拽/缩放</span></div>';
     html += '<div class="panel-grid">';
     order.forEach(function(k){
       var p = panels[k];
@@ -1207,7 +1220,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     // 交易拥挤度（独立情绪指标卡片，不计入综合分）
     var cd = D.crowding_panel;
     if(cd){
-      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">交易拥挤度</span><span style="color:var(--text-3);font-size:12px">市场微观结构观察 · 反向情绪指标 · 不计入综合情绪分</span></div>';
+      html += '<div class="sec-head sec-c" style="margin-top:22px"><span class="sec-title">交易拥挤度</span><span style="color:var(--text-3);font-size:12px">市场微观结构观察 · 反向情绪指标 · 不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
       html += '<div class="panel" data-panel="crowding" data-toc="'+esc(cd.name)+'" data-toc-group="交易拥挤度" id="toc_crowding">';
       html += '<div class="panel-hd"><div><div class="panel-name">'+esc(cd.name)+'</div><div class="panel-tags"><span class="ptag exact">精确自算</span><span class="ptag proxy" style="margin-left:6px">反向指标</span></div></div>';
@@ -1237,10 +1250,12 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     var mp = D.macro_panels || {};
     var mo = D.macro_order || Object.keys(mp);
     if(mo.length){
-      html += '<div class="sec-head" style="margin-top:22px"><span class="sec-title">估值 · 杠杆 · 市场结构</span><span style="color:var(--text-3);font-size:12px">结构观察指标 · 含月频/周频源 · 均不计入综合情绪分</span></div>';
+      html += '<div class="sec-head sec-d" style="margin-top:22px"><span class="sec-title">估值 · 杠杆 · 市场结构</span><span style="color:var(--text-3);font-size:12px">结构观察指标 · 含月频/周频源 · 均不计入综合情绪分</span></div>';
       html += '<div class="panel-grid">';
       mo.forEach(function(k){ html += extraCardHtml(k, mp[k], "结构观察", "结构指标", "市场结构"); });
       html += '</div>';
+      // 大小盘 RSI 分化（L4 观察层，归入本段）
+      html += '<div id="rsiRoot"></div>';
     }
 
     html += backtestHtml();
@@ -1392,11 +1407,11 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:10},splitLine:{lineStyle:{color:splitLine}}},
         dataZoom:dataZoomOpt({bottom:8,filterMode:"none",start:recentYearsStart(td,2)}),
         series:[
-          {name:"底部共振度",type:"line",data:tb,showSymbol:false,smooth:true,
+          {name:"底部共振度",type:"line",data:tb,showSymbol:false,smooth:false,
            lineStyle:{width:2,color:bCol},areaStyle:{color:bCol+"1c"},
            markLine:{silent:true,symbol:"none",label:{show:true,formatter:"60 触发线",color:axisLabel,fontSize:10,position:"insideEndTop"},
              lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1},data:[{yAxis:60}]}},
-          {name:"顶部共振度",type:"line",data:tt,showSymbol:false,smooth:true,
+          {name:"顶部共振度",type:"line",data:tt,showSymbol:false,smooth:false,
            lineStyle:{width:1.8,color:"#5b8ff9",type:"dashed"},itemStyle:{color:"#5b8ff9"}}
         ]
       });
@@ -1416,7 +1431,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         yAxis:{type:"value",min:0,max:100,interval:25,axisLabel:{color:axisLabel,fontSize:11},splitLine:{lineStyle:{color:splitLine}}},
         dataZoom:dataZoomOpt({bottom:10,filterMode:"none",start:recentYearsStart(dates,2)}),
         series:[{
-          type:"line",data:vals,showSymbol:false,smooth:true,
+          type:"line",data:vals,showSymbol:false,smooth:false,
           lineStyle:{width:2,color:cssVar("--brand")||"#ff4713"},
           areaStyle:{color:(cssVar("--brand")||"#ff4713")+"22"},
           markLine:{silent:true,symbol:"none",label:{show:false},lineStyle:{color:cssVar("--chart-mark")||"#d4d4d4",type:"dashed",width:1},data:[{yAxis:50}]}
@@ -1425,7 +1440,10 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
       charts.push(chart);
     }
     // 各指标大图（原始值走势，可拖拽/缩放）；key 决定是否在图内叠加对比线
-    function renderOneChart(key, id, p){
+    // 口径：折线一律直连（smooth:false）。这些是日频/周频的离散观测，
+  // 平滑插值会在两个观测点之间伪造并不存在的中间值，也会抹掉台阶与尖峰；
+  // 需要“更平滑的观感”时，应另加一条真实计算出的均线，而不是改渲染。
+  function renderOneChart(key, id, p){
       var el = document.getElementById(id);
       if(!p || !el || !p.history) return;
       var h = rangeData(p.history);
@@ -1437,20 +1455,20 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
       var ch2 = echarts.init(el);
       var col = stateColor(p.state);
       var unit = p.unit || "";
-      var series = [{name:"全市场口径",type:"line",data:vals,showSymbol:false,smooth:true,lineStyle:{width:2,color:col},areaStyle:{color:col+"20"}}];
+      var series = [{name:"全市场口径",type:"line",data:vals,showSymbol:false,smooth:false,lineStyle:{width:2,color:col},areaStyle:{color:col+"20"}}];
       var hasLegend=false;
       // 换手率：叠加"上交所官方口径"虚线（同一坐标系对比）
       if(key==="qschsl" && D.compare_panel && D.compare_panel.history){
         var cmpMap={}; D.compare_panel.history.forEach(function(x){cmpMap[x.date]=x.value;});
         var cmpVals=dates.map(function(d){return cmpMap[d]!=null?cmpMap[d]:null;});
         var cmpColor="#5b8ff9";
-        series.push({name:"上交所官方口径",type:"line",data:cmpVals,showSymbol:false,smooth:true,
+        series.push({name:"上交所官方口径",type:"line",data:cmpVals,showSymbol:false,smooth:false,
                      lineStyle:{width:1.8,color:cmpColor,type:"dashed"},itemStyle:{color:cmpColor},connectNulls:true});
         hasLegend=true;
       }
       // 换手率：叠加"历史水位(分位)"——全历史 expanding 分位，尺度无关，可跨越24/9放量台阶直接对比历史
       if(key==="qschsl"){
-        series.push({name:"历史水位(分位)",type:"line",yAxisIndex:1,data:pcts,showSymbol:false,smooth:true,
+        series.push({name:"历史水位(分位)",type:"line",yAxisIndex:1,data:pcts,showSymbol:false,smooth:false,
                      lineStyle:{width:1.6,color:"#8b5cf6",type:"dotted"},itemStyle:{color:"#8b5cf6"},connectNulls:true});
         hasLegend=true;
       }
@@ -1459,7 +1477,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         var auxMap={}; p.auxiliary.forEach(function(x){auxMap[x.date]=x.top10;});
         var auxVals=dates.map(function(d){return auxMap[d]!=null?auxMap[d]:null;});
         var auxColor="#5b8ff9";
-        series.push({name:"Top10%占比",type:"line",data:auxVals,showSymbol:false,smooth:true,
+        series.push({name:"Top10%占比",type:"line",data:auxVals,showSymbol:false,smooth:false,
                      lineStyle:{width:1.6,color:auxColor,type:"dashed"},itemStyle:{color:auxColor},connectNulls:true});
         // 50% 结构风险阈值线画在主系列上
         series[0].markLine={silent:true,symbol:"none",label:{show:true,formatter:"50% 风险线",color:axisLabel,fontSize:10,position:"insideEndTop"},
@@ -1472,7 +1490,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
         p.aux_lines.forEach(function(al){
           var av=dates.map(function(d){ return (am[d] && am[d][al.field]!=null)?am[d][al.field]:null; });
           var ac=al.color||"#5b8ff9";
-          series.push({name:al.name,type:"line",data:av,showSymbol:false,smooth:true,
+          series.push({name:al.name,type:"line",data:av,showSymbol:false,smooth:false,
                        lineStyle:{width:1.5,color:ac,type:"dashed"},itemStyle:{color:ac},connectNulls:true});
         });
         hasLegend=true;
@@ -1549,11 +1567,23 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
 
   render();
   renderCharts();
+  (function(){
+    var V = window.COMPOSITE_V2, el = document.getElementById("compV2Tip");
+    if(!V || !V.today || !el) return;
+    var tip = "现行 8 指标有效维度仅约 2.2：magic 与 rp 情绪分相关 -0.92、zzpgnh 与 rp -0.81，"
+      + "三者基本是同一维度。去重口径去掉 magic 与 zzpgnh，6 指标与现行序列相关 0.995、走势几乎重合；"
+      + "因 500 日尺度上独立样本仅 4-5 个，证据不足以判定谁更优，故先作为参考线，未替换官方综合分。";
+    el.innerHTML = '<b>去重口径 v2：' + V.today.v2.toFixed(1) + '</b>（6 指标等权，去掉「神奇指标」「股基年化收益」）'
+      + ' · 与现行序列相关 ' + V.meta.corr + ' · 8 指标有效维度约 2.2'
+      + ' <span style="cursor:help" title="' + tip + '">ⓘ</span>';
+  })();
+
 })();
 </script>
 <script src="confirm_cards.js"></script>
 <script src="factor_audit_cards.js"></script>
 <script src="confidence_card.js"></script>
 <script src="horizon_cards.js"></script>
+<script src="rsi_breadth_card.js"></script>
 </body>
 </html>

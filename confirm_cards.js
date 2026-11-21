@@ -273,11 +273,11 @@
             scale: true, splitLine: { show: false } })
         ],
         series: [
-          { name: "综合情绪分", type: "line", data: mv, showSymbol: false, smooth: true,
+          { name: "综合情绪分", type: "line", data: mv, showSymbol: false, smooth: false,
             lineStyle: { color: t.brand, width: 2 },
             markLine: { silent: true, symbol: "none", lineStyle: { type: "dashed", color: t.mark },
               label: { color: t.t3, fontSize: 9 }, data: [{ yAxis: 35, name: "悲观 35" }] } },
-          { name: "沪深300", type: "line", yAxisIndex: 1, data: pv, showSymbol: false, smooth: true,
+          { name: "沪深300", type: "line", yAxisIndex: 1, data: pv, showSymbol: false, smooth: false,
             lineStyle: { color: t.neu, width: 1.6, opacity: .85 } },
           { name: "底背离信号", type: "scatter", yAxisIndex: 1, symbolSize: 11,
             itemStyle: { color: t.cau },
@@ -310,7 +310,7 @@
           { name: "跌停家数", type: "bar", stack: "lim", data: (g.down || []).map(function (x) { return x === null ? x : -x; }),
             itemStyle: { color: t.down } },
           { name: "成交额(亿)", type: "line", yAxisIndex: 1, data: g.amount || [], showSymbol: false,
-            smooth: true, lineStyle: { color: t.neu, width: 1.5, opacity: .8 } }
+            smooth: false, lineStyle: { color: t.neu, width: 1.5, opacity: .8 } }
         ]
       });
     }
@@ -335,11 +335,11 @@
             splitLine: { show: false } })
         ],
         series: [
-          { name: "QVIX 隐波", type: "line", data: qv, showSymbol: false, smooth: true,
+          { name: "QVIX 隐波", type: "line", data: qv, showSymbol: false, smooth: false,
             lineStyle: { color: t.brand, width: 2 } },
-          { name: "RV20 已实现", type: "line", data: rv, showSymbol: false, smooth: true,
+          { name: "RV20 已实现", type: "line", data: rv, showSymbol: false, smooth: false,
             lineStyle: { color: t.neu, width: 1.6 } },
-          { name: "VRP 价差", type: "line", yAxisIndex: 1, data: vp, showSymbol: false, smooth: true,
+          { name: "VRP 价差", type: "line", yAxisIndex: 1, data: vp, showSymbol: false, smooth: false,
             lineStyle: { color: t.down, width: 1.4, type: "dashed" },
             areaStyle: { color: "rgba(0,135,90,.10)" } }
         ]

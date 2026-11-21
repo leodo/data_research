@@ -143,6 +143,8 @@ PIPELINES = {
         ("L2 周期画像(18周期/可信度)", "build_horizon_profile.py"),
         # L3 依赖 L2 的检验结论，产出每日可信度（元评分）JSON/JS，供 mood.html 的独立卡片渲染。
         ("L3 每日可信度(元评分)", "build_daily_confidence.py"),
+        # L4 大小盘 RSI 分化：只读个股价格缓存，产出观察层卡片数据（不进综合分）。
+        ("L4 大小盘RSI分化(观察)", "build_rsi_breadth.py"),
     ],
 }
 
