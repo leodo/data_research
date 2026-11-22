@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Logo 方案 · 投研工作台</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eef0f3; color: #171a20;
+         font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 34px 30px 70px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.6px; }
+  .lead { color: #6b7280; margin: 0 0 26px; font-size: 13px; }
+  .panel { border-radius: 20px; padding: 26px; margin-bottom: 26px; }
+  .panel.light { background: #f7f8fa; border: 1px solid #e3e6ea; }
+  .panel.dark { background: #0d1117; border: 1px solid #222a35; color: #e6edf3; }
+  .panel-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+                 color: #8b93a0; margin: 0 0 18px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+  .option { border-radius: 16px; padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .light .option { background: #fff; border: 1px solid #e5e8ec; }
+  .dark .option { background: #161b22; border: 1px solid #262d38; }
+  .mark { display: flex; align-items: center; gap: 12px; min-height: 116px; }
+  .mark img { width: 112px; height: 112px; display: block; }
+  .name { font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+  .no { font-size: 10px; color: #9aa3af; letter-spacing: .12em; font-weight: 700; }
+  .desc { font-size: 11.5px; color: #6b7280; line-height: 1.65; min-height: 56px; }
+  .dark .desc { color: #9aa4b2; }
+  .sizes { display: flex; align-items: flex-end; gap: 12px; padding: 10px 0 2px; border-top: 1px dashed #e5e8ec; }
+  .dark .sizes { border-top-color: #2a3240; }
+  .sizes figure { margin: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .sizes figcaption { font-size: 9px; color: #9aa3af; }
+  .lockup { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+  .lockup img { width: 38px; height: 38px; border-radius: 11px; }
+  .word { display: flex; flex-direction: column; line-height: 1.15; }
+  .word b { font-size: 15px; letter-spacing: -.3px; }
+  .word span { font-size: 7.5px; letter-spacing: .18em; color: #9aa3af; font-weight: 700; margin-top: 3px; }
+  .tabs { display: flex; gap: 6px; align-items: flex-end; padding: 0 6px; }
+  .tab { display: flex; align-items: center; gap: 7px; min-width: 176px; max-width: 240px;
+         background: #fff; color: #3d4450; border: 1px solid #e1e4e8; border-bottom: 0;
+         border-radius: 9px 9px 0 0; padding: 8px 10px 7px; font-size: 12px; }
+  .dark .tab { background: #1b222c; color: #c9d1db; border-color: #2a3240; }
+  .tab img { width: 16px; height: 16px; border-radius: 4px; }
+  .tab i { margin-left: auto; font-style: normal; color: #aab1bb; font-size: 11px; }
+  .tab.off { opacity: .55; }
+  .tabbar { background: #e3e6ea; border-radius: 12px 12px 0 0; padding: 10px 10px 0; }
+  .dark .tabbar { background: #0a0d12; }
+  .frame { height: 10px; background: #fff; border-radius: 0 0 10px 10px; border: 1px solid #e1e4e8; border-top: 0; }
+  .dark .frame { background: #1b222c; border-color: #2a3240; }
+  .note { color: #7b8492; font-size: 12px; line-height: 1.8; margin-top: 8px; }
+  .dark .note { color: #8b95a3; }
+  code { background: rgba(0,0,0,.06); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
+  .dark code { background: rgba(255,255,255,.08); }
+  @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } .wrap { padding: 20px 16px 50px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Logo 方案 · 投研工作台</h1>
+  <p class="lead">5 个方向，统一 256×256 圆角方形。每个方案都按 112 / 64 / 32 / 16 px 检查浏览器标签可读性；浅色、暗色各一版。</p>
+
+  <section class="panel light">
+    <p class="panel-title">Light · 浅色</p>
+    <div class="grid">
+      <div class="option">
+        <div class="mark"><img src="option-1-candles.svg" alt="阶梯 K 线" /></div>
+        <div><span class="no">01 / PRIMARY</span><div class="name">阶梯 K 线</div></div>
+        <div class="desc">三根递增阳线 + 白色基座。最像“行情”，16px 仍能看出柱体阶梯；推荐做主标。</div>
+        <div class="sizes">
+          <figure><img src="option-1-candles.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-1-candles.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-1-candles.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-1-candles.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+
+      <div class="option">
+        <div class="mark"><img src="option-2-gauge.svg" alt="恐惧贪婪仪表盘" /></div>
+        <div><span class="no">02 / PRODUCT</span><div class="name">恐惧贪婪仪表盘</div></div>
+        <div class="desc">直接对应核心产品“恐贪指数”：半圆刻度 + 指针。品牌解释力最强，16px 略细。</div>
+        <div class="sizes">
+          <figure><img src="option-2-gauge.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-2-gauge.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-2-gauge.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-2-gauge.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+
+      <div class="option">
+        <div class="mark"><img src="option-3-spark.svg" alt="折线山峰" /></div>
+        <div><span class="no">03 / MINIMAL</span><div class="name">折线山峰</div></div>
+        <div class="desc">一条上升折线 + 终点光点，最简洁、缩小后最稳。偏通用行情产品，个性稍弱。</div>
+        <div class="sizes">
+          <figure><img src="option-3-spark.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-3-spark.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-3-spark.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-3-spark.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+
+      <div class="option">
+        <div class="mark"><img src="option-4-stack.svg" alt="工作台层叠" /></div>
+        <div><span class="no">04 / ABSTRACT</span><div class="name">工作台层叠</div></div>
+        <div class="desc">三层递减色块 + 一个终点圆点，像指标分层/仪表盘。最现代，但和“行情”关联较弱。</div>
+        <div class="sizes">
+          <figure><img src="option-4-stack.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-4-stack.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-4-stack.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-4-stack.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+
+      <div class="option">
+        <div class="mark"><img src="option-5-grid.svg" alt="韭字格" /></div>
+        <div><span class="no">05 / PERSONALITY</span><div class="name">韭字格</div></div>
+        <div class="desc">把“韭”拆成 5 根柱 + 3 条横线，既像 K 线又保留老标识的散户梗。辨识度高，缩小后偏网格。</div>
+        <div class="sizes">
+          <figure><img src="option-5-grid.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-5-grid.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-5-grid.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-5-grid.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel dark">
+    <p class="panel-title">Dark · 暗色</p>
+    <div class="grid">
+      <div class="option">
+        <div class="mark"><img src="option-1-candles.svg" alt="" /></div>
+        <div><span class="no">01</span><div class="name">阶梯 K 线</div></div>
+        <div class="sizes">
+          <figure><img src="option-1-candles.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-1-candles.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-1-candles.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-1-candles.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+      <div class="option">
+        <div class="mark"><img src="option-2-gauge.svg" alt="" /></div>
+        <div><span class="no">02</span><div class="name">恐惧贪婪仪表盘</div></div>
+        <div class="sizes">
+          <figure><img src="option-2-gauge.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-2-gauge.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-2-gauge.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-2-gauge.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+      <div class="option">
+        <div class="mark"><img src="option-3-spark.svg" alt="" /></div>
+        <div><span class="no">03</span><div class="name">折线山峰</div></div>
+        <div class="sizes">
+          <figure><img src="option-3-spark.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-3-spark.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-3-spark.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-3-spark.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+      <div class="option">
+        <div class="mark"><img src="option-4-stack.svg" alt="" /></div>
+        <div><span class="no">04</span><div class="name">工作台层叠</div></div>
+        <div class="sizes">
+          <figure><img src="option-4-stack.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-4-stack.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-4-stack.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-4-stack.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+      <div class="option">
+        <div class="mark"><img src="option-5-grid.svg" alt="" /></div>
+        <div><span class="no">05</span><div class="name">韭字格</div></div>
+        <div class="sizes">
+          <figure><img src="option-5-grid.svg" width="64" height="64" /><figcaption>64</figcaption></figure>
+          <figure><img src="option-5-grid.svg" width="32" height="32" /><figcaption>32</figcaption></figure>
+          <figure><img src="option-5-grid.svg" width="16" height="16" /><figcaption>16</figcaption></figure>
+        </div>
+        <div class="lockup"><img src="option-5-grid.svg" alt="" /><div class="word"><b>投研工作台</b><span>DATA RESEARCH</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel light">
+    <p class="panel-title">Browser tab · 16px 实际大小对比</p>
+    <div class="tabbar">
+      <div class="tabs">
+        <div class="tab"><img src="option-1-candles.svg" alt="" /><span>投研工作台</span><i>×</i></div>
+        <div class="tab off"><img src="option-2-gauge.svg" alt="" /><span>恐贪指数</span><i>×</i></div>
+        <div class="tab off"><img src="option-3-spark.svg" alt="" /><span>暗盘行情</span><i>×</i></div>
+        <div class="tab off"><img src="option-4-stack.svg" alt="" /><span>可转债</span><i>×</i></div>
+        <div class="tab off"><img src="option-5-grid.svg" alt="" /><span>情绪面板</span><i>×</i></div>
+      </div>
+    </div>
+    <div class="frame"></div>
+    <p class="note">说明：所有方案都是 256×256 SVG，圆角 58；浏览器 16px 通常只能保留轮廓。01/03 在 16px 最稳，02 最有产品含义，05 最有旧品牌延续性。</p>
+  </section>
+
+  <p class="note">
+    推荐：<b>01 阶梯 K 线</b> 作为主标（行情语义最直接、16px 最好认）；<b>02 仪表盘</b> 作为“恐贪指数”栏目或报告页的辅助图形；<b>05 韭字格</b> 如果想保留“韭”这个记忆点。
+    选定后我会补 <code>favicon.ico</code>（16/32/48）、<code>apple-touch-icon</code> 180px，以及侧栏/登录页的横版 lockup。
+  </p>
+</div>
+</body>
+</html>

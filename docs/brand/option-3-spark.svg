@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="折线山峰">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6a3d"/>
+      <stop offset="1" stop-color="#e82e5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg3)"/>
+  <path d="M44 178 L82 148 L110 160 L146 112 L176 130 L212 78 L212 208 L44 208 Z" fill="#fff" opacity=".14"/>
+  <path d="M44 178 L82 148 L110 160 L146 112 L176 130 L212 78" fill="none" stroke="#fff" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="212" cy="78" r="21" fill="#fff" opacity=".18"/>
+  <circle cx="212" cy="78" r="12" fill="#fff"/>
+</svg>

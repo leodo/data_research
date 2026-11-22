@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="恐惧贪婪仪表盘">
+  <defs>
+    <linearGradient id="arc2" x1="52" y1="150" x2="204" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3fb950"/>
+      <stop offset=".55" stop-color="#f5b301"/>
+      <stop offset="1" stop-color="#ff4713"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="#fff8f3"/>
+  <path d="M52 150 A76 76 0 0 1 204 150" fill="none" stroke="#f2ded6" stroke-width="20" stroke-linecap="round"/>
+  <path d="M52 150 A76 76 0 0 1 176.4 91.4" fill="none" stroke="url(#arc2)" stroke-width="20" stroke-linecap="round"/>
+  <g stroke="#d9b9ad" stroke-width="6" stroke-linecap="round">
+    <path d="M128 54 V64"/>
+    <path d="M74.1 76.1 L81.2 83.2"/>
+    <path d="M181.9 76.1 L174.8 83.2"/>
+    <path d="M52 150 H62"/>
+    <path d="M204 150 H194"/>
+  </g>
+  <path d="M128 150 L165 105" stroke="#1b222c" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="128" cy="150" r="13" fill="#1b222c"/>
+  <circle cx="128" cy="150" r="5" fill="#fff8f3"/>
+</svg>
