@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="阶梯 K 线">
+  <defs>
+    <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6a3d"/>
+      <stop offset="1" stop-color="#e82e5c"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg1)"/>
+  <g fill="#fff">
+    <rect x="64" y="104" width="6" height="22" rx="3"/>
+    <rect x="52" y="124" width="30" height="60" rx="9"/>
+    <rect x="125" y="72" width="6" height="24" rx="3"/>
+    <rect x="113" y="92" width="30" height="92" rx="9"/>
+    <rect x="186" y="40" width="6" height="24" rx="3"/>
+    <rect x="174" y="60" width="30" height="124" rx="9"/>
+  </g>
+  <path d="M44 204 H212" stroke="#fff" stroke-opacity=".36" stroke-width="8" stroke-linecap="round"/>
+</svg>

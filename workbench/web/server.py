@@ -9,6 +9,8 @@ from urllib.parse import urlsplit
 
 PAGE_MAP = {
     "/": "/web/index.html",
+    "/favicon.ico": "/web/favicon.ico",
+    "/apple-touch-icon.png": "/web/assets/brand/apple-touch-icon.png",
     "/index.html": "/web/index.html",
     "/indicators.html": "/web/indicators.html",
     "/mood.html": "/web/mood.html",

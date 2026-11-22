@@ -6,6 +6,9 @@
 <title>恐贪指数 · 7大指数 · 投研工作台</title>
 <script src="../vendor/echarts.min.js"></script>
 <script src="app.js"></script>
+<link rel="icon" href="favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo.svg" />
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png" />
 <link rel="stylesheet" href="app.css" />
 <style>
 *{box-sizing:border-box}
@@ -17,6 +20,7 @@ a{text-decoration:none;color:inherit}
 .sidebar{width:208px;flex:0 0 208px;background:var(--bg-sidebar);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
 .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;padding:2px 8px 20px}
 .logo .mark{width:26px;height:26px;border-radius:8px;background:var(--mark-grad);display:grid;place-items:center;color:#fff;font-size:13px}
+.logo img.mark{background:none;display:block;object-fit:cover;border-radius:6px}
 .nav-group{margin-bottom:16px}
 .nav-title{font-size:11px;color:var(--text-3);padding:6px 10px;letter-spacing:.5px}
 .nav-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;color:var(--text-2);cursor:pointer;font-size:13px}
@@ -101,7 +105,7 @@ a{text-decoration:none;color:inherit}
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <div class="logo"><span class="mark">韭</span> 投研工作台</div>
+    <div class="logo"><img class="mark" src="assets/brand/logo.svg" alt="投研工作台" /> 投研工作台</div>
     <div class="nav-group">
       <div class="nav-title">工作台</div>
       <a class="nav-item" href="index.html"><span class="ico">◈</span> 首页</a>
