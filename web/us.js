@@ -1106,20 +1106,22 @@
       .then(function(r){ return r.json(); })
       .then(function(j){
         clearTimeout(to);
-        if(j.ok){
-          S.spark = j.series || {};
+        // 空 series 往往是「目录尚未就绪」或上游瞬断，不能当成成功缓存 5 分钟，
+        // 否则页面会长时间没有迷你走势/前一日；30 秒后重试。
+        if(j.ok && j.series && Object.keys(j.series).length){
+          S.spark = j.series;
           S.prevDay = j.prev_day || {};
           S.prevSession = j.session || null;
           S.sparkAt = Date.now();
           renderSparklines();
           renderPrevDayCells();
         }else{
-          S.sparkAt = Date.now() - 240000;
+          S.sparkAt = Date.now() - 270000;
         }
       })
       .catch(function(){
         clearTimeout(to);
-        S.sparkAt = Date.now() - 240000;
+        S.sparkAt = Date.now() - 270000;
       })
       .then(function(){ S.sparkLoading = false; });
   }

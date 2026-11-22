@@ -248,7 +248,9 @@ class WsClient:
             try:
                 chunk = self.sock.recv(65536)
             except socket.timeout:
-                if allow_timeout and not self._buf:
+                # 头部读到一半也算“还没收全”，保留 _buf 下次继续；
+                # 旧逻辑会在这里直接抛错，正常的分片帧会被误判成断线。
+                if allow_timeout:
                     return None
                 raise WebSocketError("读取帧超时")
             if not chunk:
@@ -313,6 +315,7 @@ class UsDarkFeed:
         self._catalog_at = 0.0
         self._catalog_next_try = 0.0
         self._catalog_err = None
+        self._catalog_thread = None
         self._book = {}            # focus coin -> 最近一次 l2Book
         self._trades = {}          # coin -> deque[trade dict]
         self._trade_tids = {}      # coin -> deque[tid]
@@ -377,11 +380,26 @@ class UsDarkFeed:
                     self._stop.wait(0.5)
                     continue
 
-                # 目录：首次 / 过期时重抓；失败后 30 秒再试，不刷屏
-                if (not self._catalog or time.time() - self._catalog_at > C.US_DARK_CATALOG_TTL) \
-                        and time.time() >= self._catalog_next_try:
-                    self._refresh_catalog()
-                    self._catalog_next_try = time.time() + 30
+                # 已有目录时先连 WS 并订阅，再刷新目录。
+                # 旧顺序是「先刷新目录、再连 WS」，恢复时目录请求一旦慢/重试，
+                # 页面会长时间停在「连接中/报价停滞」（实测可拖 5–20 秒）。
+                if self._ws is None and self._catalog and time.time() >= self._next_attempt:
+                    self._connect()
+                if self._ws is not None:
+                    self._sync_subs()
+
+                # 目录：首次必须同步取（还没有标的可订阅）；已有目录时改为后台刷新。
+                # 同步刷新会阻塞 recv 数秒，WS 来不及回 pong 会被服务端断开，必须异步。
+                stale = (not self._catalog or
+                         time.time() - self._catalog_at > C.US_DARK_CATALOG_TTL)
+                if stale and time.time() >= self._catalog_next_try:
+                    if not self._catalog:
+                        self._refresh_catalog()
+                        self._catalog_next_try = time.time() + 30
+                    elif not (self._catalog_thread and self._catalog_thread.is_alive()):
+                        self._catalog_thread = threading.Thread(
+                            target=self._refresh_catalog_bg, name="us-dark-catalog", daemon=True)
+                        self._catalog_thread.start()
 
                 if not self._catalog:
                     self._status = "catalog"
@@ -395,9 +413,9 @@ class UsDarkFeed:
                     self._connect()
                     if self._ws is None:
                         continue
+                    self._sync_subs()
 
-                self._sync_subs()
-                raw = self._ws.recv(0.5)
+                raw = self._ws.recv(2.0)
                 if raw is not None:
                     self._last_msg = time.time()
                     self._on_message(raw)
@@ -462,6 +480,15 @@ class UsDarkFeed:
             print("[暗盘行情] 已断开行情连接（%s）" % reason, flush=True)
 
     # ------------------------------------------------------------ 目录
+    def _refresh_catalog_bg(self):
+        """后台刷新目录，避免阻塞 WS 的 recv/pong。"""
+        try:
+            self._refresh_catalog()
+        except Exception as e:  # noqa: BLE001
+            with self._lock:
+                self._catalog_err = "%s: %s" % (type(e).__name__, e)
+                self._catalog_next_try = time.time() + 30
+
     def _refresh_catalog(self):
         """刷新市场目录。
 
