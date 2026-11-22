@@ -49,6 +49,30 @@ def main() -> int:
     check("DATA 存在", DATA.is_dir())
     check("REPORTS 存在", REPORTS.is_dir())
 
+    # 回归：目录刷新失败时绝不能缩容（否则 61 个股票被退订，页面永久「报价停滞」）
+    from workbench.services import us_dark as U
+
+    feed = U.UsDarkFeed()
+    feed._catalog = [
+        {"coin": "xyz:NVDA", "symbol": "NVDA", "name": "英伟达", "group": "美股", "dex": "xyz"},
+        {"coin": "BTC", "symbol": "BTC", "name": "比特币", "group": "商品", "dex": "main"},
+    ]
+    orig_post = U.post_info
+
+    def fake_post(body, timeout=8.0):
+        if body.get("dex") == "xyz":
+            raise RuntimeError("simulated 502")
+        return ({"universe": [{"name": "BTC", "szDecimals": 5}]},
+                [{"prevDayPx": "1", "markPx": "2"}])
+
+    U.post_info = fake_post
+    try:
+        feed._refresh_catalog()
+    finally:
+        U.post_info = orig_post
+    check("目录刷新失败不缩容", len(feed._catalog) == 2 and bool(feed._catalog_err),
+          f"catalog={len(feed._catalog)} err={feed._catalog_err}")
+
     print("[2/4] 启动静态服务")
     srv = Server(("127.0.0.1", 0), SiteHandler)
     port = srv.server_address[1]

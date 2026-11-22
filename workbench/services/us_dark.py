@@ -436,7 +436,14 @@ class UsDarkFeed:
 
     # ------------------------------------------------------------ 目录
     def _refresh_catalog(self):
-        rows, err = [], None
+        """刷新市场目录。
+
+        关键：必须整组成功才替换目录。2026-11-22 实测过一个真实故障：xyz 的
+        metaAndAssetCtxs 偶发失败、只拿到主市场 BTC 时，旧实现会用「只有 1 个标的」
+        的目录覆盖全量目录，并把 61 个股票的 trades/bbo 全部退订；页面于是永久显示
+        「报价停滞」。现在任一分组失败 -> 保留旧目录、30 秒后重试，绝不缩容。
+        """
+        rows, err, failed = [], None, False
         groups = ((C.US_DARK_DEX, C.US_DARK_MARKETS),
                   ("", C.US_DARK_MAIN),
                   (C.US_DARK_PREIPO_DEX, C.US_DARK_PREIPO))
@@ -446,25 +453,48 @@ class UsDarkFeed:
             body = {"type": "metaAndAssetCtxs"}
             if dex:
                 body["dex"] = dex
+            data = None
+            for attempt in range(2):
+                try:
+                    data = post_info(body, timeout=12.0)
+                    break
+                except Exception as e:  # noqa: BLE001
+                    err = "%s: %s" % (dex or "main", e)
+                    if attempt == 0:
+                        time.sleep(1.0)
+            if not data:
+                failed = True
+                continue
             try:
-                meta, ctxs = post_info(body)
+                meta, ctxs = data
+                universe = meta.get("universe") or []
             except Exception as e:  # noqa: BLE001
+                failed = True
                 err = "%s: %s" % (dex or "main", e)
                 continue
-            universe = meta.get("universe") or []
             uni = {u.get("name"): u for u in universe}
             by_coin = {u.get("name"): c for u, c in zip(universe, ctxs)}
+            matched = 0
             for coin, name, group in specs:
                 u = uni.get(coin)
                 c = by_coin.get(coin)
                 if not u or not c or u.get("isDelisted"):
                     continue
+                matched += 1
                 rows.append({"coin": coin, "symbol": coin.split(":", 1)[-1], "name": name,
                              "group": group, "dex": dex or "main", "u": u, "c": c})
-        if not rows:
+            if matched == 0:
+                failed = True
+                err = "%s: 未匹配到任何标的" % (dex or "main")
+
+        if failed or not rows:
             with self._lock:
                 self._catalog_err = err or "交易所未返回任何匹配市场"
+                self._catalog_next_try = time.time() + 30
+            if self._catalog:
+                print("[暗盘行情] 目录刷新失败，沿用旧目录（%s）" % self._catalog_err, flush=True)
             return
+
         with self._lock:
             self._catalog = [{"coin": r["coin"], "symbol": r["symbol"], "name": r["name"],
                               "group": r["group"], "dex": r["dex"]} for r in rows]
