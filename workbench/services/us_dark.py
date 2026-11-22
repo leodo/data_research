@@ -901,42 +901,53 @@ class UsDarkFeed:
                 for r in rows or []:
                     if not isinstance(r, dict):
                         continue
-                    t, c = _ms(r.get("t")), _num(r.get("c"))
-                    if t is not None and c is not None:
-                        pts.append((t, c))
+                    t, o, c = _ms(r.get("t")), _num(r.get("o")), _num(r.get("c"))
+                    if t is not None and o is not None and c is not None:
+                        pts.append((t, o, c))
                 pts.sort()
 
                 def close_before(cut):
                     val = None
-                    for t, c in pts:
+                    for t, _o, c in pts:
                         if t < cut:
                             val = c
                         else:
                             break
                     return val
 
-                series = [round(c, 4) for t, c in pts if t >= now - hours * 3600 * 1000]
+                series = [round(c, 4) for t, _o, c in pts if t >= now - hours * 3600 * 1000]
                 cd, cp = close_before(cut_last), close_before(cut_prior)
                 prev = None
                 if cd is not None and cp:
-                    # 拆股/并股会让相邻收盘出现 1/N 机械跳变（如 SNDK 10:1），
-                    # 对 >65% 的下跌尝试按整数比例还原，避免把拆股显示成 -89%。
-                    split = None
-                    cp_adj = cp
-                    raw = cd / cp if cp else None
-                    if raw is not None and raw < 0.35:
+                    # 拆股/并股会在某一根 1h K 线上留下「open / 上一根 close ≈ 1/N」的
+                    # 离散跳变（SNDK 8:1 实测 753.69 → 92.58 ≈ 1/8）。用日收盘反推
+                    # 会被当天真实涨跌污染（曾把 8:1 误判成 10:1），所以看跳变本身。
+                    splits = []
+                    for i in range(1, len(pts)):
+                        prev_c, op = pts[i - 1][2], pts[i][1]
+                        if not prev_c or not op:
+                            continue
+                        ratio = op / prev_c
+                        if ratio >= 0.5:      # 只处理向下的拆股
+                            continue
                         best = None
                         for n in range(2, 21):
-                            diff = abs(raw * n - 1.0)
-                            if diff <= 0.08 and (best is None or diff < best[0]):
+                            diff = abs(ratio * n - 1.0)
+                            if diff < 0.03 and (best is None or diff < best[0]):
                                 best = (diff, n)
                         if best:
-                            split = best[1]
-                            cp_adj = cp / split
+                            splits.append((pts[i][0], best[1]))
+
+                    # 只有落在「前一交易日收盘 ~ 上一交易日收盘」之间的拆股才需要还原
+                    factor = 1
+                    for ts, n in splits:
+                        if cut_prior < ts <= cut_last:
+                            factor *= n
+                    cp_adj = cp / factor if factor else cp
                     prev = {"date": last.isoformat(), "close": round(cd, 4),
                             "chg": round((cd / cp_adj - 1.0) * 100.0, 2)}
-                    if split:
-                        prev["split"] = split
+                    if factor > 1:
+                        prev["split"] = factor
                         prev["raw_chg"] = round((cd / cp - 1.0) * 100.0, 2)
                 return coin, series, prev
 

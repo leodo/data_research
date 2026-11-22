@@ -400,7 +400,8 @@
       '</tr></thead><tbody id="qBody"></tbody></table></div>' +
       '<div class="note"><b>读数规则</b>：最新成交价来自 <b>trades</b> 推送，没有新成交时价格保持不变；' +
         '「更新状态」合并了报价更新时间与状态（成交中 / 报价中 / 报价停滞 / 无报价）。' +
-        '买一、卖一、中间价、价差已移到右侧选中标的卡片；「24h 走势」为 1 小时收盘迷你折线，每 5 分钟刷新，红涨绿跌。</div>' +
+        '买一、卖一、中间价、价差已移到右侧选中标的卡片；「24h 走势」为 1 小时收盘迷你折线，每 5 分钟刷新，红涨绿跌。' +
+        '「前一日」为上一美股交易日 16:00 ET 收盘涨跌，带「拆N」表示检测到 N:1 拆股并已还原。</div>' +
       '</section>';
 
     html += '<section class="card side-card" data-toc="选中标的 · 24h 走势" data-toc-group="实时行情">' +
@@ -1073,7 +1074,9 @@
     var p = S.prevDay && S.prevDay[coin];
     if(!p || p.chg === null || p.chg === undefined) return '<span class="flat">—</span>';
     var day = p.date ? p.date.slice(5) : "";
-    var mark = p.split ? '<sup title="拆股已还原">*</sup>' : "";
+    var mark = p.split
+      ? '<span class="pc-tag" title="检测到 ' + p.split + ':1 拆股，已还原（原始 ' + fmtPct(p.raw_chg) + '）">拆' + p.split + '</span>'
+      : "";
     var tip = p.split
       ? ("检测到 " + p.split + ":1 拆股，已按拆股还原（原始 " + fmtPct(p.raw_chg) + "）")
       : (p.date + " 16:00 ET 收盘 vs 前一交易日");
