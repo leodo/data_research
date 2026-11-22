@@ -1,8 +1,9 @@
 # 完整整理计划（结构重构）
 
-> **执行结果（2026-11-22）**：P0–P4 已执行完成，实际包名采用 `workbench/`（下文已同步），
-> 页面在 `web/`，旧 URL 302。当前结构以 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) 为准；
-> P6 全量 `python start_site.py --force` 重建待手动执行。
+> **执行结果（2026-11-22）**：P0–P6 已执行完成，实际包名采用 `workbench/`（下文已同步），
+> 页面在 `web/`，旧 URL 302。P6 跑了完整 22 步 DAG（默认增量，避免 700MB 缓存重下）；
+> 首轮第 7 步 `build_breadth` 因漏改 import 失败，修复后补跑并重算下游 10 个节点，全部通过。
+> 当前结构以 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) 为准。
 
 > 目标：把「文档 / 报告 / 代码 / 页面 / 数据 / 研究脚本」彻底分层，同时保持
 > `http://localhost:8040/index.html` 等旧地址、`python start_site.py` 等旧命令可用。
@@ -385,5 +386,5 @@ python start_site.py --force
 - ✅ P2 页面：5 页 + 9 个前端资源迁入 `web/`，旧 URL 302，资源/报告链接已验证；
 - ✅ P3 Python 包化：`workbench/{config,core,factor_utils,pipeline,services,entry,audit,web}`，根目录薄包装；
 - ✅ P4 收尾：`tests/smoke.py` 全绿，README/结构文档/报告命令同步；
-- ⏳ P6 全量验收：`python start_site.py --force`（22 步 DAG，约 40 分钟）尚未执行；
+- ✅ P6 全量验收：22 步 DAG 完成；首轮第 7 步 `build_breadth` 的 `from build_crowding import` 漏改，修复后补跑，并重算 `below_net → breadth_extra → arms → mood → confirm → L0–L4` 全部通过；`last_update.json` 写回 `ok=true`；8040 重启并逐页验证；
 - 数据分层（原 P5）按计划不做。

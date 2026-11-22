@@ -30,7 +30,7 @@ OUT = DATA / "mood_breadth.csv"
 
 
 def get_universe():
-    from build_crowding import get_universe as _get
+    from workbench.pipeline.build_crowding import get_universe as _get
     return _get()
 
 
