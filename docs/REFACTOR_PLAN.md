@@ -1,5 +1,9 @@
 # 完整整理计划（结构重构）
 
+> **执行结果（2026-11-22）**：P0–P4 已执行完成，实际包名采用 `workbench/`（下文已同步），
+> 页面在 `web/`，旧 URL 302。当前结构以 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) 为准；
+> P6 全量 `python start_site.py --force` 重建待手动执行。
+
 > 目标：把「文档 / 报告 / 代码 / 页面 / 数据 / 研究脚本」彻底分层，同时保持
 > `http://localhost:8040/index.html` 等旧地址、`python start_site.py` 等旧命令可用。
 > 本文是执行方案，不是已完成记录；已完成的部分见文末「当前进度」。
@@ -36,7 +40,7 @@ data_research/
 ├─ README.md / requirements.txt / .gitignore / .gitattributes
 ├─ 启动.cmd / 启动.bat / 修复双击关联.reg      # 根入口，不改内容
 ├─ start_site.py / serve.py                    # 薄包装：import app.entry.* 后调用 main()
-├─ app/                                        # Python 包（新增 __init__.py）
+├─ workbench/                                        # Python 包（新增 __init__.py）
 │  ├─ paths.py                                 # ROOT / DATA / WEB / REPORTS / DOCS / VENDOR
 │  ├─ config.py
 │  ├─ core.py
@@ -88,18 +92,18 @@ data_research/
 本方案保持 **服务根 = 项目根**，页面放 `web/` 后：
 
 - 页面内引用改成 `../data/...`、`../vendor/...`、`../reports/...`；
-- 旧 URL `/index.html` 由 `app/web/server.py` 映射到 `/web/index.html`，`/web/index.html` 也可直达；
+- 旧 URL `/index.html` 由 `workbench/web/server.py` 映射到 `/web/index.html`，`/web/index.html` 也可直达；
 - `/data`、`/vendor`、`/reports`、`/docs` 仍由项目根自然提供，不需要拷贝。
 
 ## 4. 文件映射
 
 | 当前 | 目标 | 备注 |
 |---|---|---|
-| `config.py` / `core.py` / `factor_utils.py` | `app/` | 全部改为 `from app...` |
-| `build_*.py`（21 个，含 `build_turning`）、`rebuild_turnover.py`、`audit_efficacy.py` | `app/pipeline/` | 共 23 个文件；22 个 DAG 脚本 + `build_turning`（内部调用） |
-| `us_dark.py` | `app/services/us_dark.py` | `DATA_DIR` 改用 `paths.DATA` |
-| `start_site.py` / `serve.py` | `app/entry/` + 根目录薄包装 | 命令行不变 |
-| `audit_transform.py` | `app/audit/transform.py` | 报告页脚命令改为 `python -m app.audit.transform` |
+| `config.py` / `core.py` / `factor_utils.py` | `workbench/` | 全部改为 `from workbench...` |
+| `build_*.py`（21 个，含 `build_turning`）、`rebuild_turnover.py`、`audit_efficacy.py` | `workbench/pipeline/` | 共 23 个文件；22 个 DAG 脚本 + `build_turning`（内部调用） |
+| `us_dark.py` | `workbench/services/us_dark.py` | `DATA_DIR` 改用 `paths.DATA` |
+| `start_site.py` / `serve.py` | `workbench/entry/` + 根目录薄包装 | 命令行不变 |
+| `audit_transform.py` | `workbench/audit/transform.py` | 报告页脚命令改为 `python -m workbench.audit.transform` |
 | 5 个 `*.html` | `web/` | 资源引用改 `../` |
 | `app.css`、`app.js`、`cb.js`、`us.js`、6 个 `*_cards.js`/`confidence_card.js` | `web/` | 页面同目录引用不变 |
 | `vendor/` | 不动 | 页面用 `../vendor/`，报告用 `../vendor/` |
@@ -108,7 +112,7 @@ data_research/
 
 ## 5. 必须改的代码点
 
-### 5.1 新增 `app/paths.py`
+### 5.1 新增 `workbench/paths.py`
 
 ```python
 from pathlib import Path
@@ -136,17 +140,17 @@ DOCS = ROOT / "docs"
 全量机械替换（仅这些模式）：
 
 ```
-from config import …        → from app.config import …
-from core import …          → from app.core import …
-from factor_utils import …  → from app.factor_utils import …
-import us_dark              → from app.services import us_dark
+from config import …        → from workbench.config import …
+from core import …          → from workbench.core import …
+from factor_utils import …  → from workbench.factor_utils import …
+import us_dark              → from workbench.services import us_dark
 ```
 
-`build_mood.py` 内部调用 `build_turning.build()`，改为 `from app.pipeline import build_turning`。
+`build_mood.py` 内部调用 `build_turning.build()`，改为 `from workbench.pipeline import build_turning`。
 
 ### 5.3 DAG 编排
 
-`app/entry/start_site.py`：
+`workbench/entry/start_site.py`：
 
 ```python
 PIPELINES = {
@@ -174,7 +178,7 @@ subprocess.run(cmd, cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT)})
 `app.css` / `cb.js` 会按 `/app.css` 解析而 404。正确做法是 **302 跳到 `/web/`**，让浏览器基地址变成
 `/web/`，相对资源自然生效。
 
-`app/web/server.py`：
+`workbench/web/server.py`：
 
 ```python
 PAGE_MAP = {
@@ -224,7 +228,7 @@ class SiteHandler(SimpleHTTPRequestHandler):
 
 - `index.html` → `../reports/因子周期画像-…html`；
 - 报告内部 `../vendor/echarts.min.js` 不变；
-- README 命令：`python start_site.py` / `python serve.py` 不变；`python audit_transform.py` 改 `python -m app.audit.transform`；
+- README 命令：`python start_site.py` / `python serve.py` 不变；`python -m workbench.audit.transform` 改 `python -m workbench.audit.transform`；
 - `docs/PROJECT_STRUCTURE.md` 的目录树同步为目标结构。
 
 ## 6. 分阶段执行
@@ -232,10 +236,10 @@ class SiteHandler(SimpleHTTPRequestHandler):
 | 阶段 | 内容 | 预计 | 验收 | 回滚 |
 |---|---|---|---|---|
 | P0 | 基线：git 分支/标签、跑现有页面冒烟、记录 `last_update.json` | 0.5h | 5 页 + API + 报告均可打开 | 无需 |
-| P1 | 新增 `app/paths.py`；`core/factor_utils/us_dark` 改用 paths（文件仍不动） | 1h | `python build_factor_matrix.py`、`start_site.py`（跳过更新）正常 | `git checkout` |
+| P1 | 新增 `workbench/paths.py`；`core/factor_utils/us_dark` 改用 paths（文件仍不动） | 1h | `python -m workbench.pipeline.build_factor_matrix`、`start_site.py`（跳过更新）正常 | `git checkout` |
 | P2 | 页面/前端资源搬 `web/`；页面引用改 `../`；加页面映射 | 1.5h | 旧 URL 与新 `/web/` 均 200；数据/图表正常 | 移回根 + 删映射 |
-| P3 | Python 包化：`app/pipeline`、`services`、`entry`；根目录薄包装；DAG 改 `-m` | 4h | `python -m app.pipeline.audit_efficacy`、`python start_site.py`、API 正常 | 分支回滚 |
-| P4 | `audit_transform` 入 `app/audit`；研究脚本导入与文档收尾；smoke 测试 | 1h | `python -m tests.smoke` 全绿 | 分支回滚 |
+| P3 | Python 包化：`workbench/pipeline`、`services`、`entry`；根目录薄包装；DAG 改 `-m` | 4h | `python -m workbench.pipeline.audit_efficacy`、`python start_site.py`、API 正常 | 分支回滚 |
+| P4 | `audit_transform` 入 `workbench/audit`；研究脚本导入与文档收尾；smoke 测试 | 1h | `python -m tests.smoke` 全绿 | 分支回滚 |
 | P5（可选） | 数据分层 `data/cache|derived|public` | 3h+ | 全链重建 | 不建议，见 §9 |
 | P6 | 全量验收：`python start_site.py --force` 完整跑一次（约 40 分钟） | 1h | 所有页面日期/数值更新，快照/API 正常 | 保留旧 tag |
 
@@ -258,9 +262,9 @@ python serve.py 8041
 
 ### P1 路径层
 
-- 新增 `app/__init__.py`、`app/paths.py`；
+- 新增 `workbench/__init__.py`、`workbench/paths.py`；
 - 只改 4 个公共文件，不动文件位置；
-- 验收：`python build_factor_matrix.py`、`python build_fear_greed.py`（会走 QVIX 降级）正常，
+- 验收：`python -m workbench.pipeline.build_factor_matrix`、`python -m workbench.pipeline.build_fear_greed`（会走 QVIX 降级）正常，
   `python serve.py 8041` 页面正常。
 
 ### P2 页面搬家
@@ -274,7 +278,7 @@ Move-Item app.css,app.js,cb.js,us.js,confirm_cards.js,factor_audit_cards.js,conf
 然后：
 
 1. 页面里 `vendor/` → `../vendor/`、`data/` → `../data/`、`reports/` → `../reports/`；
-2. `app/web/server.py` 加 `PAGE_MAP`（或先在 `serve.py/start_site.py` 内联）；
+2. `workbench/web/server.py` 加 `PAGE_MAP`（或先在 `serve.py/start_site.py` 内联）；
 3. 验收矩阵：
 
 ```
@@ -349,8 +353,8 @@ python start_site.py --force
 - [ ] 5 个栏目页面数据/图表/主题切换正常
 - [ ] `/api/usdark/state|sparklines|health` 正常
 - [ ] 9 份报告可打开且图表加载
-- [ ] `python -m app.pipeline.audit_efficacy` 可跑
-- [ ] `python -m app.audit.transform` 可跑
+- [ ] `python -m workbench.pipeline.audit_efficacy` 可跑
+- [ ] `python -m workbench.audit.transform` 可跑
 - [ ] `python -m tests.smoke` 全绿
 - [ ] 根目录只剩入口、README、requirements、配置 dotfiles
 - [ ] `git status` 只含预期改动
@@ -368,16 +372,18 @@ python start_site.py --force
 | # | 选项 | 建议 |
 |---|---|---|
 | 1 | 旧 URL 保留方式 | `PAGE_MAP` 映射（无重复文件） |
-| 2 | 包名 | `app`（短、明确）；若想更具体可用 `workbench` |
+| 2 | 包名 | `workbench`（短、明确）；若想更具体可用 `workbench` |
 | 3 | 根目录是否保留 `start_site.py/serve.py` 薄包装 | 保留，保护肌肉记忆与 `启动.cmd` |
-| 4 | `audit_transform.py` 去向 | `app/audit/transform.py`，报告命令改 `python -m app.audit.transform` |
+| 4 | `audit_transform.py` 去向 | `workbench/audit/transform.py`，报告命令改 `python -m workbench.audit.transform` |
 | 5 | 数据是否分层 | **暂不做**；等结构稳定后单独评估 |
 | 6 | 是否先提交当前状态 | 建议先建分支提交，便于回滚 |
 
-## 11. 当前进度（2026-11-22）
+## 11. 执行记录（2026-11-22）
 
-- ✅ 报告、预览、研究脚本、备份已分目录；
-- ✅ 报告 `../vendor` 与首页/卡片链接已修；
-- ✅ 研究脚本 `BASE` 已指回根目录，生成器输出到 `reports/`；
-- ⏳ 页面尚未搬 `web/`，Python 尚未包化，smoke 测试尚未建立；
-- ⏳ 本文是待执行计划，P0–P6 尚未开始。
+- ✅ P0 基线：分支 `refactor/structure`，快照已提交；
+- ✅ P1 路径层：`workbench/paths.py`，公共层不再用 `__file__` 推算 `data/`；
+- ✅ P2 页面：5 页 + 9 个前端资源迁入 `web/`，旧 URL 302，资源/报告链接已验证；
+- ✅ P3 Python 包化：`workbench/{config,core,factor_utils,pipeline,services,entry,audit,web}`，根目录薄包装；
+- ✅ P4 收尾：`tests/smoke.py` 全绿，README/结构文档/报告命令同步；
+- ⏳ P6 全量验收：`python start_site.py --force`（22 步 DAG，约 40 分钟）尚未执行；
+- 数据分层（原 P5）按计划不做。

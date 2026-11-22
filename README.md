@@ -41,31 +41,42 @@ python serve.py                 # 只起静态服务，不更新数据（调试�
 
 ## 目录结构
 
-根目录只保留**可运行的生产代码、站点页面和入口脚本**；文档、报告、研究脚本与备份已分目录：
+根目录只保留入口、包目录与静态资源；代码、页面、文档、报告、研究脚本、备份已分层：
 
 ```
 根目录
 ├─ 启动.cmd / 启动.bat / 修复双击关联.reg   入口
-├─ start_site.py / serve.py                编排与静态服务
-├─ config.py / core.py / factor_utils.py   配置与公共层
-├─ us_dark.py                              暗盘行情服务
-├─ build_*.py / rebuild_turnover.py / audit_efficacy.py   数据构建
-├─ *.html / *.js / app.css / vendor/       站点页面与前端资源
+├─ start_site.py / serve.py                薄包装（实际逻辑在 workbench/entry/）
+├─ workbench/                              Python 包
+│  ├─ paths.py                             ROOT / DATA / WEB / REPORTS 唯一来源
+│  ├─ config.py / core.py / factor_utils.py
+│  ├─ pipeline/                            22 个 DAG 脚本 + build_turning
+│  ├─ services/us_dark.py                  暗盘行情服务
+│  ├─ entry/start_site.py / serve.py       编排、静态服务、302 页面映射
+│  ├─ web/server.py                        SiteHandler（旧 URL 302 → /web/）
+│  └─ audit/transform.py                   原 audit_transform.py
+├─ web/                                    5 个页面 + app.css/app.js + 渲染器
 ├─ data/                                   派生数据（gitignore，不入库）
+├─ vendor/                                 ECharts（页面与报告共用）
 ├─ reports/                                9 份评估/方案报告（HTML）
-├─ docs/                                   结构说明 + previews/ 预览截图
+├─ docs/                                   结构说明、重构计划、数据说明 + previews/
 ├─ research/                               一次性探针与报告生成器
+├─ tests/smoke.py                          无网络冒烟测试
 ├─ archive/                                旧版脚本与备份（backups/）
 └─ .git / .gitignore / requirements.txt / README.md
 ```
 
+- 页面访问：`/index.html` 等旧 URL 会 **302** 到 `/web/index.html`，浏览器地址变化但书签仍可用；
 - `reports/*.html` 引用 `../vendor/echarts.min.js`，双击或从站点打开都可正常出图；
-- `research/*.py` 已把 `BASE` 指回项目根目录，需**从根目录运行**（如 `python research/_composite_probe.py`）；`_gen_*.py` 输出到 `reports/`；
-- `audit_transform.py` 留在根目录，因为报告里的复跑命令写的是 `python audit_transform.py`；
-- 分类规则与「为什么生产代码暂不搬进 `scripts/`」见 [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)；
-- 完整重构方案（`app/` + `web/` 分阶段）见 [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md)，`data/` 用途见 [docs/DATA_LAYOUT.md](docs/DATA_LAYOUT.md)。
+- `research/*.py` 需**从根目录运行**（如 `python research/_composite_probe.py`），`_gen_*.py` 输出到 `reports/`；
+- 审计脚本：`python -m workbench.audit.transform`（输出 `data/transform_audit.json`）；
+- 冒烟测试：`python -m tests.smoke`；
+- 结构规则见 [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)，完整重构记录见 [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md)，`data/` 用途见 [docs/DATA_LAYOUT.md](docs/DATA_LAYOUT.md)。
 
 ## 代码结构
+
+> 下列 Python 文件均位于 `workbench/` 下（`pipeline/`、`services/`、`entry/`、`audit/`），
+> 页面与前端资源位于 `web/`；为可读性省略目录前缀。命令行入口仍是根目录的 `start_site.py` / `serve.py`。
 
 ```
 编排层   启动.bat → start_site.py          新鲜度判定 + 显式 DAG 编排 + 静态服务
@@ -113,7 +124,7 @@ archive/                                治理前旧版脚本与备份（backups
 `rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_holder_change → build_mood → build_confirm → build_factor_matrix → audit_efficacy`
 执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。可转债链 `build_cb.py` 与前两条链无依赖，单独登记为 `PIPELINES["cb"]`。新增构建脚本时要同步登记到这里。
 
-`build_turning.py` 不单独列入 DAG：它由 `build_mood.main()` 在 `load_sources()` 之后同进程调用（此时各源缓存已落盘），并生成信号卡要读的 `mood_tech.csv`。也可 `python build_turning.py` 单独重算。
+`build_turning.py` 不单独列入 DAG：它由 `build_mood.main()` 在 `load_sources()` 之后同进程调用（此时各源缓存已落盘），并生成信号卡要读的 `mood_tech.csv`。也可 `python -m workbench.pipeline.build_turning` 单独重算。
 
 ## 页面内二级目录
 
@@ -215,9 +226,9 @@ archive/                                治理前旧版脚本与备份（backups
 **运行方式**
 
 ```bash
-python build_confirm.py              # 默认零网络请求，纯本地；逐股矩阵结果缓存到 data/mood_confirm_limits.csv
-python build_confirm.py --qvix-full  # 可选：一次性抓 50/300/500ETF QVIX 全历史落 data/mood_qvix.csv
-python build_confirm.py --force      # 强制重算逐股矩阵（约 24 秒），日常增量直接复用缓存
+python -m workbench.pipeline.build_confirm              # 默认零网络请求，纯本地；逐股矩阵结果缓存到 data/mood_confirm_limits.csv
+python -m workbench.pipeline.build_confirm --qvix-full  # 可选：一次性抓 50/300/500ETF QVIX 全历史落 data/mood_qvix.csv
+python -m workbench.pipeline.build_confirm --force      # 强制重算逐股矩阵（约 24 秒），日常增量直接复用缓存
 ```
 
 输出 `data/confirm_data.json` / `.js`（`window.CONFIRM_DATA`）与 `data/mood_confirm.csv`（日频留档）。`mood.html` 只加了一个 `#confirmRoot` 占位、两个 script 引用和一条口径说明，由独立的 `confirm_cards.js` 渲染，不复用主页面的 `render()`；卡片带 `data-toc` 并在填充后重扫目录，浅/暗主题通过 `MutationObserver` 监听 `data-theme` 重绘图表。
@@ -251,8 +262,8 @@ python build_confirm.py --force      # 强制重算逐股矩阵（约 24 秒）�
 **运行方式**
 
 ```bash
-python build_factor_matrix.py    # L0，约 2 秒，零网络
-python audit_efficacy.py         # L1，约 35 秒（块 bootstrap 1200 + 条件 300）
+python -m workbench.pipeline.build_factor_matrix    # L0，约 2 秒，零网络
+python -m workbench.pipeline.audit_efficacy         # L1，约 35 秒（块 bootstrap 1200 + 条件 300）
 python start_site.py             # 正常启动会自动带上这两步（DAG 末尾）
 ```
 
@@ -332,7 +343,7 @@ curl "http://127.0.0.1:8040/api/usdark/health"
 ## 常见问题
 
 - **启动时大量 `AttributeError: module 'akshare' has no attribute ...`**：环境里的 akshare 与 `requirements.txt` 锁定的 1.20.65 不一致（如 1.17.8 没有 `calendar_trade_date_hist_sina` / `index_zh_daily_sina` / `stock_zh_a_spot_sina`）。运行 `python -m pip install -r requirements.txt` 即可；`start_site.py` 现在会在更新前检查这三个接口，缺失时直接跳过数据更新并用现有数据启动，不再刷 20 多段 traceback。
-- **恐贪指数提示「隐波源不可用」**：QVIX 的唯一上游 `optbbs.com` 会整站 502。`build_fear_greed.py` 会依次降级到本地缓存、`data/mood_qvix.csv`、上一版 `index_data.json` 的隐波序列，并在卡片与 `qvix_fallback` 字段标注来源；确实没有缓存时只跳过受影响的指数并在页面顶部提示，不再写空文件。源恢复后重跑 `python build_fear_greed.py` 即补齐。
+- **恐贪指数提示「隐波源不可用」**：QVIX 的唯一上游 `optbbs.com` 会整站 502。`build_fear_greed.py` 会依次降级到本地缓存、`data/mood_qvix.csv`、上一版 `index_data.json` 的隐波序列，并在卡片与 `qvix_fallback` 字段标注来源；确实没有缓存时只跳过受影响的指数并在页面顶部提示，不再写空文件。源恢复后重跑 `python -m workbench.pipeline.build_fear_greed` 即补齐。
 - **双击 `启动.bat` 弹出「选择应用程序」**：改用 `启动.cmd`（关联与 `.bat` 独立），或双击 `修复双击关联.reg` 导入后重启资源管理器；也可右键 → 打开方式 → 选择「Windows 命令处理器 / 命令提示符」并勾选「始终使用此应用」。
 - **一直显示"数据加载中"**：确认是通过 `http://localhost:8040/...` 访问而非直接双击 HTML（`file://` 下 fetch 会被拦截）。
 - **数据日期不齐**：正常现象，卡片上的"数据至 YYYY-MM-DD"才是真实截止日。

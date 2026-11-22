@@ -15,7 +15,7 @@
 """
 import pandas as pd
 
-from core import DATA, TODAY, log
+from workbench.core import DATA, TODAY, log
 
 OUT = DATA / "mood_fund_position.csv"
 

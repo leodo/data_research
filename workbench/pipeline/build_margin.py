@@ -17,8 +17,8 @@
 """
 import pandas as pd
 
-from config import MARGIN_GROWTH_WIN
-from core import DATA, TODAY, log
+from workbench.config import MARGIN_GROWTH_WIN
+from workbench.core import DATA, TODAY, log
 
 OUT = DATA / "mood_margin.csv"
 

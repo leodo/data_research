@@ -36,9 +36,9 @@ import numpy as np
 import pandas as pd
 import akshare as ak
 
-from config import (START_FEAR_GREED as START, FG_WINDOW as WIN,
+from workbench.config import (START_FEAR_GREED as START, FG_WINDOW as WIN,
                     STRENGTH_MAX_LAG_DAYS, QVIX_1000_CUT)
-from core import BASE, DATA, TODAY_TAG, pct_score
+from workbench.core import BASE, DATA, TODAY_TAG, pct_score
 
 END = TODAY_TAG  # 动态：抓取当日为止的最新可得数据
 
@@ -409,7 +409,7 @@ def _fetch_strength_full(index_code: str, cache_path: str):
 
 def strength_lag_days(cache_last, target_date):
     """缓存末日与主数据末日之间相差多少个交易日。"""
-    from core import trade_dates
+    from workbench.core import trade_dates
     lo, hi = pd.Timestamp(cache_last), pd.Timestamp(target_date)
     try:
         cal = [pd.Timestamp(x) for x in trade_dates("20240101", hi.strftime("%Y%m%d"))]

@@ -29,8 +29,8 @@ import time
 import numpy as np
 import pandas as pd
 
-from config import BREADTH_MIN_STOCKS, START_BREADTH
-from core import DATA, TODAY_TAG, log, trade_dates
+from workbench.config import BREADTH_MIN_STOCKS, START_BREADTH
+from workbench.core import DATA, TODAY_TAG, log, trade_dates
 
 ADIR = DATA / "breadth_prices"
 OUT = DATA / "mood_breadth_extra.csv"

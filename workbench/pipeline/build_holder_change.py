@@ -37,8 +37,8 @@ import time
 import pandas as pd
 import requests
 
-from config import HOLDER_CHANGE_LOOKBACK, HOLDER_CHANGE_ROLL, HOLDER_CHANGE_START
-from core import DATA, TODAY, log
+from workbench.config import HOLDER_CHANGE_LOOKBACK, HOLDER_CHANGE_ROLL, HOLDER_CHANGE_START
+from workbench.core import DATA, TODAY, log
 
 URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 RAW = DATA / "mood_holder_change_raw.csv"

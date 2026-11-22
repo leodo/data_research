@@ -42,7 +42,7 @@ data/
 
 ## 与代码的对应关系
 
-- `core.DATA` / `app.paths.DATA` 指向本目录；构建脚本只通过它读写，不写死相对路径；
+- `workbench.paths.DATA` 指向本目录；构建脚本只通过它读写，不写死相对路径；
 - 页面通过 `<script src="data/xxx.js">` 读取 `.js` 产物（`web/` 页面对应 `../data/xxx.js`）；
 - `start_site.py` 的新鲜度判断读取 `data/index_data.json`、`mood_data.json`、`cb_data.json` 与 `last_update.json`；
 - `data/` 不入库，因此目录说明放在 `docs/`，不要试图在 `data/` 里放需要版本控制的文件。

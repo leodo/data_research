@@ -26,8 +26,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import config as C
-from factor_utils import (DATA, TRANSFORM_DEFS, TRANSFORM_KEYS, bh_fdr, detect_freq,
+from workbench import config as C
+from workbench.factor_utils import (DATA, TRANSFORM_DEFS, TRANSFORM_KEYS, bh_fdr, detect_freq,
                           log, make_transforms, spearman, write_json_js, year_ks,
                           year_medians)
 

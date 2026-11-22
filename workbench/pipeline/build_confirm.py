@@ -46,7 +46,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from config import (CONFIRM_FWD_WINS, CONFIRM_MIN_HIST, CONFIRM_START,
+from workbench.config import (CONFIRM_FWD_WINS, CONFIRM_MIN_HIST, CONFIRM_START,
                     CONFIRM_TRIGGER_GAP, DIV_FWD_W, DIV_LOOKBACK_W,
                     DIV_PESSIMIST, DIV_PRICE_MAX, DIV_REBOUND_MIN,
                     DIV_REBOUND_W, DIV_ROBUST, LIMIT_BJ, LIMIT_DOWN_EASE,
@@ -55,7 +55,7 @@ from config import (CONFIRM_FWD_WINS, CONFIRM_MIN_HIST, CONFIRM_START,
                     VOL_SHRINK_MAX, VRP_ANNUAL_DAYS, VRP_DOWNSIDE_WIN,
                     VRP_EXTREME_HIGH, VRP_EXTREME_LOW, VRP_PANIC_EASE_WIN,
                     VRP_RV_WIN)
-from core import DATA, TODAY, log
+from workbench.core import DATA, TODAY, log
 
 OUT_JSON = DATA / "confirm_data.json"
 OUT_JS = DATA / "confirm_data.js"

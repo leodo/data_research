@@ -43,9 +43,9 @@ import akshare as ak
 import numpy as np
 import pandas as pd
 
-from config import (ERP_ATTR_WIN, ERP_ILLUSION_SHARE, HOLDER_CHANGE_ROLL,
+from workbench.config import (ERP_ATTR_WIN, ERP_ILLUSION_SHARE, HOLDER_CHANGE_ROLL,
                     REPURCHASE_ROLL)
-from core import (BASE, DATA, TODAY, get_or_fetch, log, pct_rank,
+from workbench.core import (BASE, DATA, TODAY, get_or_fetch, log, pct_rank,
                   sjoin, window_pct)
 
 
@@ -133,7 +133,7 @@ def fetch_pcr():
             pass
 
     # 官方完整交易日历（含当日），避免新浪指数日历滞后导致漏补
-    from core import trade_dates
+    from workbench.core import trade_dates
     cal = pd.to_datetime(trade_dates("20210101", TODAY.strftime("%Y%m%d")))
     if old is not None:
         last = old.index.max()
@@ -1526,7 +1526,7 @@ def main():
     # 共振板依赖 load_sources() 刚落盘的各源缓存，且会生成 mood_tech.csv 供技术位置卡片读取，
     # 因此必须先于 build_signal_panels()。build_turning.py 亦可独立运行重算。
     try:
-        import build_turning
+        from workbench.pipeline import build_turning
         turning_panel = build_turning.build()
     except Exception as e:
         log(f"    [turning] 共振信号板构建失败: {e}")

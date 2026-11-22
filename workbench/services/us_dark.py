@@ -45,7 +45,7 @@ from datetime import datetime
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 
-import config as C
+from workbench import config as C
 
 from workbench.paths import ROOT, DATA as _DATA_ROOT
 BASE = str(ROOT)

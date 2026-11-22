@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from factor_utils import bh_fdr, log, spearman
+from workbench.factor_utils import bh_fdr, log, spearman
 
 T0 = time.time()
 BASE = Path(__file__).resolve().parent.parent

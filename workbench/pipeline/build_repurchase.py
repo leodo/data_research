@@ -25,8 +25,8 @@ config.REPURCHASE_START 起。
 """
 import pandas as pd
 
-from config import REPURCHASE_ROLL, REPURCHASE_START
-from core import DATA, TODAY, log
+from workbench.config import REPURCHASE_ROLL, REPURCHASE_START
+from workbench.core import DATA, TODAY, log
 
 OUT = DATA / "mood_repurchase.csv"
 

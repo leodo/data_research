@@ -26,8 +26,8 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 import akshare as ak
 
-from config import (START_ETF_RATIO as START, ETF_CODES as ETFS, MV_ANCHOR_YI)
-from core import DATA, TODAY_TAG as TODAY, log, trade_dates as cal_dates_base
+from workbench.config import (START_ETF_RATIO as START, ETF_CODES as ETFS, MV_ANCHOR_YI)
+from workbench.core import DATA, TODAY_TAG as TODAY, log, trade_dates as cal_dates_base
 
 OUT = DATA / "mood_etf_ratio.csv"
 SHARES = DATA / "mood_etf_shares_raw.csv"

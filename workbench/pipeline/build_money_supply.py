@@ -19,8 +19,8 @@ M1-M2 剪刀差（货币供应量，公开数据自算）
 """
 import pandas as pd
 
-from config import M1M2_START
-from core import DATA, TODAY, log
+from workbench.config import M1M2_START
+from workbench.core import DATA, TODAY, log
 
 OUT = DATA / "mood_m1m2.csv"
 

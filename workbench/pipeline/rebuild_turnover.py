@@ -34,8 +34,8 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 import akshare as ak
 
-from config import (START_TURNOVER as START, K_SZ_TO_ALL, K_SH_TO_ALL)
-from core import DATA, TODAY_TAG as TODAY, log, trade_dates
+from workbench.config import (START_TURNOVER as START, K_SZ_TO_ALL, K_SH_TO_ALL)
+from workbench.core import DATA, TODAY_TAG as TODAY, log, trade_dates
 
 OUT = DATA / "mood_turnover_rate.csv"
 RAW = DATA / "mood_turnover_raw.csv"

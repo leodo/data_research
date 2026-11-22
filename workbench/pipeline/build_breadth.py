@@ -22,8 +22,8 @@ from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 
-from config import (NPROC, START_BREADTH, MA_LONG, MA_SHORT, BREADTH_MIN_STOCKS)
-from core import DATA, TODAY_TAG, log, trade_dates
+from workbench.config import (NPROC, START_BREADTH, MA_LONG, MA_SHORT, BREADTH_MIN_STOCKS)
+from workbench.core import DATA, TODAY_TAG, log, trade_dates
 
 ADIR = DATA / "breadth_prices"          # 每只股票一个 CSV: date,close
 OUT = DATA / "mood_breadth.csv"

@@ -44,11 +44,11 @@ import json
 import numpy as np
 import pandas as pd
 
-from config import (TURNING_ARMS_EUPHORIA_ADV, TURNING_ARMS_PANIC_ADV,
+from workbench.config import (TURNING_ARMS_EUPHORIA_ADV, TURNING_ARMS_PANIC_ADV,
                     TURNING_FEAR_PCT, TURNING_FWD_WINS, TURNING_MIN_DIMS,
                     TURNING_MIN_HIST, TURNING_TOP_PCT, TURNING_TRIGGER,
                     TURNING_TRIGGER_GAP)
-from core import DATA, TODAY, log
+from workbench.core import DATA, TODAY, log
 
 OUT_CSV = DATA / "mood_turning.csv"
 OUT_META = DATA / "mood_turning_meta.json"

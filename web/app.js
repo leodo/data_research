@@ -63,7 +63,7 @@ function mountToc(opts){
   });
   if(!items.length){ bar.innerHTML = ""; if(side) side.innerHTML = ""; return; }
 
-  var key = "toc:" + location.pathname;
+  var key = "toc:" + location.pathname.replace(/^\/web/, "");
   var collapsed = false;
   var curGroup = TOC_ALL;          // 默认「全部展开」：二级条目一次性列出全部分组
   var curId = items[0].id;         // 当前滚动位置所在卡片

@@ -29,8 +29,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import config as C
-from factor_utils import (DATA, bh_fdr, block_boot_p, log, p_approx, spearman,
+from workbench import config as C
+from workbench.factor_utils import (DATA, bh_fdr, block_boot_p, log, p_approx, spearman,
                           write_json_js)
 
 T0 = time.time()

@@ -1,82 +1,99 @@
 # 项目目录与维护约定
 
 本文件说明「什么文件放在哪里、为什么」，避免根目录再次变成杂物堆。
+完整重构过程见 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)，`data/` 用途见 [DATA_LAYOUT.md](DATA_LAYOUT.md)。
 
 ## 目录总览
 
 ```
 data_research/
 ├─ 启动.cmd / 启动.bat / 修复双击关联.reg   双击入口（CRLF）
-├─ start_site.py      更新数据 + 启动站点 + 挂载 /api/usdark/*
-├─ serve.py           只起静态服务（预览/调试），可带端口参数
-├─ config.py          全局口径系数、抓取参数、端口、暗盘标的清单
-├─ core.py            路径/日期/日志/缓存/分位/交易日历
-├─ factor_utils.py    L0/L1 研究公共层
-├─ us_dark.py         暗盘行情服务（WebSocket + 5 秒快照 + /api/usdark/*）
-├─ build_*.py         数据构建（DAG 节点）
-├─ rebuild_turnover.py / audit_efficacy.py / audit_transform.py
-├─ index.html / indicators.html / mood.html / cb.html / us.html
-├─ app.js / app.css / cb.js / us.js / *_cards.js / confidence_card.js
-├─ vendor/            ECharts（离线）
-├─ data/              全部派生产物（CSV/JSON/JS，.gitignore）
-├─ reports/           评估/方案报告 HTML（9 份）
-├─ docs/              本文件 + previews/ 预览截图
-├─ research/          一次性探针与报告生成器
-└─ archive/           旧版脚本 + backups/（改动前的 HTML/JS 快照）
+├─ start_site.py / serve.py                薄包装：import workbench.entry.* 后调用 main()
+├─ workbench/                              Python 包
+│  ├─ paths.py                             ROOT / DATA / WEB / VENDOR / REPORTS / DOCS
+│  ├─ config.py                            全局口径系数、抓取参数、端口、暗盘标的清单
+│  ├─ core.py                              路径/日期/日志/缓存/分位/交易日历
+│  ├─ factor_utils.py                      L0/L1 研究公共层
+│  ├─ pipeline/                            22 个 DAG 脚本 + build_turning（23 个文件）
+│  ├─ services/us_dark.py                  暗盘行情服务（WS + 5 秒快照 + /api/usdark/*）
+│  ├─ entry/start_site.py                  新鲜度判定 + DAG 编排 + 站点
+│  ├─ entry/serve.py                       只起静态服务（可带端口）
+│  ├─ web/server.py                        SiteHandler：旧 URL 302 → /web/
+│  └─ audit/transform.py                   可重复审计（原 audit_transform.py）
+├─ web/                                    纯静态前端
+│  ├─ index.html / indicators.html / mood.html / cb.html / us.html
+│  ├─ app.css / app.js
+│  └─ cb.js / us.js / *_cards.js / confidence_card.js / horizon_cards.js
+├─ data/                                   全部派生产物（CSV/JSON/JS，.gitignore）
+├─ vendor/                                 ECharts（页面与报告共用）
+├─ reports/                                9 份评估/方案报告 HTML
+├─ docs/                                   本文件 + REFACTOR_PLAN + DATA_LAYOUT + previews/
+├─ research/                               一次性探针与报告生成器
+├─ tests/smoke.py                          无网络冒烟测试
+└─ archive/                                旧版脚本 + backups/
 ```
 
-## 分类规则
+## 运行方式
 
-| 类型 | 位置 | 说明 |
+```bash
+python start_site.py            # 更新数据 + 启动站点（根目录薄包装）
+python start_site.py --force    # 强制重建
+python serve.py                 # 只起静态服务，可加端口：python serve.py 8041
+python -m workbench.pipeline.build_mood         # 单个 DAG 节点
+python -m workbench.audit.transform             # 因子预处理审计
+python -m tests.smoke                           # 结构/路由冒烟
+```
+
+## 路径规则
+
+- **禁止**再用 `Path(__file__).parent` 推算 `data/`；统一 `from workbench.paths import DATA, ROOT`。
+- 构建脚本在 `workbench/pipeline/`，运行时用 `python -m workbench.pipeline.<name>`；
+  `start_site` 的 `PIPELINES` 存模块名，子进程以 `-m` + `cwd=ROOT` 启动。
+- `web/` 页面用相对路径：同级 `app.css`/`cb.js`，上级 `../data/...`、`../vendor/...`、`../reports/...`。
+- `data/` 不物理搬动（700MB、11295 个逐股缓存），只通过 `paths.DATA` 访问。
+
+## 旧 URL 如何处理
+
+页面在 `web/`，但旧地址仍可用：
+
+```
+/index.html       302 → /web/index.html
+/mood.html        302 → /web/mood.html
+/us.html          302 → /web/us.html
+…
+```
+
+`workbench/web/server.py` 的 `SiteHandler` 在 `do_GET` 里做 302；浏览器基地址变成 `/web/` 后，
+页面里的相对资源才会正确解析。若改成内部 `translate_path` 改写，`/mood.html` 会去请求
+`/app.css` 而 404——这是已经验证过的坑。
+
+## 报告 / 预览 / 研究 / 备份
+
+| 类型 | 位置 | 规则 |
 |---|---|---|
-| 站点页面 | 根目录 `*.html` | 服务根目录就是项目根，`data/*.js`、`app.js`、`vendor/` 都是相对路径，不能随意搬 |
-| 前端渲染器 | 根目录 `*.js` | 页面用 `<script src="cb.js">` 等直接引用 |
-| 生产 Python | 根目录 | 入口、DAG 节点、公共层；互相 `from config import`、`from core import` |
-| 网页数据 | `data/` | 构建脚本输出，派生产物，不入库；`data/us_dark/` 是行情快照 |
-| 报告 | `reports/` | 9 份评估/方案 HTML；统一引用 `../vendor/echarts.min.js` |
-| 预览截图 | `docs/previews/` | 页面/配色预览 PNG，与报告分开，避免根目录堆图 |
-| 研究脚本 | `research/` | 一次性探针、报告生成器；不属于启动链 |
-| 备份 | `archive/` | `archive/*.bak` 旧脚本；`archive/backups/` 页面改动前快照 |
+| 报告 | `reports/` | 图表引用 `../vendor/echarts.min.js`；生成器写这里 |
+| 预览图 | `docs/previews/` | `预览-*.png`，不要堆根目录 |
+| 研究脚本 | `research/` | 从根目录运行，`BASE` 已指回根；`_gen_*.py` 输出 `reports/` |
+| 测试 | `tests/` | `python -m tests.smoke`，标准库、无网络 |
+| 备份 | `archive/backups/` | 改动前快照，不要用 `xxx.bak_*` 堆根目录 |
 
-## 为什么生产代码暂时不搬进 `scripts/`
-
-不是“懒得搬”，而是搬动会同时牵动三层路径，收益小于风险：
-
-1. **Python 导入**：所有构建脚本都 `from config import ...` / `from core import ...`，靠“从项目根运行”找到模块；搬进子目录需要改 `sys.path` 或改成包导入。
-2. **数据路径**：`core.BASE = Path(__file__).parent`、`us_dark.BASE` 都以脚本位置推算 `data/`；搬进 `scripts/` 后 `DATA` 会变成 `scripts/data`，所有缓存/输出路径全错。
-3. **启动与静态服务**：`start_site.py` 用 `subprocess.run([python, "build_x.py"], cwd=BASE)` 拉起 DAG；静态服务的根目录就是项目根，HTML 里 `data/*.js`、`app.js`、`vendor/` 全是相对路径。要么全站改绝对路径/改服务根，要么整体搬到 `web/` 并重做路由。
-
-**结论**：在站点仍是“根目录静态站 + 根目录 Python”架构时，保持生产代码在根目录最稳。完整重构方案已单独写成 [REFACTOR_PLAN.md](REFACTOR_PLAN.md)：目标是 `app/`（Python 包）+ `web/`（页面与前端资源），服务根仍为项目根，用页面映射保留旧 URL；`data/` 不物理搬动。该方案分 P0–P6 阶段，每阶段有验收与回滚点，不宜和日常改版混在一起。
-
-`data/` 的目录用途与“哪些能删、哪些别删”见 [DATA_LAYOUT.md](DATA_LAYOUT.md)。
-
-## research/ 使用方式
-
-- 一律**从项目根目录**运行，例如：
-  ```bash
-  python research/_composite_probe.py
-  python research/_gen_horizon_preview.py     # 输出 reports/因子周期画像-…html
-  ```
-- 脚本里的 `BASE` 已指回项目根，`data/` 读写与生产一致；
-- `_conditional_probe.py` 额外把项目根加入 `sys.path`，才能 `from factor_utils import`；
-- 报告生成器输出到 `reports/`，不要再写回根目录；
-- **注意**：`_gen_horizon_preview.py` 生成的是「草案 v3」，当前 `reports/因子周期画像-20261121.html` 是后续增补版（比生成器产物多约 16KB）。直接重跑会覆盖增补版，先备份再生成；
-- `audit_transform.py` 留在根目录：报告页脚写的复跑命令是 `python audit_transform.py`，且它属于可重复审计而非一次性探针。
+> 注意：`research/_gen_horizon_preview.py` 生成的是「草案 v3」，当前
+> `reports/因子周期画像-20261121.html` 是后续增补版（比生成器产物多约 16KB）。
+> 直接重跑会覆盖增补版，先备份再生成。
 
 ## 新增文件的落点
 
-- 新指标/新数据链：根目录 `build_xxx.py`，并在 `start_site.PIPELINES` 登记；
-- 新页面：根目录 `xxx.html` + `xxx.js`，并在四个页面的侧栏/子导航加入口；
-- 新报告：`reports/`，图表引用 `../vendor/echarts.min.js`；
-- 新预览图：`docs/previews/`；
-- 一次性分析脚本：`research/`，文件名以 `_` 开头；
-- 旧版本快照：`archive/backups/`，不要用 `xxx.html.bak_*` 堆在根目录。
+- 新指标/新数据链：`workbench/pipeline/build_xxx.py`，并在 `workbench/entry/start_site.py` 的 `PIPELINES` 登记；
+- 新页面：`web/xxx.html` + `web/xxx.js`，在页面侧栏/子导航加入口；旧 URL 若要保留，加进 `PAGE_MAP`；
+- 新报告：`reports/`；新预览：`docs/previews/`；
+- 一次性分析：`research/`，文件名以 `_` 开头；
+- 旧版本快照：`archive/backups/`。
 
-## 当前整理记录（2026-11-22）
+## 已完成的整理（2026-11-22）
 
-- 9 份根目录 HTML 报告 → `reports/`，并修正 8 处 `vendor/` 相对路径；
-- 6 张 `预览-*.png` → `docs/previews/`；
-- 15 个 `_*.py` / `build_composite_v2.py` → `research/`，`BASE` 统一指回项目根，生成器输出改到 `reports/`；
-- 5 个 `mood.html.bak_*` + `factor_audit_cards.js.bak` → `archive/backups/`；
-- 删除空的 `serve.log` 与 `__pycache__/`；
-- 首页与 `horizon_cards.js` 的报告链接改到 `reports/`。
+- 报告、预览、研究脚本、备份分目录（根目录 80 → 9 个文件）；
+- 页面/前端资源迁入 `web/`，旧 URL 302；
+- Python 迁入 `workbench/` 包：`pipeline/` 23 个文件、`services/`、`entry/`、`audit/`；
+- 根目录 `start_site.py` / `serve.py` 改为薄包装，`启动.cmd` 不变；
+- 路径统一走 `workbench/paths.py`；新增 `tests/smoke.py`；
+- 报告与 README 的旧命令同步更新（`python -m workbench.pipeline.*`）。

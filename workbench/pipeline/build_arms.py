@@ -45,9 +45,9 @@ import time
 import numpy as np
 import pandas as pd
 
-from config import (ARMS_MIN_STOCKS, ARMS_TRIN_SMOOTH, BT_HIGH, BT_LOOKBACK,
+from workbench.config import (ARMS_MIN_STOCKS, ARMS_TRIN_SMOOTH, BT_HIGH, BT_LOOKBACK,
                     BT_LOW, BT_SPAN, MCC_FAST, MCC_SLOW, START_BREADTH)
-from core import DATA, TODAY, TODAY_TAG, log, pct_rank, trade_dates
+from workbench.core import DATA, TODAY, TODAY_TAG, log, pct_rank, trade_dates
 
 PDIR = DATA / "breadth_prices"
 ADIR = DATA / "crowding_amounts"
