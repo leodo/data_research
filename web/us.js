@@ -21,6 +21,7 @@
     sortKey: "vol", sortDir: -1, q: "", mode: "all",
     candles: null, candleCoin: null, candleAt: 0,
     spark: {}, sparkAt: 0, sparkLoading: false, qmap: {},
+    prevDay: {}, prevSession: null,
     charts: {}, bootTries: 0, lastError: "", netFail: 0
   };
 
@@ -389,10 +390,11 @@
       '<div class="tbl-wrap"><table class="tbl" id="qTbl"><thead><tr>' +
         '<th>标的</th>' +
         '<th class="sortable" data-k="last">最新成交</th>' +
-        '<th class="sortable" data-k="chg">较昨收</th>' +
+        '<th class="sortable" data-k="chg">24h 涨跌</th>' +
+        '<th class="sortable" data-k="prevChg" title="上一美股交易日 16:00 ET 收盘 vs 前一交易日">前一日</th>' +
         '<th>24h 走势</th>' +
         '<th class="sortable" data-k="vol" data-dir="-1">24h 成交额</th>' +
-        '<th class="sortable" data-k="oi">持仓量</th>' +
+        '<th class="sortable col-oi" data-k="oi">持仓量</th>' +
         '<th class="sortable" data-k="tradeAge">最后成交</th>' +
         '<th>更新状态</th>' +
       '</tr></thead><tbody id="qBody"></tbody></table></div>' +
@@ -437,7 +439,8 @@
       'WebSocket <code>api.hyperliquid.xyz/ws</code>，无需 API Key、无需连接钱包。HIP-3 标的必须带 DEX 前缀（如 ' +
       '<code>xyz:NVDA</code>），不能只用 <code>NVDA</code>。<br>' +
       '<b>报价口径</b>：最新成交 = <code>trades</code> 推送的成交价与成交时间；买一/卖一 = <code>bbo</code> 推送；' +
-      '中间价 = 买卖中值；价差 =（卖一−买一）÷ 中间价，单位 bp；较昨收 = 最新成交 ÷ 交易所 <code>prevDayPx</code> − 1；' +
+      '中间价 = 买卖中值；价差 =（卖一−买一）÷ 中间价，单位 bp；24h 涨跌 = 最新成交 ÷ 交易所 <code>prevDayPx</code> − 1；' +
+      '前一日 = 上一美股交易日 16:00 ET 收盘 ÷ 再前一交易日 − 1（周末保持不变，便于看周五收盘）；' +
       '24h 成交额 = 交易所 <code>dayNtlVlm</code>；24h 走势 = <code>candleSnapshot</code> 的 1 小时收盘迷你折线，每 5 分钟刷新。颜色沿用本站「红涨绿跌」。<br>' +
       '<b>刷新机制</b>：页面只在可见时每 5 秒请求一次同源行情快照；切换到其他栏目、标签页隐藏或栏目滚出视口后停止请求。' +
       '后端只有在最近 20 秒收到过页面心跳时才保持 WebSocket，否则主动断开，不在后台常驻采集。<br>' +
@@ -578,9 +581,10 @@
         '<td><div class="c-name"><b>' + esc(q.name) + '</b><span>' + esc(q.symbol) + '</span></div></td>' +
         '<td data-f="last"><span class="pxv">—</span></td>' +
         '<td data-f="chg" class="flat">—</td>' +
+        '<td data-f="prevChg" class="flat">—</td>' +
         '<td data-f="spark" class="spark-cell"><span class="spark-empty">—</span></td>' +
         '<td data-f="vol">—</td>' +
-        '<td data-f="oi">—</td>' +
+        '<td data-f="oi" class="col-oi">—</td>' +
         '<td data-f="tradeAge"><div class="c-time"><b>—</b><span>—</span></div></td>' +
         '<td data-f="quote"><div class="c-time"><b class="qbadge"><span class="badge gray">—</span></b><span class="qage">—</span></div></td>';
       body.appendChild(tr);
@@ -593,6 +597,7 @@
       };
     });
     renderSparklines();
+    renderPrevDayCells();
     syncSortHeaders();
   }
 
@@ -628,6 +633,8 @@
       }
       tr.querySelector('[data-f="chg"]').innerHTML = q.chg_pct === null ? "—" : fmtPct(q.chg_pct);
       tr.querySelector('[data-f="chg"]').className = cls(q.chg_pct);
+      var pc = tr.querySelector('[data-f="prevChg"]');
+      if(pc) pc.innerHTML = prevDayHtml(q.coin);
       tr.querySelector('[data-f="vol"]').textContent = fmtUsd(q.day_ntl_vlm);
       tr.querySelector('[data-f="oi"]').textContent = fmtQty(q.open_interest);
       updateAgeCells(q);
@@ -653,7 +660,7 @@
     var st = STATUS[statusOf(q)] || STATUS.none;
     var html = '<span class="badge ' + st.cls + '">' + st.label + '</span>';
     if(a.quoteB.innerHTML !== html) a.quoteB.innerHTML = html;
-    var text = q.bbo_ms ? ("报价 " + agoText(q.bbo_ms) + " · " + fmtClock(q.bbo_ms)) : "无报价";
+    var text = q.bbo_ms ? (agoText(q.bbo_ms) + " · " + fmtClock(q.bbo_ms)) : "无报价";
     if(a.quoteS.textContent !== text) a.quoteS.textContent = text;
   }
 
@@ -688,6 +695,7 @@
     switch(k){
       case "last": return num(q.last_px);
       case "chg": return num(q.chg_pct);
+      case "prevChg": var pv = S.prevDay[q.coin]; return pv ? num(pv.chg) : null;
       case "mid": return num(q.mid);
       case "spread": return num(q.spread_bp);
       case "vol": return num(q.day_ntl_vlm);
@@ -1031,7 +1039,7 @@
     var color = (dir === null || Math.abs(dir) < 1e-9) ? "var(--text-3)" :
       (dir > 0 ? "var(--up)" : "var(--down)");
     var last = pts[pts.length - 1];
-    var tip = "24h 迷你走势 · 较昨收 " + fmtPct(hasTone ? tone : seriesChg) +
+    var tip = "24h 迷你走势 · 24h 涨跌 " + fmtPct(hasTone ? tone : seriesChg) +
       " · 区间 " + fmtPx(min) + " / " + fmtPx(max);
     return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" ' +
       'role="img" aria-label="' + esc(tip) + '">' +
@@ -1054,6 +1062,36 @@
     });
   }
 
+  var WEEK_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+  function weekdayCn(iso){
+    if(!iso) return "";
+    var d = new Date(iso + "T12:00:00");
+    return isNaN(d.getTime()) ? "" : WEEK_CN[d.getDay()];
+  }
+
+  function prevDayHtml(coin){
+    var p = S.prevDay && S.prevDay[coin];
+    if(!p || p.chg === null || p.chg === undefined) return '<span class="flat">—</span>';
+    var day = p.date ? p.date.slice(5) : "";
+    var mark = p.split ? '<sup title="拆股已还原">*</sup>' : "";
+    var tip = p.split
+      ? ("检测到 " + p.split + ":1 拆股，已按拆股还原（原始 " + fmtPct(p.raw_chg) + "）")
+      : (p.date + " 16:00 ET 收盘 vs 前一交易日");
+    return '<div class="pc" title="' + esc(tip) + '"><span class="' + cls(p.chg) + '">' +
+      fmtPct(p.chg) + mark + '</span>' +
+      '<span class="pc-d">' + esc(day) + ' ' + weekdayCn(p.date) + '</span></div>';
+  }
+
+  function renderPrevDayCells(){
+    if(!S.ready) return;
+    Object.keys(S.rows).forEach(function(coin){
+      var tr = S.rows[coin];
+      if(!tr) return;
+      var cell = tr.querySelector('[data-f="prevChg"]');
+      if(cell) cell.innerHTML = prevDayHtml(coin);
+    });
+  }
+
   function loadSparklines(force){
     if(!isActive() || S.sparkLoading) return;
     if(!force && S.sparkAt && Date.now() - S.sparkAt < 300000) return;
@@ -1067,8 +1105,11 @@
         clearTimeout(to);
         if(j.ok){
           S.spark = j.series || {};
+          S.prevDay = j.prev_day || {};
+          S.prevSession = j.session || null;
           S.sparkAt = Date.now();
           renderSparklines();
+          renderPrevDayCells();
         }else{
           S.sparkAt = Date.now() - 240000;
         }

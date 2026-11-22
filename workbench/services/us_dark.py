@@ -25,7 +25,7 @@ HTTP 接口（同源，由 serve.py / start_site.py 转发）
 --------------------------------------------------
 GET /api/usdark/state?focus=xyz:NVDA               行情快照，同时注册/续约观察者心跳
 GET /api/usdark/candles?coin=xyz:NVDA&interval=5m&hours=24   24h K 线代理（30 秒缓存）
-GET /api/usdark/sparklines?hours=24                 全部标的的 1h 收盘迷你走势（5 分钟缓存）
+GET /api/usdark/sparklines?hours=24                 全部标的的 1h 收盘 + 前一日涨跌（5 分钟缓存）
 GET /api/usdark/health                             连接 / 观察者 / 快照计数（不续约心跳）
 """
 from __future__ import annotations
@@ -41,7 +41,8 @@ import threading
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, time as dtime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 
@@ -56,6 +57,32 @@ WS_URL = "wss://api.hyperliquid.xyz/ws"
 
 CANDLE_INTERVALS = ("1m", "5m", "15m", "1h")
 FOCUS_RE = re.compile(r"^[A-Za-z0-9:_\-]{1,32}$")
+
+NY_TZ = ZoneInfo("America/New_York")
+
+
+def _last_us_sessions():
+    """上一美股交易日的 16:00 ET 与再前一交易日。
+
+    周末看盘时，“前一日”应指周五收盘，而不是 UTC 的周六。节假日未单独剔除，
+    取最近的周一至周五；长假期间会落到节假日的 16:00，数据缺失时前端显示 —。
+    """
+    now = datetime.now(NY_TZ)
+
+    def prev_weekday(d):
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+        return d
+
+    if now.weekday() < 5 and now.time() >= dtime(16, 0):
+        last = now.date()
+    else:
+        last = prev_weekday(now.date() - timedelta(days=1))
+    prior = prev_weekday(last - timedelta(days=1))
+    cut_last = int(datetime.combine(last, dtime(16, 0), tzinfo=NY_TZ).timestamp() * 1000)
+    cut_prior = int(datetime.combine(prior, dtime(16, 0), tzinfo=NY_TZ).timestamp() * 1000)
+    return last, prior, cut_last, cut_prior
+
 
 
 # ---------------------------------------------------------------- 基础工具
@@ -836,10 +863,13 @@ class UsDarkFeed:
 
     # ------------------------------------------------------------ 迷你走势
     def sparklines(self, hours: int = 24):
-        """批量 24h 迷你走势：每个标的一条 1h 收盘序列，供表格折线预览。
+        """批量迷你走势 + 上一美股交易日涨跌幅。
 
-        61 个标的一次性并发抓取（8 线程），缓存 5 分钟；同一时间只允许一个请求
-        在跑，避免页面反复刷新把上游打爆。
+        每个标的取最近 7 天的 1h 收盘（一次请求同时供两列使用）：
+          - series：最近 hours 小时收盘，给表格折线；
+          - prev_day：上一美股交易日 16:00 ET 收盘 vs 再前一交易日 16:00 ET 收盘，
+            周末保持不变，便于看“周五收盘是涨是跌”。
+        66 个标的并发（8 线程），缓存 5 分钟；同一时间只允许一个请求在跑。
         """
         hours = max(6, min(int(hours or 24), 48))
         with self._lock:
@@ -847,43 +877,82 @@ class UsDarkFeed:
             if hit and time.time() - hit[0] < hit[2]:
                 return hit[1]
             coins = [row["coin"] for row in self._catalog]
+        empty = {"ok": True, "as_of_ms": self._now_ms(), "interval": "1h",
+                 "hours": hours, "series": {}, "prev_day": {}}
         if not coins:
-            return {"ok": True, "as_of_ms": self._now_ms(), "interval": "1h",
-                    "hours": hours, "series": {}}
+            return empty
         if not self._spark_lock.acquire(blocking=False):
             with self._lock:
                 hit = self._spark_cache.get(hours)
-            if hit:
-                return hit[1]
-            return {"ok": True, "as_of_ms": self._now_ms(), "interval": "1h",
-                    "hours": hours, "series": {}}
+            return hit[1] if hit else empty
         try:
-            start = now_ms() - hours * 3600 * 1000
+            now = now_ms()
+            start = now - 7 * 86400 * 1000
+            last, prior, cut_last, cut_prior = _last_us_sessions()
 
             def one(coin):
                 try:
                     rows = post_info({"type": "candleSnapshot",
                                       "req": {"coin": coin, "interval": "1h", "startTime": start}},
-                                     timeout=6.0)
+                                     timeout=10.0)
                 except Exception:  # noqa: BLE001 - 单个标的失败不影响整表
-                    return coin, []
-                closes = []
+                    return coin, [], None
+                pts = []
                 for r in rows or []:
-                    c = _num(r.get("c")) if isinstance(r, dict) else None
-                    if c is not None:
-                        closes.append(round(c, 4))
-                return coin, closes[-hours:]
+                    if not isinstance(r, dict):
+                        continue
+                    t, c = _ms(r.get("t")), _num(r.get("c"))
+                    if t is not None and c is not None:
+                        pts.append((t, c))
+                pts.sort()
 
-            series = {}
+                def close_before(cut):
+                    val = None
+                    for t, c in pts:
+                        if t < cut:
+                            val = c
+                        else:
+                            break
+                    return val
+
+                series = [round(c, 4) for t, c in pts if t >= now - hours * 3600 * 1000]
+                cd, cp = close_before(cut_last), close_before(cut_prior)
+                prev = None
+                if cd is not None and cp:
+                    # 拆股/并股会让相邻收盘出现 1/N 机械跳变（如 SNDK 10:1），
+                    # 对 >65% 的下跌尝试按整数比例还原，避免把拆股显示成 -89%。
+                    split = None
+                    cp_adj = cp
+                    raw = cd / cp if cp else None
+                    if raw is not None and raw < 0.35:
+                        best = None
+                        for n in range(2, 21):
+                            diff = abs(raw * n - 1.0)
+                            if diff <= 0.08 and (best is None or diff < best[0]):
+                                best = (diff, n)
+                        if best:
+                            split = best[1]
+                            cp_adj = cp / split
+                    prev = {"date": last.isoformat(), "close": round(cd, 4),
+                            "chg": round((cd / cp_adj - 1.0) * 100.0, 2)}
+                    if split:
+                        prev["split"] = split
+                        prev["raw_chg"] = round((cd / cp - 1.0) * 100.0, 2)
+                return coin, series, prev
+
+            series, prev_day = {}, {}
             with ThreadPoolExecutor(max_workers=8) as ex:
                 try:
-                    for coin, closes in ex.map(one, coins, timeout=30):
+                    for coin, closes, prev in ex.map(one, coins, timeout=45):
                         if len(closes) >= 2:
                             series[coin] = closes
+                        if prev:
+                            prev_day[coin] = prev
                 except TimeoutError:
                     pass
             payload = {"ok": True, "as_of_ms": self._now_ms(), "interval": "1h",
-                       "hours": hours, "series": series}
+                       "hours": hours, "series": series, "prev_day": prev_day,
+                       "session": {"last": last.isoformat(), "prior": prior.isoformat()}}
             ttl = 300 if len(series) >= len(coins) * 0.8 else 60
             with self._lock:
                 self._spark_cache[hours] = (time.time(), payload, ttl)
