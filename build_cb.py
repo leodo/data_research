@@ -30,8 +30,7 @@ import numpy as np
 import requests
 from requests.adapters import HTTPAdapter
 
-BASE = Path(__file__).resolve().parent
-DATA = BASE / "data"
+from workbench.paths import ROOT as BASE, DATA
 CACHE = DATA / "cb_cache"
 CACHE.mkdir(parents=True, exist_ok=True)
 

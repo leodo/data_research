@@ -12,8 +12,9 @@ import json, os, time
 import numpy as np
 import pandas as pd
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(BASE, "data")
+from workbench.paths import ROOT, DATA as _DATA_ROOT
+BASE = str(ROOT)
+DATA = str(_DATA_ROOT)
 FACTORS = ["rp", "dgz", "pgjj_zsy", "qschsl", "zzpgnh", "magic", "etf300_ratio",
            "margin_growth", "breadth_ma200", "erp_attrib", "below_net", "nhnl",
            "adv_ratio", "hs300_rsi", "arms", "breadth_score", "mcclellan"]

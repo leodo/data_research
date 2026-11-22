@@ -29,6 +29,7 @@ import webbrowser
 
 from config import PORT
 import us_dark
+from workbench.web.server import SiteHandler
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
@@ -214,20 +215,12 @@ def rebuild(which="all") -> bool:
 FEED = None
 
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+class Handler(SiteHandler):
     def do_GET(self):
         # 暗盘行情接口：同一进程内的采集线程，按需连接 Hyperliquid WS
         if FEED is not None and FEED.handle_api(self):
             return
         super().do_GET()
-
-    def end_headers(self):
-        self.send_header("Cache-Control", "no-store")
-        super().end_headers()
-
-    def log_message(self, fmt, *args):
-        # 静默访问日志，保持控制台干净
-        pass
 
 
 class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

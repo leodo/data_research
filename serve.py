@@ -6,32 +6,24 @@
 
 需要自动更新数据请用 python start_site.py 或根目录的 启动.bat。
 """
-import http.server
 import os
 import socketserver
 import sys
 
 from config import PORT
 import us_dark
+from workbench.web.server import SiteHandler
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 FEED = us_dark.get_feed()
 
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+class Handler(SiteHandler):
     def do_GET(self):
         if FEED.handle_api(self):
             return
         super().do_GET()
-
-    def end_headers(self):
-        self.send_header("Cache-Control", "no-store")
-        super().end_headers()
-
-    def log_message(self, fmt, *args):
-        # 静默访问日志，保持控制台干净
-        pass
 
 
 class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

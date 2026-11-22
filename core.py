@@ -18,8 +18,7 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 
 # ---------------- 路径与日期 ----------------
-BASE = Path(__file__).resolve().parent
-DATA = BASE / "data"
+from workbench.paths import ROOT as BASE, DATA
 DATA.mkdir(exist_ok=True)
 
 TODAY_TAG = date.today().strftime("%Y%m%d")          # YYYYMMDD，供 akshare 接口

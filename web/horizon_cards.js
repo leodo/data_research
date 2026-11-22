@@ -78,7 +78,7 @@
   html += '<div class="hz-foot">口径：秩 IC（Spearman）+ 循环平移零分布 + 族内 BH-FDR；' +
     '有效带以「|IC|≥0.15 且三段同号≥2/3 且可信度≥55」为闸门。' +
     '<b>不展示精确带宽</b>——R2 已证明历史挑出的带在样本外不优于固定长带。' +
-    '完整方法与四轮检验见 <a href="reports/因子周期画像-20261121.html" target="_blank">因子周期画像</a>。' +
+    '完整方法与四轮检验见 <a href="../reports/因子周期画像-20261121.html" target="_blank">因子周期画像</a>。' +
     '本层只读，不回写综合分与共振板。</div>';
   html += '</div>';
   root.innerHTML = html;

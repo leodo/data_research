@@ -14,8 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-BASE = Path(__file__).resolve().parent
-DATA = BASE / "data"
+from workbench.paths import ROOT as BASE, DATA
 
 
 def log(msg):

@@ -47,8 +47,9 @@ from urllib.request import Request, urlopen
 
 import config as C
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE, "data", "us_dark")
+from workbench.paths import ROOT, DATA as _DATA_ROOT
+BASE = str(ROOT)
+DATA_DIR = str(_DATA_ROOT / "us_dark")
 SNAP_DIR = os.path.join(DATA_DIR, "snapshots")
 INFO_URL = "https://api.hyperliquid.xyz/info"
 WS_URL = "wss://api.hyperliquid.xyz/ws"

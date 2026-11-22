@@ -12,8 +12,9 @@ import glob, json, os, time
 import numpy as np
 import pandas as pd
 
-BASE = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(BASE, "data")
+from workbench.paths import ROOT, DATA as _DATA_ROOT
+BASE = str(ROOT)
+DATA = str(_DATA_ROOT)
 WIN = 750          # 分位窗口（约 3 年）
 
 
