@@ -32,6 +32,7 @@
 python -m pip install -r requirements.txt
 python start_site.py            # 按需更新数据并启动，自动打开浏览器
 python start_site.py --force    # 强制重建全部数据后再启动
+python start_site.py --no-browser  # 同上，但不自动打开浏览器（后台/测试）
 python serve.py                 # 只起静态服务，不更新数据（调试页面时用）
 ```
 

@@ -269,14 +269,15 @@ def main():
     FEED = us_dark.get_feed()
     print("[暗盘行情] 行情接口 /api/usdark/* 已挂载（页面可见时才连接行情源）", flush=True)
 
-    # 服务起来后自动打开浏览器
+    # 服务起来后自动打开浏览器（--no-browser 可关闭，供后台/测试启动）
     def open_browser():
         time.sleep(1.2)
         try:
             webbrowser.open(url)
         except Exception:
             pass
-    threading.Thread(target=open_browser, daemon=True).start()
+    if "--no-browser" not in sys.argv:
+        threading.Thread(target=open_browser, daemon=True).start()
 
     try:
         with ThreadedServer(("127.0.0.1", PORT), Handler) as httpd:

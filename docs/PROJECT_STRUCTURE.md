@@ -38,6 +38,7 @@ data_research/
 ```bash
 python start_site.py            # 更新数据 + 启动站点（根目录薄包装）
 python start_site.py --force    # 强制重建
+python start_site.py --no-browser  # 不自动开浏览器
 python serve.py                 # 只起静态服务，可加端口：python serve.py 8041
 python -m workbench.pipeline.build_mood         # 单个 DAG 节点
 python -m workbench.audit.transform             # 因子预处理审计
