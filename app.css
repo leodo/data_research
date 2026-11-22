@@ -1,5 +1,5 @@
-/* 公共主题变量：index / indicators / mood 三页共用。
- * 以 mood.html 的全量变量表为准（45 个），其余两页是其子集。
+/* 公共主题变量：index / indicators / mood / cb 四页共用。
+ * 以 mood.html 的全量变量表为准（45 个），其余页面是其子集。
  * 改配色只需改本文件；主题由 <html data-theme="dark"> 切换。
  * 必须在各页面内联 <style> 之前加载。 */
 :root{

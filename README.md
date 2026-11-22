@@ -1,18 +1,22 @@
 # 投研指标工作台
 
-基于公开数据自算的本地指标站点：恐贪指数（7 个指数）与市场情绪面板。纯静态页面 + Python 数据脚本，无后端、无数据库、无第三方付费接口。
+基于公开数据自算的本地指标站点：恐贪指数（7 个指数）、市场情绪面板与可转债栏目。纯静态页面 + Python 数据脚本，无后端、无数据库、无第三方付费接口。
 
 | 页面 | 地址 | 内容 |
 |---|---|---|
 | 首页 | `http://localhost:8040/index.html` | 导航与概览 |
 | 恐贪指数 | `http://localhost:8040/indicators.html` | 7 指数恐贪值、区间切换、因子拆解 |
 | 情绪面板 | `http://localhost:8040/mood.html` | 8 项综合情绪指标 + 交易拥挤度 + 9 张结构观察卡片 + 顶底共振信号板与 7 张顶底信号卡 |
+| 可转债 | `http://localhost:8040/cb.html` | 2017 起长周期横截面/等权指数、近250日集思录口径、溢价率/双低/温度、双低 Top 20、全市场筛选、强赎与新债日历 |
+| 暗盘行情 | `http://localhost:8040/us.html` | Hyperliquid 的美股 + 黄金/白银/布伦特油/WTI 油 + 比特币 24 小时报价、迷你走势、选中标的 K 线与盘口 |
 
 情绪面板的 9 张结构观察卡片（均**不计入综合情绪分**）：头部 300ETF 占比、两融余额 60 日增速、全 A 站上 200 日均线占比、全 A 市净率中位数（月频）、**ERP 股债归因**、公募基金股票仓位（周频）、M1-M2 剪刀差（月频）、A 股回购规模（月频）、**重要股东增减持（月频，紧邻回购）**。其中 ERP 归因是 2026-11-20 的重点项：把 rp 变动拆成股票端(1/PE)与债券端(10 年国债)贡献，专门识别「低利率造成的便宜错觉」，并在「A股风险溢价」主卡上联动显示结论。回购与增减持同属产业资本行为、在「估值·杠杆·市场结构」栏目末尾连排：回购是**公司自己**买回股份，增减持是**大股东/董监高**买卖，主体不同、可互相印证。
 
 **顶底信号与转折点**栏目同样不计入综合分：一个「顶底共振信号板」+ 7 张明细卡（破净率、新高新低差、上涨家数占比与动能广度、沪深300 RSI14、**阿姆氏指标 TRIN**、**市场宽广度综合指标**、**麦克莱伦摆动指标**）。信号板把 13 个维度统一成 fear 分位后输出底部/顶部共振度，用价格与宽度是否转向作独立拐点确认，并用沪深300 未来 20/60 日收益做历史胜率回测。**它回答赔率、不回答时点**，详见「口径与已知局限」。
 
 **页面阅读顺序（2026-11-20 调整）**：总览（综合情绪分 + 历史走势）→ **顶底信号与转折点（结论前置）** → 8 张分项指标 → 交易拥挤度 → 估值·杠杆·市场结构 → 说明（含「解读有效性后视回测」全指标表）/ 注意事项。此前顶底栏目是按开发顺序追加在结构观察之后、夹在卡片中间；因顶底判断是本项目的核心诉求，现上移为「先给结论、再看支撑证据」。目录分组由 `mountToc()` 按 DOM 顺序自动扫描生成，无需手工调整分组顺序。共振板含 3 张 6–7 列的表格，必须全宽承载，因此单独用一张 `.card` 而非两列 `.panel-grid`。
+
+**可转债栏目（2026-11-21 新增）**：独立数据链，全部使用免登录公开接口——中证指数 000832 日线、东方财富全市场转债快照与逐券纯债估值、集思录等权指数与强赎状态、同花顺新债日历。页面包含 8 个市场 KPI、中证转债/等权指数走势、**2017-11 起的长周期横截面（2017-11-17~2026-11-20，2186 个交易日，含退市券，近250日与集思录相关 0.997/0.996/0.979）**、近 250 日集思录口径、双低 Top 20 与价格-溢价率散点、309 只全市场可筛选列表、价格/溢价率分布、强赎与不强赎日历、新债申购。双低口径与集思录交叉验证：中位溢价率 67.32% 与集思录完全一致，平均双低自算 211.84 vs 集思录 212.31（样本 309 vs 311）。
 
 ## 快速开始
 
@@ -35,6 +39,32 @@ python serve.py                 # 只起静态服务，不更新数据（调试�
 
 依赖环境：Python 3.13 + akshare 1.20.65（见 `requirements.txt`）。ECharts 5.6.1 已放在 `vendor/`，页面完全离线可用。
 
+## 目录结构
+
+根目录只保留**可运行的生产代码、站点页面和入口脚本**；文档、报告、研究脚本与备份已分目录：
+
+```
+根目录
+├─ 启动.cmd / 启动.bat / 修复双击关联.reg   入口
+├─ start_site.py / serve.py                编排与静态服务
+├─ config.py / core.py / factor_utils.py   配置与公共层
+├─ us_dark.py                              暗盘行情服务
+├─ build_*.py / rebuild_turnover.py / audit_efficacy.py   数据构建
+├─ *.html / *.js / app.css / vendor/       站点页面与前端资源
+├─ data/                                   派生数据（gitignore，不入库）
+├─ reports/                                9 份评估/方案报告（HTML）
+├─ docs/                                   结构说明 + previews/ 预览截图
+├─ research/                               一次性探针与报告生成器
+├─ archive/                                旧版脚本与备份（backups/）
+└─ .git / .gitignore / requirements.txt / README.md
+```
+
+- `reports/*.html` 引用 `../vendor/echarts.min.js`，双击或从站点打开都可正常出图；
+- `research/*.py` 已把 `BASE` 指回项目根目录，需**从根目录运行**（如 `python research/_composite_probe.py`）；`_gen_*.py` 输出到 `reports/`；
+- `audit_transform.py` 留在根目录，因为报告里的复跑命令写的是 `python audit_transform.py`；
+- 分类规则与「为什么生产代码暂不搬进 `scripts/`」见 [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)；
+- 完整重构方案（`app/` + `web/` 分阶段）见 [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md)，`data/` 用途见 [docs/DATA_LAYOUT.md](docs/DATA_LAYOUT.md)。
+
 ## 代码结构
 
 ```
@@ -56,25 +86,32 @@ python serve.py                 # 只起静态服务，不更新数据（调试�
          build_turning.py                顶底共振信号板 + 回测（由 build_mood 调用）
          build_mood.py                   情绪面板汇总 + ERP 股债归因 + 输出
          build_confirm.py                拐点确认层：背离/涨跌停/VRP（独立输出，排在 build_mood 之后）
+         build_cb.py                     可转债栏目：指数/全市场/长周期/双低/强赎/新债（独立链）
+         us_dark.py                      暗盘行情：Hyperliquid 行情服务（WS 采集 + 5 秒快照 + /api/usdark/*，按需启停）
          build_factor_matrix.py          L0 因子变换层：25 因子 × 12 种 PIT 变换 → 统一因子矩阵
          audit_efficacy.py               L1 常驻效力审计：IC/IR/分层/FDR/条件IC/多轨道稳健性
 公共层   config.py                        全局口径系数、抓取参数、端口
          core.py                          路径/日期/日志/缓存/分位/交易日历
          factor_utils.py                  L0/L1 研究公共层：PIT 变换、统计检验、json/js 双写
          app.js                           前端公共层：十字准星 helper + 二级目录组件 mountToc()
-         app.css                          三页共用主题变量（浅/暗双主题）+ 目录样式
+         app.css                          四页共用主题变量（浅/暗双主题）+ 目录样式
 数据层   data/                            CSV 缓存 + JSON/JS 输出（派生产物，不入库）
-展示层   index.html / indicators.html / mood.html / vendor/
+展示层   index.html / indicators.html / mood.html / cb.html / us.html / vendor/
+         cb.js                            可转债栏目渲染器（读 data/cb_data.js）
+         us.js                            暗盘行情渲染器（5 秒轮询 + 可见性门控 + 迷你走势/盘口/K 线）
          confirm_cards.js                 拐点确认层独立渲染器（读 data/confirm_data.js）
          factor_audit_cards.js           因子研究层独立渲染器（读 factor_matrix.js + efficacy_audit.js）
-archive/                                治理前旧版脚本快照（可回溯）
+文档层   reports/                       评估/方案报告（9 份，引用 ../vendor/echarts.min.js）
+         docs/                          结构说明（PROJECT_STRUCTURE.md）+ previews/ 预览截图
+         research/                      一次性探针与报告生成器（BASE 指向项目根，输出到 reports/）
+archive/                                治理前旧版脚本与备份（backups/ 内为 HTML/JS 改动前快照）
 ```
 
 `build_mood.py` 内部按「取数 `load_sources()` → ERP 股债归因 `build_erp_attrib(src)` → 指标注册表 `METRIC_BUILDERS` / `MACRO_BUILDERS` / `SIGNAL_BUILDERS` → 共振板 `build_turning.build()` → 组装 `build_composite()` → 输出 `write_output()`」组织，每个指标一个 `calc_*` 函数。**新增指标只需写一个 `calc_*` 并在注册表登记一行**，不用动 `main()`；卡片带 `data-toc` / `data-toc-group` 后会自动进入二级目录。ERP 归因复用 `load_sources()` 已加载的 PE / 国债序列，落盘 `mood_erp_attrib.csv` 供归因卡片与 rp 主卡警示读取，故由 `main()` 同进程调用、不单独占 DAG 节点。
 
 `start_site.py` 的 `PIPELINES` 定义了显式依赖顺序，情绪链必须按
 `rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_holder_change → build_mood → build_confirm → build_factor_matrix → audit_efficacy`
-执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。新增构建脚本时要同步登记到这里。
+执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。可转债链 `build_cb.py` 与前两条链无依赖，单独登记为 `PIPELINES["cb"]`。新增构建脚本时要同步登记到这里。
 
 `build_turning.py` 不单独列入 DAG：它由 `build_mood.main()` 在 `load_sources()` 之后同进程调用（此时各源缓存已落盘），并生成信号卡要读的 `mood_tech.csv`。也可 `python build_turning.py` 单独重算。
 
@@ -87,7 +124,7 @@ archive/                                治理前旧版脚本快照（可回溯�
 - 按 `/` 聚焦搜索框，输入名称即时过滤，`↑` `↓` 选择、`Enter` 跳转、`Esc` 关闭。
 - 页面滚动时自动高亮当前卡片，但**不会**把「全部展开」视图收成单组；"收起"状态按页面记忆在 `localStorage`。
 
-目录由 `app.js` 的 `mountToc()` 扫描 DOM 自动生成：**卡片只要加 `data-toc="名称" data-toc-group="分组"` 就会自动进目录**，新增指标不需要改目录代码。页面在 `render()` 完成后调用一次 `mountToc({app:"#app", bar:"#tocBar", side:"#tocSide"})` 即可。首页只有 2 张入口卡、一屏可见，未启用目录。
+目录由 `app.js` 的 `mountToc()` 扫描 DOM 自动生成：**卡片只要加 `data-toc="名称" data-toc-group="分组"` 就会自动进目录**，新增指标不需要改目录代码。页面在 `render()` 完成后调用一次 `mountToc({app:"#app", bar:"#tocBar", side:"#tocSide"})` 即可。首页只有 4 张入口卡、一屏可见，未启用目录。
 
 ## 分项详细解读（2026-11-20 新增）
 
@@ -138,6 +175,7 @@ archive/                                治理前旧版脚本快照（可回溯�
 - **全市场换手率**是分段近似：深交所数据 2021-07 后接口返回坏档，改用 2015–2021 深市×`0.72`、2022 起沪市×`1.36` 换算到全市场量级，绝对值有约 10–20% 误差，分位走势可靠。主图叠加"历史水位（分位）"线，下方另有全程同一口径的上交所官方对比图，用于跨时代比较。2024-09 后的换手率台阶是"924 行情"真实放量，非拼接错误。`rebuild_turnover.py` 一次运行同时产出主图与「上交所官方口径」对比图（后者由 2022 起沪市结果÷`1.36` 精确还原、零额外请求），两图日期严格对齐；2026-11-20 复核后主图已截断到最后一个有真实数据的交易日，避免把上一日数值插值成当天的「幽灵数据点」（官方交易日历含当天，但盘后数据可能尚未发布）。
 - **PCR 方向**：A 股持仓 PCR 是顺周期指标（与沪深300 价格正相关约 +0.45），低 PCR 对应市场底部、是布局机会，与美股教科书结论相反，已用本地 1422 日样本验证。
 - **A 股风险溢价 rp（2026-11-20 已修复）**：`stock_market_pe_lg(symbol=...)` 参数在 akshare 1.20.65 失效，曾误用科创板 PE(90.51) 使 ERP 为负值。现改用无参接口的全 A 平均市盈率（月频，最新 24.09），按交易日 ffill 对齐 10 年国债；历史起点由 2019 延至 2010，综合分因此由 40.2 变为 35.34（其余 7 指标零变化；2026-11-20 二次复核后为 35.32）。**注意低利率可能造成「便宜错觉」**：ERP 抬升也可能来自债券收益率下行而非股票变便宜。
+- **恐贪指数隐波降级（2026-11-22）**：QVIX 唯一上游 optbbs 整站 502 时，脚本按「本地缓存 → `mood_qvix.csv`（50/300/500ETF）→ 上一版 `index_data.json` 的 volatility 序列」降级，并在 `source_note` / `qvix_fallback` 标注；没有可用序列的指数（中证1000/中证2000/创业板/科创50）会跳过并在 `indicators.html` 顶部提示，不再中止整条链或写空文件。降级期间隐波可能比最新交易日滞后 1–3 天，页面日期取实际序列末日。
 - **交易拥挤度 / 市场宽度**：股票池为当前在市 A 股，存在幸存者偏差；收盘价为未复权口径，除权跳空对横截面统计影响有限；市场宽度要求个股上市满 200 个交易日才纳入。
 - **全 A PB** 为月频（约 263 个月点），与日频指标不同频，区间切换按数据点计；卡片已标注"月频"。
 - **破净率**：接口偶发重复日期（实测 5 条）已按日期去重；外部口径（如东财财富号）因剔除规则不同可能与本序列有 1~2 个百分点差异。
@@ -192,7 +230,7 @@ python build_confirm.py --force      # 强制重算逐股矩阵（约 24 秒）�
 
 **验收与反面证据（必须保留）**：所有分位 expanding(min_periods=250)；前瞻统计用 `shift(-N)` 保证 t+N ≤ 末日、按 20 观测去重；背离做了 5 档阈值稳健性。当前结果并不都好看：背离 7 次信号 12 周胜率 71.4% / 均 +9.39%（基准 55.9% / +2.74%）但样本极小；缩量止跌 19 次信号 **20 日胜率仅 31.6% < 基准 49.3%**、60 日才 72.2%；VRP 高−低分位组 60 日价差 −0.41pp 属**不显著**。三项当前均 0/3 触发，与共振板 confirm=0 一致。
 
-详见 `顶底指标扩展选型-20261121.html`。本层为描述性历史标定，不是收益预测，不构成投资建议。
+详见 `reports/顶底指标扩展选型-20261121.html`。本层为描述性历史标定，不是收益预测，不构成投资建议。
 
 ## 因子研究层：L0 变换 / L1 常驻审计（2026-11-21 新增）
 
@@ -222,16 +260,85 @@ python start_site.py             # 正常启动会自动带上这两步（DAG �
 
 `mood.html` 底部新增独立栏目「因子研究层」，由 `factor_audit_cards.js` 渲染（4 张卡片 + 3 图：变换 KS、代表因子逐年路径、条件 IC 热力），浅/暗主题跟随、自带 `data-toc` 并在填充后重扫目录；缺失数据只提示本层，不影响原有面板。
 
-**边界**：本层不证明任何变换更有效；KS 降低是分位压平分布的设计使然；条件 IC 状态含阈值、样本重叠、未经样本外检验，显著格子只作假设生成。详见 `指标效力审计与回测方案-20261121.html` 与 `因子预处理与量纲漂移诊断-20261121.html`。
+**边界**：本层不证明任何变换更有效；KS 降低是分位压平分布的设计使然；条件 IC 状态含阈值、样本重叠、未经样本外检验，显著格子只作假设生成。详见 `reports/指标效力审计与回测方案-20261121.html` 与 `reports/因子预处理与量纲漂移诊断-20261121.html`。
+
+## 可转债栏目（2026-11-21 新增）
+
+`build_cb.py` 独立成链，输出 `data/cb_data.json` / `data/cb_data.js`，页面为 `cb.html` + `cb.js`。所有源均为免登录公开接口（2026-11-21 实测）：
+
+| 数据 | 接口 | 用途 |
+|---|---|---|
+| 中证转债指数 | `csindex.com.cn/csindex-home/perf/index-perf?indexCode=000832` | 000832 日线（2015 起，OHLC/成交额/成分数） |
+| 全市场转债快照 | 东财 `RPT_BOND_CB_LIST` + `quoteColumns` | 现价/涨跌/正股价/转股价/转股价值/溢价率/评级/规模/强赎与回售触发价 |
+| 逐券纯债估值 | 东财 `RPTA_WEB_KZZ_LS`（`ps=1&sr=-1`） | 最新纯债价值、纯债溢价率；并发抓取 + 本地缓存 |
+| 逐券长历史 | 东财 `RPTA_WEB_KZZ_LS`（`zcode in (...)` 批量、`ps=50000`） | 2017 起逐券日线，用于长周期横截面/等权指数/温度代理 |
+| 近250日等权与温度 | 集思录 `webapi/cb/index_history/` | 250 日等权指数/中位价格/中位溢价/平均双低/温度/成交额/价格分档 |
+| 强赎状态 | 集思录 `webapi/cb/redeem/` | 强赎/不强赎公告、最后交易日、最后转股日 |
+| 新债日历 | 同花顺 `data.10jqka.com.cn/ipo/kzz/` | 申购日/规模/转股价/上市日 |
+
+口径与校验：
+
+- **双低 = 价格 + 转股溢价率（百分点）**；溢价率取东财 `TRANSFER_PREMIUM_RATIO`，纯债溢价 = 现价 / 纯债价值 − 1。
+- 自算横截面与集思录交叉验证：309 只（集思录 311 只，差异为报价/停牌口径），中位溢价率 67.32% 完全一致，平均双低 212.31（集思录）vs 211.84（自算），差异来自样本差。
+- **长周期（2017-11-17 起，2186 个交易日）**：用东财逐券历史（含退市券）按日复算，当前样本 313 只；近 250 日与集思录相关性：中位溢价率 0.997、平均双低 0.996、温度代理 0.979。2017-11 起步样本 30 只，2018 年后逐步增至 300+。
+- 长周期等权指数为**价格等权**（不含强赎转股收益与交易成本），2017-11-17 基准 1000；页面同时给出中证 000832 同起点归一曲线。
+- 长周期温度代理 = 中位价格近 500 日 z-score 的 logistic 映射（0–100），**不是集思录官方温度**；集思录温度仅近 250 日，两者在重叠期相关 0.979。
+- 集思录匿名接口只返回近 250 日指数历史、列表只给前 30 条，因此全市场快照改走东财；长周期由东财逐券历史自算，不依赖会员接口。
+- 逐券纯债估值按 `data/cb_cache/valuation.json` 缓存，**每个交易日刷新**一次，合并时允许滞后 5 个交易日；长历史缓存在 `data/cb_cache/history.csv`（约 50MB），首次全量约 5–10 分钟，之后只增量抓活跃券自上次缓存日以来的新增行（通常 1–5 个交易日，数秒到几十秒）。`--force` 全量刷新。强赎日期以公司公告为准。
+- **增量分层**：快照类（东财列表、集思录指数/强赎、中证指数、新债）每次全量但都只有几 MB、几秒；纯债估值逐券缓存、只抓缺失/过期券；长历史只抓活跃券新增行，退市券走缓存。可转债链已登记为 `start_site.py` 的 `PIPELINES["cb"]`，并由 `check_freshness()` 作为第三份数据检查；同一天重复启动按 `last_update.json` 跳过，需重跑用 `--force`。与现有系统一致，采集发生在 `start_site.py` 启动时，不是常驻定时任务；跨日需重启 `启动.cmd`（或由计划任务触发）。
+
+## 暗盘行情栏目（2026-11-22 新增）
+
+`us.html` + `us.js` + `us_dark.py`：把 Hyperliquid HIP-3 上的美股永续、黄金 / 白银 / 布伦特油 / WTI 油，以及主交易所的比特币做成 24 小时行情页。全部使用公开接口，无需 API Key、无需连接钱包，也**不新增 Python 依赖**（WebSocket 客户端用标准库 socket/ssl 实现 RFC6455，含分片、ping/pong、close 与重连退避）。
+
+| 项 | 实现 |
+|---|---|
+| REST | `POST https://api.hyperliquid.xyz/info`：`metaAndAssetCtxs`（目录 / 昨收 / 24h 成交额 / 持仓）、`candleSnapshot`（24h K 线） |
+| WebSocket | `wss://api.hyperliquid.xyz/ws`：`trades`（最新成交）、`bbo`（买一卖一）、`l2Book`（详情深度，`fast:true` 约 2 条/秒） |
+| HIP-3 前缀 | 订阅必须用 `xyz:NVDA` 全名，不能只用 `NVDA`；前缀同时决定它属于哪个 builder 部署的市场 |
+| 刷新 | 页面可见时每 5 秒 `GET /api/usdark/state`；后端每 5 秒落一次快照 |
+| 布局 | 表格 8 列（标的 / 最新成交 / 较昨收 / 24h 迷你走势 / 24h 成交额 / 持仓量 / 最后成交 / 更新状态），右侧固定选中标的的 24h K 线与买卖盘；下方盘口深度 + 逐笔成交，再下方会话快照 |
+| 迷你走势 | `/api/usdark/sparklines` 批量抓全部标的最近 24h 的 1 小时收盘价（8 线程并发、缓存 5 分钟），前端内联 SVG 绘制，颜色与「较昨收」一致 |
+| 快照 | `data/us_dark/latest.json`（最新全量）+ `data/us_dark/snapshots/YYYYMMDD.jsonl`（每行一次 5 秒快照，保留 7 天） |
+| 按需采集 | 20 秒无心跳断开 WS；切栏目 / 标签页隐藏 / 栏目滚出视口立即停止请求 |
+
+**为什么要有后端**：浏览器直连 wss 会碰到跨域、证书与页面关闭后的连接残留；由站点进程维持一条 WS，页面只读同源快照。`serve.py` 与 `start_site.py` 都已挂载 `/api/usdark/*`，因此更新后**必须重启站点进程**（`启动.cmd`）——旧进程没有这个路由，页面会明确提示"行情接口未就绪"。
+
+**诚实展示的三条规则**：
+
+1. 最新成交价只由 `trades` 推送更新，并保留交易所成交时间；没有新成交时价格一动不动，只更新「最后成交 x 秒前」。
+2. 报价更新时间来自 `bbo.time`，深度面板另有自己的更新时间；超过 60 秒无成交标「报价中」，连盘口也超 60 秒标「报价停滞」，**不拿 markPx 冒充成交价**。表格把这层信息合并为「更新状态」一列（徽标 + 报价时间）。
+3. 价格单元格只在 `last_trade_ms` 变化时闪动；轮询到相同价格不产生任何动画。
+
+**表格与布局**：第一列以**中文名为主**（13.5px 加粗）、代码为辅（10px 灰色），详情标题和顶部摘要同样是「英伟达（NVDA）」的顺序。买一 / 卖一 / 中间价 / 价差不再占表格列，统一放到右侧「选中标的」卡片；「报价更新」与「状态」合并为「更新状态」。表格右侧是选中标的的 24h K 线（5 分钟）与买卖盘摘要，点击任意行即切换；窄屏（≤1480px）自动改为上下排列，桌面 1500+ 时左侧表格约 750px、右侧卡片约 460px。
+
+**标的口径**：HIP-3 的 meta 只给代码、不标"是否美股"，因此用 `config.py` 的 `US_DARK_MARKETS` 白名单（当前 66 个：61 个美股正股/ADR + 5 个商品；商品为 `xyz:GOLD` / `SILVER` / `BRENTOIL` / `CL`，数量单位随品种为盎司 / 桶，外加主交易所的 `BTC`——它没有 DEX 前缀，单独放在 `US_DARK_MAIN`），并自动剔除交易所标记 `isDelisted` 的市场（实测 ACN / SNAP / SNOW / SMCI 等已下架）。想加标的加一行 `("xyz:XXX", "中文名", "美股" 或 "商品")` 即可；`vntl` 的 Pre-IPO 市场 2026-11-22 实测全部下架、成交额为 0，故 `US_DARK_PREIPO` 默认留空。新增标的需重启站点进程才会进入后端目录（前端表格按 24h 成交额排序，中文名为主、代码为辅；首屏默认选中成交额最大的美股，避免 BTC 的主市场成交量把首屏带到加密品种）。
+
+**接口**：
+
+```bash
+curl "http://127.0.0.1:8040/api/usdark/state?focus=xyz:NVDA"
+curl "http://127.0.0.1:8040/api/usdark/candles?coin=xyz:NVDA&interval=5m&hours=24"
+curl "http://127.0.0.1:8040/api/usdark/sparklines?hours=24"
+curl "http://127.0.0.1:8040/api/usdark/health"
+```
+
+`/state` 同时是心跳：`focus` 决定详情卡订阅哪个市场的 `l2Book`。`/health` 不续约心跳，可用于观察「无人观看时是否已断开」。`serve.py 8041` 可另起一个端口做本地验证。
+
+**验证记录（2026-11-22）**：CDP 实测页面隐藏 11 秒内新增请求 **0** 次、恢复可见后 3 秒内恢复轮询；后端在停止心跳 25 秒后 `status=idle`、订阅数 0、快照序号不再增长。WS 订阅 133 条（66 标的 × trades/bbo + 1 个焦点 l2Book），`bbo` 与 `l2Book` 的买一卖一一致；迷你走势 66/66 个标的都有序列（首轮约 4 秒，缓存命中 0 秒）。
+
+**局限**：这是永续合约报价，**不是美股正股成交价**；美股休市时流动性薄、价差大；24h 涨跌以交易所 `prevDayPx` 为基准，`dayNtlVlm` 为交易所口径；K 线来自 `candleSnapshot`（5 分钟）。颜色沿用本站「红涨绿跌」。
 
 ## 常见问题
 
+- **启动时大量 `AttributeError: module 'akshare' has no attribute ...`**：环境里的 akshare 与 `requirements.txt` 锁定的 1.20.65 不一致（如 1.17.8 没有 `calendar_trade_date_hist_sina` / `index_zh_daily_sina` / `stock_zh_a_spot_sina`）。运行 `python -m pip install -r requirements.txt` 即可；`start_site.py` 现在会在更新前检查这三个接口，缺失时直接跳过数据更新并用现有数据启动，不再刷 20 多段 traceback。
+- **恐贪指数提示「隐波源不可用」**：QVIX 的唯一上游 `optbbs.com` 会整站 502。`build_fear_greed.py` 会依次降级到本地缓存、`data/mood_qvix.csv`、上一版 `index_data.json` 的隐波序列，并在卡片与 `qvix_fallback` 字段标注来源；确实没有缓存时只跳过受影响的指数并在页面顶部提示，不再写空文件。源恢复后重跑 `python build_fear_greed.py` 即补齐。
 - **双击 `启动.bat` 弹出「选择应用程序」**：改用 `启动.cmd`（关联与 `.bat` 独立），或双击 `修复双击关联.reg` 导入后重启资源管理器；也可右键 → 打开方式 → 选择「Windows 命令处理器 / 命令提示符」并勾选「始终使用此应用」。
 - **一直显示"数据加载中"**：确认是通过 `http://localhost:8040/...` 访问而非直接双击 HTML（`file://` 下 fetch 会被拦截）。
 - **数据日期不齐**：正常现象，卡片上的"数据至 YYYY-MM-DD"才是真实截止日。
 - **想强制刷新**：`python start_site.py --force`，会透传给所有构建脚本。
 - **改错了想回滚**：`git log` / `git diff` 可用；`archive/` 保存了治理前的旧版脚本快照。
-- **改配色**：只改 `app.css` 的 `:root` / `[data-theme="dark"]` 即可，三页共用。
+- **改配色**：只改 `app.css` 的 `:root` / `[data-theme="dark"]` 即可，四页共用。
 - **新增卡片没进目录**：确认元素上有 `data-toc` / `data-toc-group`，且 `mountToc()` 在 `innerHTML` 赋值之后调用。
 - **目录挡住卡片标题**：目录条吸顶偏移是动态计算的；若调整了 `.topbar` 高度，检查 `app.js` 的 `offset()`。
 
@@ -249,6 +356,10 @@ python start_site.py             # 正常启动会自动带上这两步（DAG �
 - 2026-11-20 三批：数据更新至 11-20；全部 27 张走势图的滚动条默认窗口改为最近两年；新增第 9 张结构观察卡「重要股东增减持」，紧邻「A股回购规模」连排，附带口径估算、MARKET 二级市场占比与 PIT 公告日归档
 - 2026-11-21 拐点确认层：情绪-价格底背离、涨跌停家数/缩量止跌、VRP，独立 `build_confirm.py` + `confirm_cards.js`，不进综合分、不改共振板；严格 PIT 回测 + 阈值稳健性 + 方向自证伪，浅/暗主题与 TOC 均已验证
 - 2026-11-21 因子研究层：L0 双轨 PIT 因子矩阵（25 因子 × 12 变换 + 元数据 + PIT 回放自检）+ L1 常驻效力审计（统一输入、条件 IC 纳入 FDR、联合校正、试验日志、多轨道稳健性），独立 `factor_utils.py` / `build_factor_matrix.py` / `audit_efficacy.py` / `factor_audit_cards.js`，接入 DAG 末尾，浅/暗主题与 TOC 已验证
+- 2026-11-21 可转债栏目：中证 000832 指数、集思录等权指数/温度、309 只全市场双低与溢价率、纯债价值、强赎/不强赎日历、新债申购；独立 `build_cb.py` + `cb.html` + `cb.js`，浅/暗主题与 TOC 已验证
+- 2026-11-21 可转债长周期补全：东财逐券历史（含退市券）复算 2017-11 至 2026-11 的横截面/等权指数/温度代理，2186 个交易日；近 250 日与集思录相关 0.997/0.996/0.979；首次全量约 5–10 分钟，日常增量约数秒到几十秒
+- 2026-11-22 暗盘行情栏目：Hyperliquid 65 → 66 个标的（61 美股 + 黄金/白银/布伦特油/WTI 油 + 主交易所 BTC），标准库 WebSocket 采集 trades/bbo/l2Book，表格 8 列 + 中文名主显示 + 24h 迷你走势，右侧选中标的 24h K 线与买卖盘（窄屏自动上下排列）；每 5 秒落快照；按可见性门控采集（CDP 实测隐藏期间 0 请求，20 秒无心跳断开），无新成交时只显示真实成交/报价时间
+- 2026-11-22 依赖与隐波容错：环境 akshare 由 1.17.8 升到 requirements 锁定的 1.20.65，修复 `calendar_trade_date_hist_sina` / `index_zh_daily_sina` / `stock_zh_a_spot_sina` 缺失导致的启动报错；`start_site.py` 启动前检查这三个接口，缺失时跳过更新而不是刷 22 段 traceback；`build_fear_greed.py` 对 optbbs 502 做「重试 → 本地缓存 → mood_qvix.csv → 上一版隐波序列」多级降级，无数据时只跳过受影响指数、不写空文件，页面顶部明示暂缺
 - 结构治理：`config.py` / `core.py` / `factor_utils.py` / `app.js` / `app.css`、`build_mood` 指标注册表、显式 DAG
 - 工程配套：git 版本控制、`.gitignore`、`.gitattributes`、`requirements.txt`、本文档
 - 数据更新：PCR 真增量、申万缓存与回退保护、成分股滞后容忍、启动器今日去重

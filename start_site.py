@@ -28,24 +28,27 @@ import time
 import webbrowser
 
 from config import PORT
+import us_dark
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 DATA_JSON = os.path.join(BASE, "data", "index_data.json")
 MOOD_JSON = os.path.join(BASE, "data", "mood_data.json")
+CB_JSON = os.path.join(BASE, "data", "cb_data.json")
 UPDATE_STAMP = os.path.join(BASE, "data", "last_update.json")
 
 
 def _file_date(path, kind):
-    """从数据文件读出数据日期。kind='fg' 或 'mood'。"""
+    """从数据文件读出数据日期。kind='fg' / 'mood' / 'cb'。"""
     try:
         with open(path, encoding="utf-8") as f:
             d = json.load(f)
         if kind == "fg":
             dates = [v.get("date") for v in d.get("indices", {}).values() if v.get("date")]
             return min(dates) if dates else None
-        else:
-            return d.get("data_date")
+        if kind == "cb":
+            return (d.get("meta") or {}).get("date")
+        return d.get("data_date")
     except Exception:
         return None
 
@@ -74,20 +77,41 @@ def _write_stamp(ok: bool, notes: str):
         print(f"[提示] 更新标记写入失败：{e}", flush=True)
 
 
+def check_deps() -> tuple[bool, str]:
+    """更新前检查关键 akshare 接口，避免版本漂移时连跑 20 多个脚本、刷满 traceback。
+
+    接口名会随 akshare 版本改名（如 tool_trade_date_hist_sina → calendar_trade_date_hist_sina），
+    只检查启动链最先用到的几个；缺任何一个都提示按 requirements.txt 重装。
+    """
+    try:
+        import akshare as ak
+    except Exception as e:  # noqa: BLE001
+        return False, f"无法导入 akshare：{type(e).__name__}: {e}"
+    need = ("calendar_trade_date_hist_sina", "index_zh_daily_sina", "stock_zh_a_spot_sina")
+    missing = [n for n in need if not hasattr(ak, n)]
+    if missing:
+        return False, (f"当前 akshare {getattr(ak, '__version__', '?')} 缺少接口："
+                       f"{', '.join(missing)}；请运行 python -m pip install -r requirements.txt")
+    return True, f"akshare {getattr(ak, '__version__', '?')}"
+
+
 def check_freshness() -> tuple[bool, str]:
     """返回 (是否需要更新, 说明)。
 
-    两级判据：①两份数据都已是今天 → 直接跳过；
+    两级判据：①三份数据都已是今天 → 直接跳过；
     ②否则看今日是否已尝试过更新 → 已尝试则跳过（数据源没发数时不做无效重建），
       未尝试才重建。数据日期仅用于展示说明，不再作为触发条件。
     """
     today = datetime.date.today().isoformat()
     notes = []
     all_current = True
-    for path, kind, label in [(DATA_JSON, "fg", "恐贪指数"), (MOOD_JSON, "mood", "情绪面板")]:
+    missing = []
+    for path, kind, label in [(DATA_JSON, "fg", "恐贪指数"), (MOOD_JSON, "mood", "情绪面板"),
+                              (CB_JSON, "cb", "可转债")]:
         dt = _file_date(path, kind)
         if dt is None:
             all_current = False
+            missing.append(label)
             notes.append(f"{label}数据缺失")
         elif dt < today:
             all_current = False
@@ -96,13 +120,15 @@ def check_freshness() -> tuple[bool, str]:
             notes.append(f"{label}已最新")
     summary = "；".join(notes)
     if all_current:
-        return False, summary + "；两份数据均为今日，跳过更新"
+        return False, summary + "；三份数据均为今日，跳过更新"
 
     st = _read_stamp()
-    if st.get("date") == today:
+    if st.get("date") == today and not missing:
         state = "成功" if st.get("ok") else "部分失败"
         return False, (summary + f"；今日已尝试更新（{st.get('attempted_at', '时间未知')}，{state}），"
                                 "跳过重复重建；需重跑请加 --force")
+    if missing:
+        return True, summary + "；检测到缺失数据，重试重建"
     return True, summary + "；今日尚未更新，开始重建"
 
 
@@ -146,16 +172,22 @@ PIPELINES = {
         # L4 大小盘 RSI 分化：只读个股价格缓存，产出观察层卡片数据（不进综合分）。
         ("L4 大小盘RSI分化(观察)", "build_rsi_breadth.py"),
     ],
+    # 可转债栏目：独立数据链，与恐贪/情绪互不依赖。
+    "cb": [
+        ("可转债数据(指数/双低/强赎/新债)", "build_cb.py"),
+    ],
 }
 
 
 def rebuild(which="all") -> bool:
-    """按依赖顺序重建；which: 'fg'/'mood'/'all'。返回是否全部成功。"""
+    """按依赖顺序重建；which: 'fg'/'mood'/'cb'/'all'。返回是否全部成功。"""
     groups = []
     if which in ("fg", "all"):
         groups.append(PIPELINES["fg"])
     if which in ("mood", "all"):
         groups.append(PIPELINES["mood"])
+    if which in ("cb", "all"):
+        groups.append(PIPELINES["cb"])
     all_ok = True
     total = sum(len(g) for g in groups)
     step = 0
@@ -179,7 +211,16 @@ def rebuild(which="all") -> bool:
     return all_ok
 
 
+FEED = None
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        # 暗盘行情接口：同一进程内的采集线程，按需连接 Hyperliquid WS
+        if FEED is not None and FEED.handle_api(self):
+            return
+        super().do_GET()
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
@@ -195,6 +236,7 @@ class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 def main():
+    global FEED
     print("=" * 54)
     print("  投研指标工作台 · 本地站点启动器")
     print("=" * 54)
@@ -209,6 +251,13 @@ def main():
         print(f"[检查] {why}", flush=True)
 
     if need:
+        deps_ok, deps_msg = check_deps()
+        print(f"[检查] 运行依赖：{deps_msg}", flush=True)
+        if not deps_ok:
+            print("[跳过] 依赖不满足，本次不更新数据，直接使用现有数据启动。", flush=True)
+            print("[提示] 修复后重新运行即可：python -m pip install -r requirements.txt", flush=True)
+            need = False
+    if need:
         ok = rebuild("all")
         _write_stamp(ok, why)
         if not ok:
@@ -219,6 +268,10 @@ def main():
     url = f"http://localhost:{PORT}/index.html"
     print(f"[服务] {url}", flush=True)
     print("[提示] 按 Ctrl+C 停止服务；关闭此窗口也会停止。", flush=True)
+
+    # 暗盘行情：只启动线程，真正连接 Hyperliquid WS 要等页面心跳（按需采集）
+    FEED = us_dark.get_feed()
+    print("[暗盘行情] 行情接口 /api/usdark/* 已挂载（页面可见时才连接行情源）", flush=True)
 
     # 服务起来后自动打开浏览器
     def open_browser():

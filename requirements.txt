@@ -20,3 +20,6 @@ openpyxl==3.1.5
 xlrd==2.0.2
 tqdm==4.70.1
 python-dateutil==4.0.0
+
+# 注：美股暗盘（us_dark.py）的 WebSocket 客户端用标准库 socket/ssl 手写实现，
+# 不需要 websockets / websocket-client；REST 用 urllib。新增依赖请勿只为它引入。

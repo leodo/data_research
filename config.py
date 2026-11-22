@@ -150,6 +150,110 @@ FACTOR_KINDS = {
     "composite": "复合分·bounded",
 }
 
+# ---------------- 美股暗盘 / Hyperliquid HIP-3（us_dark.py，2026-11-22 新增）----------------
+# 公开行情接口，无需 API Key / 钱包：REST https://api.hyperliquid.xyz/info，
+# WebSocket wss://api.hyperliquid.xyz/ws。HIP-3 市场必须带 DEX 前缀（如 xyz:NVDA），
+# 不能只用普通股票代码；前缀也决定了它属于哪个 builder 部署的市场。
+#
+# 采集是「按需」的：只有页面可见并持续心跳时才保持 WS 连接，页面切换到其他栏目 /
+# 标签页不可见后 US_DARK_WATCH_TTL 秒自动断开，不产生任何行情请求。
+US_DARK_DEX = "xyz"             # 股票 / 商品 / 指数综合 DEX（当前唯一有真实成交的）
+US_DARK_PREIPO_DEX = "vntl"     # Pre-IPO 暗盘 DEX（SpaceX / OpenAI / Anthropic 等）
+US_DARK_POLL_MS = 5000          # 前端轮询间隔 = 快照间隔（5 秒）
+US_DARK_SNAPSHOT_SEC = 5        # 后端每 5 秒落一次快照
+US_DARK_WATCH_TTL = 20          # 前端心跳有效期（秒），超时即断开 WS
+US_DARK_CATALOG_TTL = 300       # 市场目录 / 昨日收盘 / 24h 成交额的重抓间隔（秒）
+US_DARK_STALE_TRADE = 60        # 距最后成交超过 60 秒 → 标注「无新成交」
+US_DARK_STALE_QUOTE = 60        # 距最后盘口更新超过 60 秒 → 标注「报价停滞」
+US_DARK_SERIES_MAX = 720        # 会话快照保留点数（5s × 720 = 1 小时）
+US_DARK_TRADES_MAX = 60         # 每标的最近成交缓存条数
+US_DARK_KEEP_DAYS = 7           # data/us_dark/snapshots 保留天数
+US_DARK_CANDLE_TTL = 30         # 24h K 线缓存（秒）
+
+# 主表：美股正股 / ADR。元组 = (HIP-3 全名, 中文名, 分组)。
+# 交易所侧的 HIP-3 meta 只给代码、不给「是否美股」的标签，因此这里用显式白名单，
+# 避免把 GOLD / DXY / SP500 等商品与指数混进「美股」；新增标的加一行即可。
+US_DARK_MARKETS = (
+    ("xyz:NVDA", "英伟达", "美股"),
+    ("xyz:ANT", "Anthropic", "美股"),
+    ("xyz:SPCX", "SpaceX", "美股"),
+    ("xyz:AAPL", "苹果", "美股"),
+    ("xyz:MSFT", "微软", "美股"),
+    ("xyz:GOOGL", "谷歌", "美股"),
+    ("xyz:AMZN", "亚马逊", "美股"),
+    ("xyz:META", "Meta", "美股"),
+    ("xyz:TSLA", "特斯拉", "美股"),
+    ("xyz:AVGO", "博通", "美股"),
+    ("xyz:MU", "美光科技", "美股"),
+    ("xyz:TSM", "台积电(ADR)", "美股"),
+    ("xyz:SKHY", "SK海力士", "美股"),
+    ("xyz:AMD", "超威半导体", "美股"),
+    ("xyz:INTC", "英特尔", "美股"),
+    ("xyz:ORCL", "甲骨文", "美股"),
+    ("xyz:NFLX", "奈飞", "美股"),
+    ("xyz:COST", "好市多", "美股"),
+    ("xyz:LLY", "礼来", "美股"),
+    ("xyz:CVX", "雪佛龙", "美股"),
+    ("xyz:IBM", "IBM", "美股"),
+    ("xyz:BX", "黑石", "美股"),
+    ("xyz:GEV", "GE Vernova", "美股"),
+    ("xyz:DELL", "戴尔", "美股"),
+    ("xyz:QCOM", "高通", "美股"),
+    ("xyz:AMAT", "应用材料", "美股"),
+    ("xyz:ASML", "阿斯麦(ADR)", "美股"),
+    ("xyz:LRCX", "泛林集团", "美股"),
+    ("xyz:ARM", "Arm", "美股"),
+    ("xyz:MRVL", "迈威尔科技", "美股"),
+    ("xyz:WDC", "西部数据", "美股"),
+    ("xyz:GLW", "康宁", "美股"),
+    ("xyz:ICE", "洲际交易所", "美股"),
+    ("xyz:PLTR", "Palantir", "美股"),
+    ("xyz:COIN", "Coinbase", "美股"),
+    ("xyz:MSTR", "Strategy", "美股"),
+    ("xyz:CRCL", "Circle", "美股"),
+    ("xyz:HOOD", "罗宾汉", "美股"),
+    ("xyz:CRWV", "CoreWeave", "美股"),
+    ("xyz:NBIS", "Nebius", "美股"),
+    ("xyz:IREN", "IREN", "美股"),
+    ("xyz:LITE", "Lumentum控股", "美股"),
+    ("xyz:SNDK", "闪迪", "美股"),
+    ("xyz:NET", "Cloudflare", "美股"),
+    ("xyz:PANW", "派拓网络", "美股"),
+    ("xyz:NOW", "ServiceNow", "美股"),
+    ("xyz:CRWD", "CrowdStrike", "美股"),
+    ("xyz:RDDT", "Reddit", "美股"),
+    ("xyz:ZM", "Zoom", "美股"),
+    ("xyz:DKNG", "DraftKings", "美股"),
+    ("xyz:RIVN", "Rivian", "美股"),
+    ("xyz:HIMS", "Hims & Hers", "美股"),
+    ("xyz:MRNA", "Moderna", "美股"),
+    ("xyz:GME", "游戏驿站", "美股"),
+    ("xyz:TTWO", "Take-Two", "美股"),
+    ("xyz:EBAY", "eBay", "美股"),
+    ("xyz:AAOI", "应用光电", "美股"),
+    ("xyz:BB", "黑莓", "美股"),
+    ("xyz:USAR", "USA Rare Earth", "美股"),
+    ("xyz:BABA", "阿里巴巴(ADR)", "美股"),
+    ("xyz:UMC", "联电(ADR)", "美股"),
+    # 商品：同一 xyz DEX 的 24 小时永续，与股票共用暗盘报价/快照链路。
+    # 注意合约单位随品种不同（黄金/白银为盎司，原油为桶），页面只展示交易所报价。
+    ("xyz:GOLD", "黄金", "商品"),
+    ("xyz:SILVER", "白银", "商品"),
+    ("xyz:BRENTOIL", "布伦特原油", "商品"),
+    ("xyz:CL", "WTI原油", "商品"),
+)
+
+# 次级表：Pre-IPO 暗盘（Ventuals）。2026-11-22 实测该 DEX 全部市场 isDelisted、
+# 24h 成交额为 0，只有 oraclePx 还在跳动，无法构成「行情」，故默认留空。
+# 若交易所重新上架，把 (HIP-3 全名, 中文名, "Pre-IPO") 加回来即可，前端会自动成组。
+US_DARK_PREIPO = ()
+
+# 主交易所（无 DEX 前缀）：BTC 是 Hyperliquid 主市场的加密永续，不属于 HIP-3。
+# 放在「商品」组里作为 24 小时风险资产/流动性对照；订阅时 coin 直接用 "BTC"。
+US_DARK_MAIN = (
+    ("BTC", "比特币", "商品"),
+)
+
 # L1 审计统计口径（与 audit_efficacy.py 首版保持一致，改动会使历史结论不可比）
 AUDIT_HORIZONS = (20, 60, 120)
 AUDIT_BLOCK = 60                # 移动块 bootstrap 块长（交易日）

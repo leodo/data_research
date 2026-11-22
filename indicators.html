@@ -112,6 +112,11 @@ a{text-decoration:none;color:inherit}
       <div class="toc-side" id="tocSide"></div>
       <a class="nav-item" href="mood.html"><span class="ico">◉</span> 情绪面板</a>
     </div>
+    <div class="nav-group">
+      <div class="nav-title">市场数据</div>
+      <a class="nav-item" href="us.html"><span class="ico">◭</span> 暗盘行情</a>
+      <a class="nav-item" href="cb.html"><span class="ico">◎</span> 可转债</a>
+    </div>
   </aside>
 
   <div class="main">
@@ -124,6 +129,8 @@ a{text-decoration:none;color:inherit}
         <a href="index.html"><button>首页</button></a>
         <a href="indicators.html"><button class="active">恐贪指数</button></a>
         <a href="mood.html"><button>情绪面板</button></a>
+        <a href="us.html"><button>暗盘行情</button></a>
+        <a href="cb.html"><button>可转债</button></a>
       </div>
 
       <div id="tocBar"></div>
@@ -163,11 +170,16 @@ a{text-decoration:none;color:inherit}
   if(!window.FG_DATA){ app.innerHTML = '<div class="loading">未找到数据文件 data/index_data.js，请先运行 python build_fear_greed.py</div>'; return; }
   var IDX = window.FG_DATA.indices;
   var META_IN = window.FG_DATA.meta || {};
-  var order = ["allmarket","hs300","zz500","zz1000","zz2000","cyb","kcb"];
+  var order = ["allmarket","hs300","zz500","zz1000","zz2000","cyb","kcb"].filter(function(k){ return !!IDX[k]; });
+  if(!order.length){
+    app.innerHTML = '<div class="loading">恐贪指数暂无可用数据：隐波源（optbbs）不可用且无本地缓存。<br>恢复后重跑 <b>python build_fear_greed.py</b> 即可。</div>';
+    return;
+  }
+  var UNAVAILABLE = window.FG_DATA.unavailable || [];
   // 指数专属色：暗色主题下整体提亮，保证深背景可读
   var colorsLight = {allmarket:"#6b4fd6",hs300:"#ff4713",zz500:"#8b5cf6",zz1000:"#0b6fc4",zz2000:"#008f8f",cyb:"#d97706",kcb:"#c2185b"};
   var colorsDark  = {allmarket:"#a78bfa",hs300:"#ff6b4a",zz500:"#b08cff",zz1000:"#4fa8ff",zz2000:"#2dd4bf",cyb:"#fbbf24",kcb:"#ff6ba8"};
-  var current = "hs300";
+  var current = order.indexOf("hs300") >= 0 ? "hs300" : order[0];
   var range = "y1";
   var charts = [];
   var theme = (function(){ try{ return localStorage.getItem("fg_theme")||"light"; }catch(e){ return "light"; } })();
@@ -221,6 +233,11 @@ a{text-decoration:none;color:inherit}
     var ch = calcChanges(d.history);
 
     var html = '';
+    if(UNAVAILABLE.length){
+      html += '<div class="src-note-line" style="color:var(--cau);background:var(--cau-bg);border-left-color:var(--cau)">⚠ 隐波数据源 optbbs 暂不可用：' +
+        UNAVAILABLE.map(function(u){ return esc(u.name); }).join('、') +
+        ' 本次未能重算（当前 ' + order.length + '/7 个指数）。源恢复后重跑 <b>python build_fear_greed.py</b> 即可补齐，其余指数不受影响。</div>';
+    }
     html += '<div class="switch">';
     order.forEach(function(k){
       if(!IDX[k]) return;

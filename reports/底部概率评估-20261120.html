@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A股底部概率评估 · 2026-11-20</title>
+<script src="../vendor/echarts.min.js"></script>
+<style>
+:root{--ink:#1b2029;--t2:#4b5563;--t3:#7b8494;--line:#e3e7ee;--bg:#f6f8fb;--card:#fff;
+--red:#d94a3d;--green:#1e9e6a;--blue:#2f6fdb;--amber:#d98b1f;--soft:#f0f3f8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:14px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px}
+.top{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+.meta{color:var(--t3);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:20px 22px;margin:16px 0;box-shadow:0 1px 3px rgba(20,30,60,.04)}
+h2{font-size:17px;margin:0 0 12px;padding-left:10px;border-left:4px solid var(--blue)}
+h3{font-size:14px;margin:18px 0 8px;color:var(--t2)}
+p{margin:8px 0;color:var(--t2)}
+.hero{background:linear-gradient(135deg,#fff 0%,#fdf6f4 100%);border-left:5px solid var(--red)}
+.big{font-size:52px;font-weight:750;color:var(--red);line-height:1.1;letter-spacing:-1px}
+.big small{font-size:19px;font-weight:600;margin-left:6px}
+.verdict{font-size:16px;font-weight:650;color:var(--ink);margin:10px 0 6px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+.kpi{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi .n{font-size:25px;font-weight:700;color:var(--blue)}
+.kpi .n.red{color:var(--red)}.kpi .n.green{color:var(--green)}
+.kpi .l{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+th{background:var(--soft);color:var(--t2);font-weight:650;text-align:right;padding:8px 10px;
+border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;color:var(--ink)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:none}
+.sub,.dim{color:var(--t3);font-size:11.5px}
+.up{color:var(--red);font-weight:650}.down{color:var(--green);font-weight:650}
+.flat{color:var(--t3)}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.tag.red{background:#fdeceb;color:var(--red)}.tag.gray{background:#eef1f5;color:var(--t3)}
+.tag.warn{background:#fdf3e2;color:var(--amber)}
+.chart{width:100%;height:320px}
+.note{background:var(--soft);border-left:3px solid var(--blue);padding:11px 14px;
+font-size:12.5px;color:var(--t2);border-radius:0 6px 6px 0;margin:12px 0}
+.warnbox{background:#fff8ed;border-left:3px solid var(--amber);padding:11px 14px;
+font-size:12.5px;color:var(--t2);border-radius:0 6px 6px 0;margin:12px 0}
+.src{font-size:11.5px;color:var(--t3);margin-top:8px;line-height:1.6}
+ul{margin:8px 0;padding-left:20px;color:var(--t2)}li{margin:5px 0}
+.foot{font-size:12px;color:var(--t3);border-top:1px solid var(--line);padding-top:14px;margin-top:26px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.grid3,.two{grid-template-columns:1fr}.big{font-size:40px}}
+</style></head><body><div class="wrap">
+
+<div class="top">
+<h1>A 股「今天是底部」的概率评估</h1>
+<div class="meta">评估时点：2026-11-21 00:50（周六休市，对应最近交易日 <b>2026-11-20</b> 收盘）｜
+沪深300 <b>3954.57</b>｜数据源：本项目 <code>data/mood_data.json</code>（构建于 2026-11-21 00:07:16）、
+<code>hs300_close</code> 日频序列 2002-01-04 ~ 2026-11-20 共 6035 个交易日</div>
+</div>
+
+<div class="card hero">
+<div class="verdict">结论：位置像底部，时点不像底部。</div>
+<div class="big">20~25<small>%</small></div>
+<p style="margin-top:2px"><b>「2026-11-20 事后回看属于底部区域」的概率约 20~25%</b>——是随机基准 7.8% 的 2~3 倍，
+但四分之三的情形下，这一天并不是最后的低位。若把「底部」理解为「跌完了、此后不再破位、直接反转」，
+概率只有 <b class="down">约 20%，与随机基准 24% 没有差别甚至略低</b>。</p>
+<p>真正被显著改善的是<b>赔率</b>而非<b>时点</b>：同类状态之后 60 个交易日沪深300 平均收益
+<b class="up">+5.21%</b>、胜率 <b class="up">60.0%</b>（项目自带回测口径为 +4.10% / 67.6%），
+明显高于全样本基准 +1.19% / 55.0%。但这类日子往往<b>先再跌一段、再反弹</b>，
+所以「不破位」的条件经常不成立。这是磨底，不是 V 型反转。</p>
+</div>
+
+<div class="grid3">
+<div class="kpi"><div class="n">91.7</div><div class="l">底部共振度（13 维中 12 维有效）<br>顶部共振 0.0，<b>拐点确认 = 0</b></div></div>
+<div class="kpi"><div class="n red">+5.21%</div><div class="l">同类状态后 60 日沪深300 平均收益<br>胜率 60.0%（基准 +1.19% / 55.0%）</div></div>
+<div class="kpi"><div class="n green">9 / 15</div><div class="l">当前悲观指标中，历史上「悲观之后反而更跌」<br>仅 1 项弱符合，0 项符合预期</div></div>
+</div>
+
+<div class="card">
+<h2>一、先把「底部」定义清楚，否则概率没有意义</h2>
+<p>用沪深300 日收盘（2002-01-04 ~ 2026-11-20）对每一天做事后判定，样本统一从共振板起点 2016-01-11 开始、
+要求完整 60 日前瞻、按 20 交易日去重（基准 129 个样本，当前状态类 15 个样本）。四种口径含义完全不同：</p>
+<table><thead><tr><th>口径</th><th>随机基准</th><th>当前状态</th><th>提升倍数</th><th>当前状态 95% CI</th></tr></thead>
+<tbody><tr><td><b>底部区域(60日不破位且上涨)</b><div class="sub">A</div></td><td>24.0%</td><td>20.0%</td><td class="flat">0.83×</td><td>[7.0, 45.2]</td></tr><tr><td><b>严格底(60日不破位且涨超3%)</b><div class="sub">B</div></td><td>5.4%</td><td>6.7%</td><td class="up">1.24×</td><td>[1.2, 29.8]</td></tr><tr><td><b>区间底(前后120日最低10%)</b><div class="sub">C</div></td><td>7.8%</td><td>20.0%</td><td class="up">2.56×</td><td>[7.0, 45.2]</td></tr><tr><td><b>精确低点(前后40日最低)</b><div class="sub">D</div></td><td>0.8%</td><td>13.3%</td><td class="up">16.62×</td><td>[3.7, 37.9]</td></tr></tbody></table>
+<p><b>A</b> = 之后 60 日内最低收盘不低于当日 98%，且 60 日后上涨（「跌完了」）；
+<b>B</b> = 之后从未低于当日，且 60 日涨幅 &gt; 3%（严格底）；
+<b>C</b> = 当日收盘处于前后各 60 日窗口的最低 10%（事后回看是低位区）；
+<b>D</b> = 当日收盘是前后各 20 日窗口的最低点（精确低点）。</p>
+<div class="note"><b>怎么读：</b>当前状态在 C / D 上相对基准有 2.6 倍 / 16.6 倍提升，说明<b>「价格位置确实低」</b>；
+但在 A 上提升倍数 0.83×（反而低于随机），说明<b>「下跌尚未结束」</b>。两者并不矛盾：
+底部是一个持续数周至数月的过程，不是一个点。</div>
+<div id="c1" class="chart"></div>
+<div class="src">数据来源：本地 <code>data/mood_data.json</code> 的 <code>hs300_close</code> 与 <code>turning_panel.history</code>；
+统计区间 2016-01-11 ~ 2026-08-20（最后一批需留出 60 日前瞻）；置信区间为 Wilson 区间。</div>
+</div>
+
+<div class="card">
+<h2>二、当前所有指标快照：几乎全线极端，但「确认」缺席</h2>
+<div class="two">
+<div>
+<h3>综合与共振（项目自有口径）</h3>
+<table><tbody>
+<tr><td>综合情绪分</td><td><b>36.65</b>（中立，未进入 &lt;35 悲观档）</td></tr>
+<tr><td>参与指标数</td><td class="down">7 / 8（低估指数行业 dgz 本次缺失）</td></tr>
+<tr><td>底部共振度</td><td class="up">91.7</td></tr>
+<tr><td>顶部共振度</td><td>0.0</td></tr>
+<tr><td>拐点确认</td><td class="down">0（待确认）</td></tr>
+<tr><td>有效维度</td><td>12 / 13（TRIN 因普跌日失真被剔除）</td></tr>
+<tr><td>状态</td><td>底部共振 · 待拐点确认</td></tr>
+</tbody></table>
+<p class="sub">注：项目 <code>data_date</code> 记为 2026-11-21，但所有指标序列末日均为 11-20 或更早；
+11-21 为周六休市，本报告一律以 11-20 收盘为准。综合分因 dgz 缺失为 7 项等权口径，
+齐备时应为 8 项等权，两者均属「中立」档，不影响本文结论。</p>
+</div>
+<div>
+<h3>13 维顶底信号明细（fear 分位越高越接近底部）</h3>
+<div style="max-height:330px;overflow:auto"><table><thead><tr>
+<th>维度</th><th>当前值</th><th>原始分位</th><th>fear</th><th>近5日</th><th>判定</th><th>数据末日</th>
+</tr></thead><tbody><tr><td>股债风险溢价</td><td>2.712%</td><td>97.3%</td><td>97.3%</td><td>↑</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>破净率</td><td>10.95%</td><td>95.4%</td><td>95.4%</td><td>↑</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>站上200日线占比</td><td>5.957%</td><td>2.3%</td><td>97.7%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>新高新低差</td><td>-74.051%</td><td>0.2%</td><td>99.8%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>全市场换手率</td><td>1.55%</td><td>78.0%</td><td>22.0%</td><td>↓</td><td><span class="tag gray">未触发</span></td><td class="dim">2026-11-20</td></tr><tr><td>PCR</td><td>0.641</td><td>9.1%</td><td>90.9%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>两融60日增速</td><td>-16.978%</td><td>4.3%</td><td>95.7%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>全A PB中位数</td><td>2.11倍</td><td>7.6%</td><td>92.4%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>股基3年年化</td><td>-0.239%</td><td>20.5%</td><td>79.5%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>沪深300 BIAS20</td><td>-1.981%</td><td>19.4%</td><td>80.6%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>沪深300 RSI14</td><td>30.959</td><td>4.1%</td><td>95.9%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr><tr><td>阿姆氏指标 TRIN10</td><td>0.64</td><td>1.0%</td><td>1.0%</td><td>↓</td><td><span class="tag gray">未触发</span></td><td class="dim">2026-11-20</td></tr><tr><td>麦克莱伦摆动值</td><td>-11.525pp</td><td>1.1%</td><td>98.9%</td><td>↓</td><td><span class="tag red">底部特征</span></td><td class="dim">2026-11-20</td></tr></tbody></table></div>
+</div>
+</div>
+<p>13 维中 TRIN 因普跌日家数比失真被剔除，剩余 12 维有效，其中 <b>11 维</b>触发底部特征：
+股债风险溢价 97.3、破净率 95.4、站上 200 日线占比反向后 97.7、新高新低差反向后 99.8、
+PCR 90.9、两融 60 日增速 95.7、全A PB 中位数 92.4、RSI14 95.9、麦克莱伦摆动 98.9 等。
+<b>唯一未触发的有效维度是全市场换手率（fear 仅 22.0）</b>——量能还没到「地量出清」的教科书状态，
+这与外部观察到的「连续 5 日成交额不足 1.5 万亿、仍无持续增量资金」一致。</p>
+</div>
+
+<div class="card">
+<h2>三、历史条件频率：赔率改善，时点不改善</h2>
+<h3>项目自带共振回测（触发日按 20 交易日去重）</h3>
+<table><thead><tr><th>状态</th><th>样本 n</th><th>20日胜率</th><th>20日均</th><th>60日胜率</th><th>60日均</th><th>60日中位</th></tr></thead>
+<tbody><tr><td>底部拐点触发</td><td>42</td><td>58.5%</td><td>0.28%</td><td><b>52.5%</b></td><td>2.44%</td><td>0.62%</td></tr><tr><td>底部极值(未确认)</td><td>36</td><td>54.3%</td><td>1.24%</td><td><b>67.6%</b></td><td>4.1%</td><td>3.54%</td></tr><tr><td>顶部警戒</td><td>4</td><td>75.0%</td><td>3.1%</td><td><b>50.0%</b></td><td>0.73%</td><td>0.61%</td></tr><tr><td>全样本基准(每20日)</td><td>132</td><td>51.9%</td><td>0.32%</td><td><b>55.0%</b></td><td>1.19%</td><td>1.23%</td></tr></tbody></table>
+<h3>本次独立复算（条件：底部共振 ≥ 85 且拐点未确认，n=15）</h3>
+<div class="grid3">
+<div class="kpi"><div class="n red">+5.21%</div><div class="l">60 日平均收益（基准 +1.19%）</div></div>
+<div class="kpi"><div class="n red">60.0%</div><div class="l">60 日正收益胜率（基准 55.0%）</div></div>
+<div class="kpi"><div class="n green">20.0%</div><div class="l">此后 60 日「不破位且上涨」概率（基准 24.0%）</div></div>
+</div>
+<p>两个独立口径指向同一件事：<b>钱的方向变好了，但下跌的惯性没结束</b>。
+60 日平均收益为正、胜率抬升，同时「之后 60 日内最低价不跌破当日 2%」的比例却没有改善——
+典型路径是<b>先有一段最后一跌，随后才反弹</b>。所以把「底部共振 91.7」直接翻译成「今天可以抄底」，
+是被数据本身否定的。</p>
+<div id="c2" class="chart"></div>
+<div class="src">左图项目回测来自 <code>turning_panel.backtest</code>；右图独立复算来自本次脚本对
+<code>hs300_close</code> 与 <code>turning_panel.history</code> 的重新对齐计算。两者样本定义略有差异（前者为触发事件去重、后者为状态日去重），
+方向一致但数值不应直接相加。</div>
+</div>
+
+<div class="card">
+<h2>四、稳健性：换阈值、换去重间隔、换前瞻窗口，结论都不变</h2>
+<div class="two">
+<div>
+<h3>阈值 × 去重间隔（口径 A / C / D 概率 %）</h3>
+<table><thead><tr><th>阈值</th><th>间隔</th><th>n</th><th>A</th><th>C</th><th>D</th><th>60日胜率</th></tr></thead>
+<tbody><tr><td>共振 ≥ 75</td><td>10 日</td><td>43</td><td>20.9%</td><td class="up">23.3%</td><td>11.6%</td><td>65.1%</td></tr><tr><td>共振 ≥ 75</td><td>20 日</td><td>29</td><td>17.2%</td><td class="up">24.1%</td><td>6.9%</td><td>65.5%</td></tr><tr><td>共振 ≥ 75</td><td>40 日</td><td>20</td><td>20.0%</td><td class="up">15.0%</td><td>5.0%</td><td>60.0%</td></tr><tr><td>共振 ≥ 80</td><td>10 日</td><td>32</td><td>15.6%</td><td class="up">18.8%</td><td>15.6%</td><td>65.6%</td></tr><tr><td>共振 ≥ 80</td><td>20 日</td><td>22</td><td>18.2%</td><td class="up">13.6%</td><td>18.2%</td><td>59.1%</td></tr><tr><td>共振 ≥ 80</td><td>40 日</td><td>16</td><td>18.8%</td><td class="up">12.5%</td><td>18.8%</td><td>56.2%</td></tr><tr><td>共振 ≥ 85</td><td>10 日</td><td>22</td><td>18.2%</td><td class="up">18.2%</td><td>13.6%</td><td>68.2%</td></tr><tr><td>共振 ≥ 85</td><td>20 日</td><td>15</td><td>20.0%</td><td class="up">20.0%</td><td>13.3%</td><td>60.0%</td></tr><tr><td>共振 ≥ 85</td><td>40 日</td><td>10</td><td>20.0%</td><td class="up">20.0%</td><td>10.0%</td><td>60.0%</td></tr><tr><td>共振 ≥ 90</td><td>10 日</td><td>21</td><td>19.0%</td><td class="up">19.0%</td><td>14.3%</td><td>66.7%</td></tr><tr><td>共振 ≥ 90</td><td>20 日</td><td>14</td><td>21.4%</td><td class="up">21.4%</td><td>14.3%</td><td>57.1%</td></tr><tr><td>共振 ≥ 90</td><td>40 日</td><td>10</td><td>30.0%</td><td class="up">30.0%</td><td>10.0%</td><td>60.0%</td></tr></tbody></table>
+</div>
+<div>
+<h3>前瞻窗口敏感性（口径 A 的变体）</h3>
+<table><thead><tr><th>窗口</th><th>随机基准</th><th>当前状态</th><th>差值</th></tr></thead>
+<tbody><tr><td>20 交易日</td><td>37.2%</td><td>33.3%</td><td class="down">-3.9 pp</td></tr><tr><td>40 交易日</td><td>27.1%</td><td>26.7%</td><td class="down">-0.4 pp</td></tr><tr><td>60 交易日</td><td>24.0%</td><td>20.0%</td><td class="down">-4.0 pp</td></tr><tr><td>90 交易日</td><td>20.3%</td><td>20.0%</td><td class="down">-0.3 pp</td></tr></tbody></table>
+<div class="warnbox">无论 20 / 40 / 60 / 90 交易日窗口，
+「极值日之后不再破位」的概率<b>全部等于或略低于随机基准</b>。
+这不是偶然，是趋势延续的统计特征。</div>
+</div>
+</div>
+<p>把共振阈值从 75 放宽到 90、去重间隔从 10 日拉到 40 日，口径 A 始终落在 <b>15.6%~30.0%</b>，
+口径 C 落在 <b>12.5%~30.0%</b>，60 日胜率 <b>56%~68%</b>。主结论对参数选择不敏感。
+当前状态类去重后仅 15 个样本，95% CI 宽达 [7.0, 45.2]，所以给出的是<b>区间 20~25%</b> 而非一个精确点估计。</p>
+</div>
+
+<div class="card">
+<h2>五、最该看的反面证据：这套体系自己也不支持「低位=见底」</h2>
+<p>项目「解读有效性后视回测」把每个指标历史上每一天的 PIT 情绪分分成「悲观 &lt;35」与「亢奋 &gt;65」，
+比较此后 60 日沪深300 收益价差。25 项指标的判定分布：</p>
+<div class="two">
+<div><div id="c3" class="chart" style="height:280px"></div></div>
+<div>
+<table><thead><tr><th>判定</th><th>项数</th><th>对「低位=底部」的含义</th></tr></thead><tbody>
+<tr><td class="down">方向相反</td><td>10</td><td>悲观后 60 日跌得更多</td></tr>
+<tr><td class="down">弱相反</td><td>1</td><td>同上，幅度较小</td></tr>
+<tr><td class="flat">不显著</td><td>6</td><td>无方向性</td></tr>
+<tr><td>样本不足</td><td>3</td><td>无法判定</td></tr>
+<tr><td class="up">符合预期 / 弱符合</td><td>4 / 1</td><td>悲观后确实反弹</td></tr>
+</tbody></table>
+<div class="warnbox"><b>当前处于悲观档的 15 项指标里，只有 1 项（新高新低差）历史上弱符合，
+9 项方向相反、5 项不显著。</b>也就是说，用这些指标在 60 日尺度上做「见底」判断，
+历史上多数是错的——A 股中短期更常见的是动量延续，而不是均值回归。</div>
+</div>
+</div>
+<h3>当前 15 项悲观指标的历史方向检验</h3>
+<table><thead><tr><th>指标</th><th>类别</th><th>当前情绪分</th><th>悲观组−亢奋组 60日价差</th><th>判定</th></tr></thead>
+<tbody><tr><td>A股风险溢价</td><td class="dim">分项</td><td>1.97</td><td class="down">-1.92 pp</td><td class="down">方向相反</td></tr><tr><td>新基金发行</td><td class="dim">分项</td><td>0.49</td><td class="down">-1.42 pp</td><td class="down">方向相反</td></tr><tr><td>PCR</td><td class="dim">分项</td><td>9.05</td><td class="down">-0.86 pp</td><td class="down">弱相反</td></tr><tr><td>股基滚动年化收益</td><td class="dim">分项</td><td>33.56</td><td class="down">-6.81 pp</td><td class="down">方向相反</td></tr><tr><td>两融余额60日增速</td><td class="dim">结构</td><td>3.65</td><td class="down">-2.35 pp</td><td class="down">方向相反</td></tr><tr><td>全A站上200日均线占比</td><td class="dim">结构</td><td>2.31</td><td class="flat">+0.30 pp</td><td class="flat">不显著</td></tr><tr><td>全A市净率中位数（月频）</td><td class="dim">结构</td><td>11.98</td><td class="down">-1.52 pp</td><td class="down">方向相反</td></tr><tr><td>ERP 股债归因（便宜是真便宜吗）</td><td class="dim">结构</td><td>1.97</td><td class="down">-1.92 pp</td><td class="down">方向相反</td></tr><tr><td>破净率（全A破净个股占比）</td><td class="dim">顶底</td><td>5.07</td><td class="down">-4.72 pp</td><td class="down">方向相反</td></tr><tr><td>新高新低差（NH-NL）</td><td class="dim">顶底</td><td>0.21</td><td class="up">+0.65 pp</td><td class="up">弱符合</td></tr><tr><td>上涨家数占比与动能广度</td><td class="dim">顶底</td><td>1.52</td><td class="flat">+0.32 pp</td><td class="flat">不显著</td></tr><tr><td>沪深300 RSI14（超卖/超买）</td><td class="dim">顶底</td><td>5.44</td><td class="down">-3.90 pp</td><td class="down">方向相反</td></tr><tr><td>阿姆氏指标 TRIN（Arms Index）</td><td class="dim">顶底</td><td>0.14</td><td class="flat">-0.18 pp</td><td class="flat">不显著</td></tr><tr><td>市场宽广度综合指标</td><td class="dim">顶底</td><td>0.36</td><td class="flat">+0.36 pp</td><td class="flat">不显著</td></tr><tr><td>麦克莱伦摆动指标（市场宽广度动能）</td><td class="dim">顶底</td><td>1.14</td><td class="flat">+0.30 pp</td><td class="flat">不显著</td></tr></tbody></table>
+<p>尤其要注意 <b>破净率（−4.72pp）、股基滚动年化收益（−6.81pp）、沪深300 RSI14（−3.90pp）</b>
+这三项：它们当前都处于极端悲观分位，但历史上极端悲观之后 60 日的表现，反而显著差于极端亢奋之后。
+这正是「底部信号钝化」的量化证据。项目自己的注释也写明：这是<b>方向一致性检验，不是策略回测</b>，
+收益窗口重叠、未计成本与分红，不能据此直接交易。</p>
+</div>
+
+<div class="card">
+<h2>六、外部交叉验证：机构共识是「底部区域」，但没人说「今天见底」</h2>
+<p>外部检索（2026-11-20 收盘及近期研报/媒体，<b>非一手来源、需核实原文</b>）与项目指标大体同向：</p>
+<ul>
+<li><b>盘面</b>：11-20 上证 3533.79（−1.23%）、沪深300 3954.57（−0.76%）、创业板指 2212.13（−3.54%）；
+全市场 5236 只下跌 / 313 只上涨，成交额约 1.43 万亿元、连续 5 日不足 1.5 万亿。
+<span class="src">来源：腾讯自选股行情快照 / 环球网财经、华夏时报 2026-11-20 报道</span></li>
+<li><b>估值</b>：沪深300 PE(TTM) 13.54 倍（近 5 年分位 <b>75.0%</b>）、PB 1.334 倍（近 5 年分位 <b>33.8%</b>）、
+股息率 2.82%；创业板指 PE 近 5 年分位约 4.3%。<b>便宜的是资产端与成长股，不是盈利端</b>。
+<span class="src">来源：统一估值查询，历史估值数据日 2026-11-19；实时快照 2026-11-21</span></li>
+<li><b>机构分歧在节奏不在方向</b>：中金「阶段低点可能已过去」、华泰「已处底部区域但反弹渐进而非一蹴而就」、
+摩根士丹利「情绪低点后 1~2 个月才见市场底」、财信「政策底已确认、仍在磨底」。
+<span class="src">来源：环球网财经、澎湃新闻、腾讯新闻 2026-11-17~20 报道，需核实原文</span></li>
+<li><b>未确认项</b>：两融余额 21855 亿元（11-19）连续三日下降、量能未回升、
+10 年期美债收益率 5.04%、12 月美联储议息与中央经济工作会议尚未落地。</li>
+</ul>
+<div class="warnbox"><b>口径分歧（必须标注，不是错误）：</b>
+本项目 ERP 分位 <b>98.03%</b>（2010 年起全历史 expanding 口径），外部研报为近十年 <b>78%~81%</b> 分位；
+本项目破净率 <b>10.95%</b>（全A破净个股占比，11-19），媒体引用约 <b>9.2%</b>。
+差异来自分位窗口、样本定义与统计时点，不可混用。凡涉及一手估值数字，以上市公司/交易所/指数公司披露为准。</div>
+<p>外部共识与本报告结论一致：<b>「底部区域」成立，「底部点位」未确认</b>。
+需要额外警惕的是，当几乎所有机构都同意「向下空间有限」时，这一判断本身已被相当程度定价；
+真正的分歧在于还有多少「最后一跌」没走完。</p>
+</div>
+
+<div class="card">
+<h2>七、条件化框架：什么信号会把概率推上去 / 打下来</h2>
+<div class="two">
+<div>
+<h3 class="up">上调至 40~50% 需要同时看到</h3>
+<ul>
+<li>共振板 <code>confirm</code> 由 0 转 1（项目已内置拐点确认逻辑）</li>
+<li>沪深300 在 20 个交易日内不再跌破 11-20 盘中低点 3894.47</li>
+<li>成交额稳定回到 1.5~2 万亿元上方，融资余额止跌回升</li>
+<li>站上 200 日均线占比从 5.96% 回升、新高新低差收敛</li>
+<li>12 月美联储议息与中央经济工作会议落地，外部利率约束缓和</li>
+</ul>
+</div>
+<div>
+<h3 class="down">下调至 10~15% 的触发条件</h3>
+<ul>
+<li>放量跌破 3894.47 且破净率、共振度继续钝化（极值可长期钝化）</li>
+<li>ERP 抬升主要来自债券收益率下行而非盈利改善（项目 ERP 归因卡已警示「便宜错觉」）</li>
+<li>宽基 ETF 从持续净申购转为脉冲式护盘后停摆</li>
+<li>外部利率与 AI 产业链继续承压，强势板块补跌扩散到权重股</li>
+</ul>
+</div>
+</div>
+<p><b>操作含义（仅为框架，非建议）</b>：当前更适合把「底部共振」当作<b>赔率改善</b>来处理，
+而不是当作<b>时点信号</b>。若一定要用，等 <code>confirm=1</code> 或价格不再破位，
+代价是放弃最低的那一小段，换来的是把「不破位」概率从 20% 抬到历史确认组水平。</p>
+</div>
+
+<div class="card">
+<h2>八、使用边界</h2>
+<ul>
+<li>「概率」是<b>历史条件频率</b>，不是真实世界的物理概率；当前状态类去重后仅 15 个样本，Wilson 95% CI 为 [7.0, 45.2]，点估计极不稳定。</li>
+<li>收益窗口重叠、按 20 交易日去重并不能消除自相关；未计交易成本、滑点与分红，宏观环境跨期不同。</li>
+<li>共振板阈值、底部定义、分档阈值均为本报告/本项目设定，<b>未做样本外检验</b>；项目 disclaimer 亦明确「共振度是赔率统计而非择时信号」。</li>
+<li>综合情绪分本次为 7/8 口径（dgz 缺失）；月频指标（M1-M2、回购、增减持、全A PB）末日早于 11-20，属正常发布滞后。</li>
+<li>指标与指数收益之间<b>无因果关系</b>；本报告是事后全历史视角，与页面「历史回放」的当日 PIT 视角不可混用。</li>
+</ul>
+<div class="src">数据源清单：本地 <code>data/mood_data.json</code>（generated_at 2026-11-21 00:07:16）、
+<code>hs300_close</code> 6035 个交易日、<code>turning_panel.history</code> 2638 个交易日、
+<code>composite.history</code> 859 个周频点、25 项指标 PIT 分位序列；
+外部数据见第六节逐条标注。全部计算由本次脚本一次性完成，不依赖任何 AI 实时生成数值。</div>
+</div>
+
+<div class="foot"><b>免责声明</b>：以上内容基于公开数据和量化分析，仅供参考，不构成投资建议。市场有风险，投资需谨慎。任何投资决策应结合个人风险承受能力、资金状况和投资目标独立判断，必要时咨询持牌专业机构。过往表现不预示未来收益。</div>
+
+</div>
+<script>
+var R = {"meta": {"as_of_market": "2026-11-20", "hs300_last": 3954.565, "generated_at": "2026-11-21 00:07:16", "data_date": "2026-11-21", "composite_score": 36.65, "composite_n": 7, "turn_start": "2016-01-11", "turn_n": 2638, "current": {"bottom_score": 91.7, "top_score": 0.0, "confirm": 0, "n_valid": 12, "n_dims": 13, "state": "底部共振 · 待拐点确认", "level": "bottom", "divergence_bottom": false, "divergence_top": false, "hs300": 3954.57}, "hs300_start": "2002-01-04", "hs300_n": 6035, "base_n": 2578, "base_dedup_n": 129, "modes": {"A": "底部区域(60日不破位且上涨)", "B": "严格底(60日不破位且涨超3%)", "C": "区间底(前后120日最低10%)", "D": "精确低点(前后40日最低)"}}, "baseline": {"A": {"all_n": 2578, "all_k": 717, "all_pct": 27.8, "dedup_n": 129, "dedup_k": 31, "dedup_pct": 24.0, "ci": [17.5, 32.1]}, "B": {"all_n": 2578, "all_k": 208, "all_pct": 8.1, "dedup_n": 129, "dedup_k": 7, "dedup_pct": 5.4, "ci": [2.7, 10.8]}, "C": {"all_n": 2578, "all_k": 183, "all_pct": 7.1, "dedup_n": 129, "dedup_k": 10, "dedup_pct": 7.8, "ci": [4.3, 13.7]}, "D": {"all_n": 2578, "all_k": 41, "all_pct": 1.6, "dedup_n": 129, "dedup_k": 1, "dedup_pct": 0.8, "ci": [0.1, 4.3]}}, "conditions": {"S_cur": {"label": "当前状态类: 底部共振>=85 且未确认", "all_n": 58, "dedup_n": 15, "A": {"k": 3, "pct": 20.0, "ci": [7.0, 45.2], "lift": 0.83, "fwd60": {"n": 15, "avg": 5.21, "win": 60.0, "med": 2.88}}, "B": {"k": 1, "pct": 6.7, "ci": [1.2, 29.8], "lift": 1.24, "fwd60": {"n": 15, "avg": 5.21, "win": 60.0, "med": 2.88}}, "C": {"k": 3, "pct": 20.0, "ci": [7.0, 45.2], "lift": 2.56, "fwd60": {"n": 15, "avg": 5.21, "win": 60.0, "med": 2.88}}, "D": {"k": 2, "pct": 13.3, "ci": [3.7, 37.9], "lift": 16.62, "fwd60": {"n": 15, "avg": 5.21, "win": 60.0, "med": 2.88}}}, "S_90": {"label": "更贴近当前: 共振>=90 且未确认", "all_n": 57, "dedup_n": 14, "A": {"k": 3, "pct": 21.4, "ci": [7.6, 47.6], "lift": 0.89, "fwd60": {"n": 14, "avg": 5.31, "win": 57.1, "med": 2.88}}, "B": {"k": 1, "pct": 7.1, "ci": [1.3, 31.5], "lift": 1.31, "fwd60": {"n": 14, "avg": 5.31, "win": 57.1, "med": 2.88}}, "C": {"k": 3, "pct": 21.4, "ci": [7.6, 47.6], "lift": 2.74, "fwd60": {"n": 14, "avg": 5.31, "win": 57.1, "med": 2.88}}, "D": {"k": 2, "pct": 14.3, "ci": [4.0, 39.9], "lift": 17.88, "fwd60": {"n": 14, "avg": 5.31, "win": 57.1, "med": 2.88}}}, "S_any": {"label": "任意底部共振>=60", "all_n": 471, "dedup_n": 54, "A": {"k": 15, "pct": 27.8, "ci": [17.6, 40.9], "lift": 1.16, "fwd60": {"n": 54, "avg": 2.07, "win": 59.3, "med": 1.88}}, "B": {"k": 5, "pct": 9.3, "ci": [4.0, 19.9], "lift": 1.72, "fwd60": {"n": 54, "avg": 2.07, "win": 59.3, "med": 1.88}}, "C": {"k": 8, "pct": 14.8, "ci": [7.7, 26.6], "lift": 1.9, "fwd60": {"n": 54, "avg": 2.07, "win": 59.3, "med": 1.88}}, "D": {"k": 2, "pct": 3.7, "ci": [1.0, 12.5], "lift": 4.62, "fwd60": {"n": 54, "avg": 2.07, "win": 59.3, "med": 1.88}}}, "S_conf": {"label": "已触发拐点确认", "all_n": 114, "dedup_n": 36, "A": {"k": 9, "pct": 25.0, "ci": [13.8, 41.1], "lift": 1.04, "fwd60": {"n": 36, "avg": 3.46, "win": 52.8, "med": 1.57}}, "B": {"k": 4, "pct": 11.1, "ci": [4.4, 25.3], "lift": 2.06, "fwd60": {"n": 36, "avg": 3.46, "win": 52.8, "med": 1.57}}, "C": {"k": 7, "pct": 19.4, "ci": [9.8, 35.0], "lift": 2.49, "fwd60": {"n": 36, "avg": 3.46, "win": 52.8, "med": 1.57}}, "D": {"k": 3, "pct": 8.3, "ci": [2.9, 21.8], "lift": 10.38, "fwd60": {"n": 36, "avg": 3.46, "win": 52.8, "med": 1.57}}}, "S_low": {"label": "无底部共振<20", "all_n": 709, "dedup_n": 57, "A": {"k": 15, "pct": 26.3, "ci": [16.6, 39.0], "lift": 1.1, "fwd60": {"n": 57, "avg": -0.16, "win": 54.4, "med": 0.65}}, "B": {"k": 4, "pct": 7.0, "ci": [2.8, 16.7], "lift": 1.3, "fwd60": {"n": 57, "avg": -0.16, "win": 54.4, "med": 0.65}}, "C": {"k": 0, "pct": 0.0, "ci": [0, 6.3], "lift": 0.0, "fwd60": {"n": 57, "avg": -0.16, "win": 54.4, "med": 0.65}}, "D": {"k": 0, "pct": 0.0, "ci": [0, 6.3], "lift": 0.0, "fwd60": {"n": 57, "avg": -0.16, "win": 54.4, "med": 0.65}}}}, "verdicts": {"方向相反": 10, "符合预期": 4, "弱相反": 1, "不显著": 6, "样本不足": 3, "弱符合": 1}, "indicators": [{"key": "rp", "name": "A股风险溢价", "grp": "分项", "score": 1.97, "pct": 98.03, "reverse": true, "low": {"n": 128, "avg": -0.23, "win": 43.0, "med": -1.07}, "high": {"n": 45, "avg": 1.69, "win": 51.1, "med": 0.22}, "sp": -1.92, "verdict": "方向相反", "bearish": true}, {"key": "fx_fe", "name": "新基金发行", "grp": "分项", "score": 0.49, "pct": 0.49, "reverse": false, "low": {"n": 12, "avg": -0.61, "win": 33.3, "med": -3.69}, "high": {"n": 23, "avg": 0.81, "win": 43.5, "med": -1.32}, "sp": -1.42, "verdict": "方向相反", "bearish": true}, {"key": "pgjj_zsy", "name": "正收益偏股基金占比", "grp": "分项", "score": 60.54, "pct": 60.54, "reverse": false, "low": {"n": 104, "avg": 2.16, "win": 50.0, "med": 0.07}, "high": {"n": 117, "avg": 1.06, "win": 44.4, "med": -2.72}, "sp": 1.1, "verdict": "符合预期", "bearish": false}, {"key": "qschsl", "name": "全市场换手率", "grp": "分项", "score": 77.87, "pct": 77.87, "reverse": false, "low": {"n": 68, "avg": 1.63, "win": 57.4, "med": 1.84}, "high": {"n": 80, "avg": 0.54, "win": 47.5, "med": -0.47}, "sp": 1.09, "verdict": "符合预期", "bearish": false}, {"key": "pcr", "name": "PCR", "grp": "分项", "score": 9.05, "pct": 9.05, "reverse": false, "low": {"n": 40, "avg": -0.98, "win": 35.0, "med": -1.74}, "high": {"n": 43, "avg": -0.12, "win": 44.2, "med": -1.78}, "sp": -0.86, "verdict": "弱相反", "bearish": true}, {"key": "zzpgnh", "name": "股基滚动年化收益", "grp": "分项", "score": 33.56, "pct": 33.56, "reverse": false, "low": {"n": 92, "avg": 0.22, "win": 42.4, "med": -1.38}, "high": {"n": 81, "avg": 7.03, "win": 63.0, "med": 5.39}, "sp": -6.81, "verdict": "方向相反", "bearish": true}, {"key": "magic", "name": "神奇指标", "grp": "分项", "score": 73.06, "pct": 26.94, "reverse": true, "low": {"n": 134, "avg": 1.68, "win": 49.3, "med": -0.21}, "high": {"n": 67, "avg": 2.93, "win": 56.7, "med": 1.75}, "sp": -1.25, "verdict": "方向相反", "bearish": false}, {"key": "etf300_ratio", "name": "头部300ETF占沪深300流通市值比例", "grp": "结构", "score": 77.87, "pct": 77.87, "reverse": false, "low": {"n": 15, "avg": 1.68, "win": 66.7, "med": 0.76}, "high": {"n": 84, "avg": 0.33, "win": 40.5, "med": -0.91}, "sp": 1.35, "verdict": "符合预期", "bearish": false}, {"key": "margin_growth", "name": "两融余额60日增速", "grp": "结构", "score": 3.65, "pct": 3.65, "reverse": false, "low": {"n": 94, "avg": 0.97, "win": 54.3, "med": 1.13}, "high": {"n": 37, "avg": 3.32, "win": 48.6, "med": -0.88}, "sp": -2.35, "verdict": "方向相反", "bearish": true}, {"key": "breadth_ma200", "name": "全A站上200日均线占比", "grp": "结构", "score": 2.31, "pct": 2.31, "reverse": false, "low": {"n": 49, "avg": 1.03, "win": 51.0, "med": 0.26}, "high": {"n": 75, "avg": 0.73, "win": 56.0, "med": 1.32}, "sp": 0.3, "verdict": "不显著", "bearish": true}, {"key": "a_pb", "name": "全A市净率中位数（月频）", "grp": "结构", "score": 11.98, "pct": 11.98, "reverse": false, "low": {"n": 45, "avg": 4.04, "win": 53.3, "med": 0.97}, "high": {"n": 59, "avg": 5.56, "win": 57.6, "med": 2.1}, "sp": -1.52, "verdict": "方向相反", "bearish": true}, {"key": "erp_attrib", "name": "ERP 股债归因（便宜是真便宜吗）", "grp": "结构", "score": 1.97, "pct": 98.03, "reverse": true, "low": {"n": 128, "avg": -0.23, "win": 43.0, "med": -1.07}, "high": {"n": 45, "avg": 1.69, "win": 51.1, "med": 0.22}, "sp": -1.92, "verdict": "方向相反", "bearish": true}, {"key": "fund_position", "name": "公募基金股票仓位", "grp": "结构", "score": 99.35, "pct": 99.35, "reverse": false, "low": {"n": 22, "avg": 3.12, "win": 54.5, "med": 1.51}, "high": {"n": 62, "avg": 0.26, "win": 48.4, "med": -0.67}, "sp": 2.86, "verdict": "符合预期", "bearish": false}, {"key": "m1m2", "name": "M1-M2 剪刀差（资金活化）", "grp": "结构", "score": 66.59, "pct": 66.59, "reverse": false, "low": {"n": 42, "avg": 0.12, "win": 45.2, "med": -0.96}, "high": {"n": 23, "avg": 1.2, "win": 69.6, "med": 2.74}, "sp": -1.08, "verdict": "方向相反", "bearish": false}, {"key": "repurchase", "name": "A股回购规模（滚动12月）", "grp": "结构", "score": 92.31, "pct": 92.31, "reverse": false, "low": {"n": 2, "avg": 3.04, "win": 100.0, "med": 5.08}, "high": {"n": 44, "avg": 0.74, "win": 52.3, "med": 0.5}, "sp": 2.3, "verdict": "样本不足", "bearish": false}, {"key": "holder_change", "name": "重要股东增减持（滚动12月净额）", "grp": "结构", "score": 35.61, "pct": 35.61, "reverse": false, "low": {"n": 36, "avg": -0.23, "win": 47.2, "med": -0.88}, "high": {"n": 2, "avg": 6.75, "win": 50.0, "med": 15.37}, "sp": -6.98, "verdict": "样本不足", "bearish": false}, {"key": "below_net", "name": "破净率（全A破净个股占比）", "grp": "顶底", "score": 5.07, "pct": 94.93, "reverse": true, "low": {"n": 139, "avg": 1.84, "win": 45.3, "med": -0.91}, "high": {"n": 58, "avg": 6.56, "win": 51.7, "med": 1.09}, "sp": -4.72, "verdict": "方向相反", "bearish": true}, {"key": "nhnl", "name": "新高新低差（NH-NL）", "grp": "顶底", "score": 0.21, "pct": 0.21, "reverse": false, "low": {"n": 99, "avg": 0.83, "win": 52.5, "med": 1.25}, "high": {"n": 92, "avg": 0.18, "win": 53.3, "med": 0.66}, "sp": 0.65, "verdict": "弱符合", "bearish": true}, {"key": "adv_ratio", "name": "上涨家数占比与动能广度", "grp": "顶底", "score": 1.52, "pct": 1.52, "reverse": false, "low": {"n": 128, "avg": 0.37, "win": 51.6, "med": 0.2}, "high": {"n": 126, "avg": 0.05, "win": 49.2, "med": -0.11}, "sp": 0.32, "verdict": "不显著", "bearish": true}, {"key": "hs300_rsi", "name": "沪深300 RSI14（超卖/超买）", "grp": "顶底", "score": 5.44, "pct": 5.44, "reverse": false, "low": {"n": 175, "avg": 0.33, "win": 46.9, "med": -0.84}, "high": {"n": 176, "avg": 4.23, "win": 56.2, "med": 1.19}, "sp": -3.9, "verdict": "方向相反", "bearish": true}, {"key": "arms", "name": "阿姆氏指标 TRIN（Arms Index）", "grp": "顶底", "score": 0.14, "pct": 0.14, "reverse": false, "low": {"n": 130, "avg": 1.04, "win": 50.8, "med": 0.56}, "high": {"n": 126, "avg": 1.22, "win": 54.8, "med": 0.65}, "sp": -0.18, "verdict": "不显著", "bearish": true}, {"key": "breadth_score", "name": "市场宽广度综合指标", "grp": "顶底", "score": 0.36, "pct": 0.36, "reverse": false, "low": {"n": 81, "avg": 1.09, "win": 55.6, "med": 2.09}, "high": {"n": 90, "avg": 0.73, "win": 54.4, "med": 1.17}, "sp": 0.36, "verdict": "不显著", "bearish": true}, {"key": "mcclellan", "name": "麦克莱伦摆动指标（市场宽广度动能）", "grp": "顶底", "score": 1.14, "pct": 1.14, "reverse": false, "low": {"n": 107, "avg": 1.59, "win": 57.9, "med": 1.66}, "high": {"n": 111, "avg": 1.29, "win": 53.2, "med": 0.8}, "sp": 0.3, "verdict": "不显著", "bearish": true}, {"key": "crowding", "name": "交易拥挤度（前5%个股成交额占比）", "grp": "拥挤度", "score": 85.17, "pct": 85.17, "reverse": false, "low": {"n": 45, "avg": 0.37, "win": 53.3, "med": 0.33}, "high": {"n": 109, "avg": 0.67, "win": 51.4, "med": 0.15}, "sp": -0.3, "verdict": "不显著", "bearish": false}, {"key": "composite", "name": "综合情绪分", "grp": "总览", "score": 36.65, "pct": null, "reverse": false, "low": {"n": 0, "avg": null, "win": null, "med": null}, "high": {"n": 0, "avg": null, "win": null, "med": null}, "sp": null, "verdict": "样本不足", "bearish": false}], "cases": {"S_cur": ["2018-05-30", "2018-07-05", "2018-08-03", "2018-09-05", "2018-10-12", "2018-11-29", "2018-12-27", "2022-09-30", "2024-01-31", "2024-06-21", "2024-07-24", "2024-08-22"], "S_90": ["2018-05-30", "2018-07-05", "2018-08-03", "2018-09-05", "2018-10-12", "2018-11-29", "2018-12-27", "2022-09-30", "2024-01-31", "2024-06-21", "2024-07-24", "2024-08-22"], "S_any": ["2023-12-18", "2024-01-17", "2024-03-27", "2024-05-29", "2024-06-27", "2024-07-25", "2024-08-22", "2024-09-23", "2024-11-25", "2025-01-02", "2025-03-31", "2026-08-03"], "S_conf": ["2022-10-31", "2022-12-20", "2023-05-30", "2023-09-20", "2023-12-25", "2024-03-27", "2024-05-29", "2024-06-27", "2024-07-25", "2024-08-26", "2024-11-26", "2025-01-08"], "S_low": ["2025-07-01", "2025-07-29", "2025-08-26", "2025-09-24", "2025-10-30", "2025-11-28", "2025-12-26", "2026-01-27", "2026-03-05", "2026-04-08", "2026-05-11", "2026-06-15"]}, "vote": {"bearish_n": 15, "support": 1, "oppose": 9, "neutral": 5, "bearish_names": ["A股风险溢价", "新基金发行", "PCR", "股基滚动年化收益", "两融余额60日增速", "全A站上200日均线占比", "全A市净率中位数（月频）", "ERP 股债归因（便宜是真便宜吗）", "破净率（全A破净个股占比）", "新高新低差（NH-NL）", "上涨家数占比与动能广度", "沪深300 RSI14（超卖/超买）", "阿姆氏指标 TRIN（Arms Index）", "市场宽广度综合指标", "麦克莱伦摆动指标（市场宽广度动能）"]}, "composite_cond": {"综合分<=36.65(当前及以下)": {"n": 49, "k": 7, "pct": 14.3, "ci": [7.1, 26.7], "fwd60": {"n": 49, "avg": 0.93, "win": 49.0, "med": -0.43}}, "综合分<35(悲观)": {"n": 41, "k": 10, "pct": 24.4, "ci": [13.8, 39.3], "fwd60": {"n": 41, "avg": 1.43, "win": 48.8, "med": -0.43}}, "综合分>65(亢奋)": {"n": 6, "k": 1, "pct": 16.7, "ci": [3.0, 56.4], "fwd60": {"n": 6, "avg": -4.48, "win": 33.3, "med": -12.33}}}, "turning_backtest": [{"key": "bottom_confirm", "label": "底部拐点触发", "n": 42, "n20": 41, "win20": 58.5, "avg20": 0.28, "med20": 0.8, "n60": 40, "win60": 52.5, "avg60": 2.44, "med60": 0.62}, {"key": "bottom_extreme", "label": "底部极值(未确认)", "n": 36, "n20": 35, "win20": 54.3, "avg20": 1.24, "med20": 0.85, "n60": 34, "win60": 67.6, "avg60": 4.1, "med60": 3.54}, {"key": "top_warning", "label": "顶部警戒", "n": 4, "n20": 4, "win20": 75.0, "avg20": 3.1, "med20": 3.67, "n60": 4, "win60": 50.0, "avg60": 0.73, "med60": 0.61}, {"key": "baseline", "label": "全样本基准(每20日)", "n": 132, "n20": 131, "win20": 51.9, "avg20": 0.32, "med20": 0.07, "n60": 129, "win60": 55.0, "avg60": 1.19, "med60": 1.23}], "triggers_recent": [{"date": "2026-11-16", "kind": "底部极值(未确认)", "bottom_score": 84.6, "top_score": 0.0, "confirm": 0, "ret20": null, "ret60": null}, {"date": "2026-11-02", "kind": "底部拐点触发", "bottom_score": 75.0, "top_score": 8.3, "confirm": 1, "ret20": null, "ret60": null}, {"date": "2026-10-14", "kind": "底部极值(未确认)", "bottom_score": 75.0, "top_score": 0.0, "confirm": 0, "ret20": -3.37, "ret60": null}, {"date": "2026-09-24", "kind": "底部拐点触发", "bottom_score": 61.5, "top_score": 0.0, "confirm": 1, "ret20": -10.22, "ret60": null}, {"date": "2026-01-12", "kind": "顶部警戒", "bottom_score": 0.0, "top_score": 61.5, "confirm": 3, "ret20": -1.48, "ret60": -2.19}, {"date": "2025-08-20", "kind": "顶部警戒", "bottom_score": 15.4, "top_score": 61.5, "confirm": 3, "ret20": 6.55, "ret60": 6.87}], "turning_disclaimer": "共振度是赔率统计而非择时信号。阈值为本脚本设定、未做样本外检验，触发日按20交易日去重但收益窗口仍重叠，未计交易成本与滑点；低利率环境下 ERP 抬升可能来自债券收益率下行而非股票便宜。各维度统一对齐 2015 年起交易日历、分位用 expanding(min_periods=250)，与单卡「自身全历史 + min_periods=20」的分位略有差异属口径不同、并非计算错误；极端单边日（上涨家数占比<20% 或 >80%）TRIN 会因家数比失真而机械偏低或偏高，该情形下的 TRIN 维度已按阿姆氏卡片的警示剔除。极值可长期钝化，政策与盈利才决定反弹还是反转。仅供研究参考，不构成投资建议。", "dims": [{"key": "erp", "name": "股债风险溢价", "unit": "%", "direction": 1, "value": 2.712, "pct": 97.3, "fear": 97.3, "trend": "↑", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "below_net", "name": "破净率", "unit": "%", "direction": 1, "value": 10.95, "pct": 95.4, "fear": 95.4, "trend": "↑", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "breadth", "name": "站上200日线占比", "unit": "%", "direction": -1, "value": 5.957, "pct": 2.3, "fear": 97.7, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "nhnl", "name": "新高新低差", "unit": "%", "direction": -1, "value": -74.051, "pct": 0.2, "fear": 99.8, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "turnover", "name": "全市场换手率", "unit": "%", "direction": -1, "value": 1.55, "pct": 78.0, "fear": 22.0, "trend": "↓", "is_bottom": false, "is_top": false, "last_date": "2026-11-20"}, {"key": "pcr", "name": "PCR", "unit": "", "direction": -1, "value": 0.641, "pct": 9.1, "fear": 90.9, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "margin", "name": "两融60日增速", "unit": "%", "direction": -1, "value": -16.978, "pct": 4.3, "fear": 95.7, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "pb", "name": "全A PB中位数", "unit": "倍", "direction": -1, "value": 2.11, "pct": 7.6, "fear": 92.4, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "fund_ann", "name": "股基3年年化", "unit": "%", "direction": -1, "value": -0.239, "pct": 20.5, "fear": 79.5, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "bias20", "name": "沪深300 BIAS20", "unit": "%", "direction": -1, "value": -1.981, "pct": 19.4, "fear": 80.6, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "rsi14", "name": "沪深300 RSI14", "unit": "", "direction": -1, "value": 30.959, "pct": 4.1, "fear": 95.9, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}, {"key": "arms", "name": "阿姆氏指标 TRIN10", "unit": "", "direction": 1, "value": 0.64, "pct": 1.0, "fear": 1.0, "trend": "↓", "is_bottom": false, "is_top": false, "last_date": "2026-11-20", "masked": true, "masked_label": "已剔除·普跌日"}, {"key": "mcc", "name": "麦克莱伦摆动值", "unit": "pp", "direction": -1, "value": -11.525, "pct": 1.1, "fear": 98.9, "trend": "↓", "is_bottom": true, "is_top": false, "last_date": "2026-11-20"}], "sensitivity": [{"thr": 75, "gap": 10, "n": 43, "A": 20.9, "C": 23.3, "D": 11.6, "win60": 65.1}, {"thr": 75, "gap": 20, "n": 29, "A": 17.2, "C": 24.1, "D": 6.9, "win60": 65.5}, {"thr": 75, "gap": 40, "n": 20, "A": 20.0, "C": 15.0, "D": 5.0, "win60": 60.0}, {"thr": 80, "gap": 10, "n": 32, "A": 15.6, "C": 18.8, "D": 15.6, "win60": 65.6}, {"thr": 80, "gap": 20, "n": 22, "A": 18.2, "C": 13.6, "D": 18.2, "win60": 59.1}, {"thr": 80, "gap": 40, "n": 16, "A": 18.8, "C": 12.5, "D": 18.8, "win60": 56.2}, {"thr": 85, "gap": 10, "n": 22, "A": 18.2, "C": 18.2, "D": 13.6, "win60": 68.2}, {"thr": 85, "gap": 20, "n": 15, "A": 20.0, "C": 20.0, "D": 13.3, "win60": 60.0}, {"thr": 85, "gap": 40, "n": 10, "A": 20.0, "C": 20.0, "D": 10.0, "win60": 60.0}, {"thr": 90, "gap": 10, "n": 21, "A": 19.0, "C": 19.0, "D": 14.3, "win60": 66.7}, {"thr": 90, "gap": 20, "n": 14, "A": 21.4, "C": 21.4, "D": 14.3, "win60": 57.1}, {"thr": 90, "gap": 40, "n": 10, "A": 30.0, "C": 30.0, "D": 10.0, "win60": 60.0}], "fwd_sensitivity": [{"w": 20, "grp": "S_cur", "n": 15, "pct": 33.3}, {"w": 20, "grp": "基准", "n": 129, "pct": 37.2}, {"w": 40, "grp": "S_cur", "n": 15, "pct": 26.7}, {"w": 40, "grp": "基准", "n": 129, "pct": 27.1}, {"w": 60, "grp": "S_cur", "n": 15, "pct": 20.0}, {"w": 60, "grp": "基准", "n": 129, "pct": 24.0}, {"w": 90, "grp": "S_cur", "n": 15, "pct": 20.0}, {"w": 90, "grp": "基准", "n": 128, "pct": 20.3}]};
+var C1 = echarts.init(document.getElementById('c1'));
+C1.setOption({
+  tooltip:{trigger:'axis',valueFormatter:function(v){return v+'%';}},
+  legend:{data:['随机基准','当前状态'],top:0},
+  grid:{left:50,right:20,top:40,bottom:60},
+  xAxis:{type:'category',data:['A 跌完了','B 严格底','C 低位区','D 精确低点'],axisLabel:{interval:0}},
+  yAxis:{type:'value',name:'概率 (%)',max:30},
+  series:[
+    {name:'随机基准',type:'bar',data:['A','B','C','D'].map(function(k){return R.baseline[k].dedup_pct;}),itemStyle:{color:'#9aa4b2'},barGap:'10%'},
+    {name:'当前状态',type:'bar',data:['A','B','C','D'].map(function(k){return R.conditions.S_cur[k].pct;}),itemStyle:{color:'#d94a3d'}}
+  ]
+});
+var BT = R.turning_backtest;
+var C2 = echarts.init(document.getElementById('c2'));
+C2.setOption({
+  tooltip:{trigger:'axis'},
+  legend:{data:['60日胜率','60日平均收益'],top:0},
+  grid:{left:52,right:52,top:40,bottom:46},
+  xAxis:{type:'category',data:BT.map(function(b){return b.label;}),axisLabel:{interval:0,fontSize:11}},
+  yAxis:[{type:'value',name:'胜率 (%)',max:80},{type:'value',name:'收益 (%)',max:6}],
+  series:[
+    {name:'60日胜率',type:'bar',data:BT.map(function(b){return b.win60;}),itemStyle:{color:'#d94a3d'}},
+    {name:'60日平均收益',type:'line',yAxisIndex:1,data:BT.map(function(b){return b.avg60;}),itemStyle:{color:'#2f6fdb'},lineStyle:{width:3},symbolSize:9}
+  ]
+});
+var VD = R.verdicts;
+var C3 = echarts.init(document.getElementById('c3'));
+C3.setOption({
+  tooltip:{trigger:'item',formatter:'{b}: {c} 项 ({d}%)'},
+  legend:{bottom:0,itemWidth:12,textStyle:{fontSize:11}},
+  series:[{type:'pie',radius:['38%','66%'],center:['50%','44%'],
+    data:Object.keys(VD).map(function(k){return {name:k,value:VD[k]};}),
+    itemStyle:{borderColor:'#fff',borderWidth:2},
+    label:{fontSize:11}}]
+});
+window.addEventListener('resize',function(){C1.resize();C2.resize();C3.resize();});
+</script></body></html>

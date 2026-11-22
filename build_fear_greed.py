@@ -164,12 +164,110 @@ def clean_qvix(s: pd.Series) -> pd.Series:
     return s.where((s / med - 1).abs() < 0.35, med)
 
 
-def _qvix_one(n: str) -> pd.Series:
-    """取单一 QVIX 序列并做中值滤波清洗。"""
-    d = getattr(ak, "index_option_" + n + "_qvix")()
-    d["date"] = pd.to_datetime(d["date"]).dt.strftime("%Y-%m-%d")
-    d = d[d["close"].fillna(0) > 0].drop_duplicates("date", keep="last")
-    return clean_qvix(d.set_index("date")["close"].sort_index())
+# ---------------- QVIX 抓取：重试 + 多级降级 ----------------
+# 2026-11-22 实测 optbbs 全站 502（1/2/0.optbbs.com 与 www 均不可用），
+# akshare 的 4 个 QVIX 接口共用同一份 k.csv，单点故障会让整条恐贪链中断。
+# 因此按「重试 → 本地缓存 → mood_qvix.csv → 上一版 index_data.json 的隐波序列」
+# 逐级降级，并在卡片 source_note 与 JSON 里写明降级来源，不静默造数。
+QVIX_KIND_TO_INDEX = {
+    "market": "allmarket", "300etf": "hs300", "500etf": "zz500",
+    "1000hybrid": "zz1000", "100etf": "zz2000", "cyb": "cyb", "kcb": "kcb",
+}
+QVIX_FALLBACK = {}   # kind -> (来源说明, 数据截止日)
+
+
+def _qvix_cache_path(kind: str) -> str:
+    return os.path.join(DATA, f"fear_greed_qvix_{kind}.csv")
+
+
+def _write_qvix_cache(kind: str, s: pd.Series):
+    try:
+        s.to_csv(_qvix_cache_path(kind))
+    except Exception:
+        pass
+
+
+def _read_qvix_cache(kind: str):
+    p = _qvix_cache_path(kind)
+    if not os.path.exists(p):
+        return None
+    try:
+        s = pd.read_csv(p, index_col=0, parse_dates=True).iloc[:, 0].dropna()
+        s.index = pd.to_datetime(s.index)
+        s.name = "qvix"
+        return s.sort_index()
+    except Exception:
+        return None
+
+
+def _qvix_from_mood(kind: str):
+    """mood_qvix.csv 由 build_confirm.py --qvix-full 生成，含 50/300/500ETF 三个序列。"""
+    p = os.path.join(DATA, "mood_qvix.csv")
+    if not os.path.exists(p):
+        return None
+    try:
+        d = pd.read_csv(p, index_col=0, parse_dates=True)
+    except Exception:
+        return None
+    if kind == "market":
+        cols = [c for c in ("qvix_50etf", "qvix_300etf", "qvix_500etf") if c in d.columns]
+        if len(cols) != 3:
+            return None
+        sub = d[cols].dropna()
+        if sub.empty:
+            return None
+        s = sub.mean(axis=1)
+    else:
+        col = {"300etf": "qvix_300etf", "500etf": "qvix_500etf"}.get(kind)
+        if not col or col not in d.columns:
+            return None
+        s = d[col].dropna()
+    if s.empty:
+        return None
+    s.index = pd.to_datetime(s.index)
+    s.name = "qvix"
+    return s.sort_index()
+
+
+def _qvix_from_prev_index(kind: str):
+    """上一版 index_data.json 里每个指数的 volatility 因子保存了逐日隐波序列。"""
+    key = QVIX_KIND_TO_INDEX.get(kind)
+    p = os.path.join(DATA, "index_data.json")
+    if not key or not os.path.exists(p):
+        return None
+    try:
+        with open(p, encoding="utf-8") as f:
+            d = json.load(f)
+        for fac in (d.get("indices", {}).get(key, {}) or {}).get("factors", []) or []:
+            if fac.get("key") != "volatility":
+                continue
+            rows = fac.get("series") or []
+            s = pd.Series({r["date"]: r["value"] for r in rows if r.get("value") is not None})
+            if s.empty:
+                return None
+            s.index = pd.to_datetime(s.index)
+            s = s.sort_index()
+            s.name = "qvix"
+            return s
+    except Exception:
+        return None
+    return None
+
+
+def _qvix_live(n: str) -> pd.Series:
+    """取单一 QVIX 序列并做中值滤波清洗；3 次重试应对源站偶发 502。"""
+    last = None
+    for attempt in range(3):
+        try:
+            d = getattr(ak, "index_option_" + n + "_qvix")()
+            d["date"] = pd.to_datetime(d["date"]).dt.strftime("%Y-%m-%d")
+            d = d[d["close"].fillna(0) > 0].drop_duplicates("date", keep="last")
+            return clean_qvix(d.set_index("date")["close"].sort_index())
+        except Exception as e:  # noqa: BLE001 - 源站异常种类不固定
+            last = e
+            if attempt < 2:
+                time.sleep(1.2 * (attempt + 1))
+    raise RuntimeError(f"{type(last).__name__}: {last}")
 
 
 def fetch_qvix_1000hybrid() -> pd.Series:
@@ -180,8 +278,8 @@ def fetch_qvix_1000hybrid() -> pd.Series:
     因此：专属真实段用至 2025-12-31；此后用 500ETF QVIX 按重叠期回归系数校准衔接，
     使量纲与专属序列一致，同时保留 2026 年隐波飙升的信息。
     """
-    own = _qvix_one("1000index")   # 专属中证1000股指期权波指
-    proxy = _qvix_one("500etf")    # 500ETF 期权波指代理
+    own = _qvix_live("1000index")   # 专属中证1000股指期权波指
+    proxy = _qvix_live("500etf")    # 500ETF 期权波指代理
     # 用 2022-07-22 起的重叠期拟合 own = a * proxy + b
     idx = own.index.intersection(proxy.index)
     idx = idx[idx >= "2022-07-22"]
@@ -196,19 +294,48 @@ def fetch_qvix_1000hybrid() -> pd.Series:
     return s
 
 
-def fetch_qvix(kind: str) -> pd.Series:
-    """按配置获取隐波。kind=market 用50/300/500ETF等权合成；1000hybrid 为专属+校准拼接。"""
+def _fetch_qvix_live(kind: str) -> pd.Series:
+    """按配置实时获取隐波。kind=market 用50/300/500ETF等权合成；1000hybrid 为专属+校准拼接。"""
     if kind == "1000hybrid":
         return fetch_qvix_1000hybrid()
     if kind == "market":
-        q50, q300, q500 = _qvix_one("50etf"), _qvix_one("300etf"), _qvix_one("500etf")
+        q50, q300, q500 = _qvix_live("50etf"), _qvix_live("300etf"), _qvix_live("500etf")
         idx = q300.index.intersection(q500.index).intersection(q50.index)
         s = (q50.loc[idx] + q300.loc[idx] + q500.loc[idx]) / 3
         s.name = "qvix"
         return s
-    s = _qvix_one(kind)
+    s = _qvix_live(kind)
     s.name = "qvix"
     return s
+
+
+def _norm_qvix(s: pd.Series) -> pd.Series:
+    """统一成 YYYY-MM-DD 字符串索引：实时接口与本地 CSV/JSON 降级源索引类型不同，
+    不统一会让 df.join 静默落空，最终 dropna 后得到空结果。"""
+    s = s.copy()
+    s.index = pd.to_datetime(s.index).strftime("%Y-%m-%d")
+    return s
+
+
+def fetch_qvix(kind: str) -> pd.Series:
+    """先实时抓取并写缓存；源站不可用时按本地缓存 → mood_qvix.csv → 上一版指数数据逐级降级。"""
+    try:
+        s = _norm_qvix(_fetch_qvix_live(kind))
+        _write_qvix_cache(kind, s)
+        return s
+    except Exception as e:  # noqa: BLE001
+        print(f"  [警告] 隐波源不可用（{kind}）：{type(e).__name__} {str(e)[:80]}", flush=True)
+        for label, loader in (("本地缓存", _read_qvix_cache),
+                              ("mood_qvix.csv", _qvix_from_mood),
+                              ("上一版 index_data.json", _qvix_from_prev_index)):
+            s = loader(kind)
+            if s is not None and len(s):
+                s = _norm_qvix(s)
+                QVIX_FALLBACK[kind] = (label, str(s.index.max()))
+                _write_qvix_cache(kind, s)   # 把降级序列固化，避免旧数据文件被覆盖后彻底丢失
+                print(f"  [降级] 使用{label}，隐波截至 {s.index.max()}", flush=True)
+                return s
+        raise RuntimeError(f"隐波 {kind} 无可用数据（源不可用且无本地缓存）") from e
 
 
 def fetch_constituents(index_code: str) -> list[str]:
@@ -455,10 +582,13 @@ def build_index(key: str, cfg: dict, shared: dict) -> dict:
     history = [{"date": d, "value": round(float(v), 2)} for d, v in final.items()]
     last = history[-1]
     state, color = state_of(last["value"])
+    fb = QVIX_FALLBACK.get(cfg["qvix"])
+    fb_note = (f" 本次隐波源不可用，隐波沿用{fb[0]}（截至 {fb[1]}），指数仍按最新价格与其余因子重算。"
+               if fb else "")
     return {
         "value": last["value"], "date": last["date"], "desc": state, "color": color,
         "has_data": True, "source": "transparent-reimplementation",
-        "source_note": f"{cfg['name']}恐贪指数为透明复刻实现(非官方数值)：以隐波45%+150日乖离45%为核心(合计90%)，其余因子分摊10%，以便敏锐捕捉隐波飙升与价格深跌。{cfg['note']} 数据源 akshare。",
+        "source_note": f"{cfg['name']}恐贪指数为透明复刻实现(非官方数值)：以隐波45%+150日乖离45%为核心(合计90%)，其余因子分摊10%，以便敏锐捕捉隐波飙升与价格深跌。{cfg['note']} 数据源 akshare。{fb_note}",
         "history": history, "factors": factors,
     }
 
@@ -474,9 +604,17 @@ def main():
     for key, cfg in INDEX_CFG.items():
         if cfg["spot_type"] == "index" and cfg["spot"] not in spot:
             spot[cfg["spot"]] = fetch_index(cfg["spot"])["close"]
-    qvix = {}
-    for kind in set(c["qvix"] for c in INDEX_CFG.values()):
-        qvix[kind] = fetch_qvix(kind)
+    qvix, qvix_missing = {}, {}
+    for kind in sorted(set(c["qvix"] for c in INDEX_CFG.values())):
+        try:
+            qvix[kind] = fetch_qvix(kind)
+        except Exception as e:  # noqa: BLE001
+            qvix_missing[kind] = str(e)[:120]
+            print(f"  [跳过] 隐波 {kind} 无可用数据：{e}", flush=True)
+    if not qvix:
+        # 隐波是核心因子(45%)，一条都没有时绝不写入半成品；保留上一版 index_data.json
+        print("[跳过] 所有隐波序列均不可用，保留上一版 index_data.json，本次不重建恐贪指数。", flush=True)
+        return
     bond = fetch_bond()
     turnover = fetch_turnover()
     # 全市场近似 strength（用于全市场指数/抓取失败时的降级）
@@ -498,15 +636,30 @@ def main():
     print("[3/4] 逐指数计算 ...", flush=True)
     indices = {}
     for key, cfg in INDEX_CFG.items():
+        if cfg["qvix"] not in qvix:
+            print(f"  [跳过] {cfg['name']}：隐波 {cfg['qvix']} 暂缺", flush=True)
+            continue
         try:
             indices[key] = build_index(key, cfg, shared)
         except Exception as e:
             print(f"  [ERROR] {key} 构建失败: {type(e).__name__} {str(e)[:100]}", flush=True)
 
+    if not indices:
+        print("[跳过] 没有任何指数构建成功，保留上一版 index_data.json。", flush=True)
+        return
+
+    unavailable = [{"key": k, "name": c["name"], "qvix": c["qvix"],
+                    "reason": qvix_missing.get(c["qvix"], "构建失败")}
+                   for k, c in INDEX_CFG.items() if k not in indices]
+
     out = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "indices": indices,
         "meta": {k: {"name": c["name"], "code": c["code"], "note": c["note"]} for k, c in INDEX_CFG.items()},
+        # 隐波降级记录：页面 source_note 同步写明，便于事后核对哪几天用的是旧隐波
+        "qvix_fallback": {k: {"source": v[0], "as_of": v[1]} for k, v in QVIX_FALLBACK.items()},
+        # 本次未能重算的指数（隐波源故障 / 构建失败），页面会提示，不静默消失
+        "unavailable": unavailable,
     }
     path = os.path.join(DATA, "index_data.json")
     with open(path, "w", encoding="utf-8") as f:
