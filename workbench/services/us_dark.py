@@ -892,11 +892,11 @@ class UsDarkFeed:
     def sparklines(self, hours: int = 24):
         """批量迷你走势 + 上一美股交易日涨跌幅。
 
-        每个标的取最近 7 天的 1h 收盘（一次请求同时供两列使用）：
+        每个标的取最近 5 天的 1h 收盘（一次请求同时供两列使用）：
           - series：最近 hours 小时收盘，给表格折线；
           - prev_day：上一美股交易日 16:00 ET 收盘 vs 再前一交易日 16:00 ET 收盘，
             周末保持不变，便于看“周五收盘是涨是跌”。
-        66 个标的并发（8 线程），缓存 5 分钟；同一时间只允许一个请求在跑。
+        66 个标的并发（6 线程）；失败的标的再补抓一轮；部分成功会与旧缓存合并。
         """
         hours = max(6, min(int(hours or 24), 48))
         with self._lock:
@@ -914,15 +914,21 @@ class UsDarkFeed:
             return hit[1] if hit else empty
         try:
             now = now_ms()
-            start = now - 7 * 86400 * 1000
+            start = now - 5 * 86400 * 1000
             last, prior, cut_last, cut_prior = _last_us_sessions()
 
             def one(coin):
-                try:
-                    rows = post_info({"type": "candleSnapshot",
-                                      "req": {"coin": coin, "interval": "1h", "startTime": start}},
-                                     timeout=10.0)
-                except Exception:  # noqa: BLE001 - 单个标的失败不影响整表
+                rows = None
+                for attempt in range(2):
+                    try:
+                        rows = post_info({"type": "candleSnapshot",
+                                          "req": {"coin": coin, "interval": "1h", "startTime": start}},
+                                         timeout=12.0)
+                        break
+                    except Exception:  # noqa: BLE001 - 单个标的失败不影响整表
+                        if attempt == 0:
+                            time.sleep(0.25)
+                if rows is None:
                     return coin, [], None
                 pts = []
                 for r in rows or []:
@@ -979,19 +985,42 @@ class UsDarkFeed:
                 return coin, series, prev
 
             series, prev_day = {}, {}
-            with ThreadPoolExecutor(max_workers=8) as ex:
-                try:
-                    for coin, closes, prev in ex.map(one, coins, timeout=45):
-                        if len(closes) >= 2:
-                            series[coin] = closes
-                        if prev:
-                            prev_day[coin] = prev
-                except TimeoutError:
-                    pass
+
+            def collect(items, workers, wait):
+                with ThreadPoolExecutor(max_workers=workers) as ex:
+                    try:
+                        for coin, closes, prev in ex.map(one, items, timeout=wait):
+                            if len(closes) >= 2:
+                                series[coin] = closes
+                            if prev:
+                                prev_day[coin] = prev
+                    except TimeoutError:
+                        pass
+
+            # 第一轮全量；失败/空数据的标的第二轮补抓（66 个标的一次全成功并不稳定）
+            collect(coins, 6, 60)
+            missing = [c for c in coins if len(series.get(c, [])) < 2]
+            if missing:
+                collect(missing, 4, 35)
+
+            # 部分成功时与上一版缓存合并：当前数据优先，缺失的标的沿用旧值，
+            # 避免页面整列变空；同时把 TTL 缩短，尽快重试。
+            with self._lock:
+                old = self._spark_cache.get(hours)
+            if old:
+                for k, v in (old[1].get("series") or {}).items():
+                    if len(v) >= 2:
+                        series.setdefault(k, v)
+                for k, v in (old[1].get("prev_day") or {}).items():
+                    prev_day.setdefault(k, v)
+
+            missing = [c for c in coins if c not in series]
             payload = {"ok": True, "as_of_ms": self._now_ms(), "interval": "1h",
                        "hours": hours, "series": series, "prev_day": prev_day,
+                       "missing": missing,
                        "session": {"last": last.isoformat(), "prior": prior.isoformat()}}
-            ttl = 300 if len(series) >= len(coins) * 0.8 else 60
+            cover = len(series) / float(len(coins)) if coins else 0.0
+            ttl = 300 if cover >= 0.95 else (45 if cover >= 0.6 else 30)
             with self._lock:
                 self._spark_cache[hours] = (time.time(), payload, ttl)
             return payload

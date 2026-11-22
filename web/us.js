@@ -11,6 +11,7 @@
 
   var API = "/api/usdark";
   var POLL = 5000, POLL_BOOT = 1200;
+  var SPARK_CACHE_KEY = "us_spark_cache_v1";
 
   var S = {
     ready: false, data: null, catalog: [], quotes: [],
@@ -140,6 +141,7 @@
   // ---------------------------------------------------------------- 轮询与门控
   function boot(){
     readTheme();
+    loadSparkCache();
     bindVisibility();
     S.active = document.visibilityState !== "hidden" && S.inView;
     if(S.active){ poll(); startTicker(); }
@@ -636,6 +638,12 @@
       tr.querySelector('[data-f="chg"]').className = cls(q.chg_pct);
       var pc = tr.querySelector('[data-f="prevChg"]');
       if(pc) pc.innerHTML = prevDayHtml(q.coin);
+      // 首次 renderPage 发生在 S.ready 之前，renderSparklines 会提前 return；
+      // 这里补一次，确保本地缓存/后端返回的走势在首批行情到达后就能显示。
+      var sp = tr.querySelector('[data-f="spark"]');
+      if(sp && !sp.querySelector("svg") && S.spark[q.coin]){
+        sp.innerHTML = sparkSvg(S.spark[q.coin], q.chg_pct);
+      }
       tr.querySelector('[data-f="vol"]').textContent = fmtUsd(q.day_ntl_vlm);
       tr.querySelector('[data-f="oi"]').textContent = fmtQty(q.open_interest);
       updateAgeCells(q);
@@ -1095,24 +1103,48 @@
     });
   }
 
+  function loadSparkCache(){
+    try{
+      var raw = localStorage.getItem(SPARK_CACHE_KEY);
+      if(!raw) return;
+      var c = JSON.parse(raw);
+      if(!c || !c.spark) return;
+      Object.keys(c.spark).forEach(function(k){ S.spark[k] = c.spark[k]; });
+      Object.keys(c.prevDay || {}).forEach(function(k){ S.prevDay[k] = c.prevDay[k]; });
+      S.prevSession = c.session || null;
+    }catch(e){}
+  }
+
+  function saveSparkCache(){
+    try{
+      localStorage.setItem(SPARK_CACHE_KEY, JSON.stringify({
+        spark: S.spark, prevDay: S.prevDay, session: S.prevSession, savedAt: Date.now()
+      }));
+    }catch(e){}
+  }
+
   function loadSparklines(force){
     if(!isActive() || S.sparkLoading) return;
     if(!force && S.sparkAt && Date.now() - S.sparkAt < 300000) return;
     S.sparkLoading = true;
     var ctrl = ("AbortController" in window) ? new AbortController() : null;
-    var to = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 40000);
+    var to = setTimeout(function(){ if(ctrl) ctrl.abort(); }, 90000);
     fetch(API + "/sparklines?hours=24&_=" + Date.now(),
           {cache: "no-store", signal: ctrl ? ctrl.signal : undefined})
       .then(function(r){ return r.json(); })
       .then(function(j){
         clearTimeout(to);
-        // 空 series 往往是「目录尚未就绪」或上游瞬断，不能当成成功缓存 5 分钟，
-        // 否则页面会长时间没有迷你走势/前一日；30 秒后重试。
+        // 后端偶尔只拿到部分标的：合并而不是整体替换，缺失的标的保留旧值；
+        // 覆盖不足 95% 时 30 秒后重试，避免「这一列忽然消失」。
         if(j.ok && j.series && Object.keys(j.series).length){
-          S.spark = j.series;
-          S.prevDay = j.prev_day || {};
-          S.prevSession = j.session || null;
-          S.sparkAt = Date.now();
+          Object.keys(j.series).forEach(function(k){ S.spark[k] = j.series[k]; });
+          var pd = j.prev_day || {};
+          Object.keys(pd).forEach(function(k){ S.prevDay[k] = pd[k]; });
+          S.prevSession = j.session || S.prevSession;
+          var have = Object.keys(S.spark).length;
+          var total = S.catalog.length || 66;
+          S.sparkAt = (have >= total * 0.95) ? Date.now() : Date.now() - 270000;
+          saveSparkCache();
           renderSparklines();
           renderPrevDayCells();
         }else{
