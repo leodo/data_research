@@ -392,7 +392,7 @@
       '<div class="tbl-wrap"><table class="tbl" id="qTbl"><thead><tr>' +
         '<th>标的</th>' +
         '<th class="sortable" data-k="last">最新成交</th>' +
-        '<th class="sortable" data-k="chg">24h 涨跌</th>' +
+        '<th class="sortable" data-k="sinceClose" title="上一美股交易日 16:00 ET 收盘以来的涨跌幅">收盘以来</th>' +
         '<th class="sortable" data-k="prevChg" title="上一美股交易日 16:00 ET 收盘 vs 前一交易日">前一日</th>' +
         '<th>24h 走势</th>' +
         '<th class="sortable" data-k="vol" data-dir="-1">24h 成交额</th>' +
@@ -403,7 +403,7 @@
       '<div class="note"><b>读数规则</b>：最新成交价来自 <b>trades</b> 推送，没有新成交时价格保持不变；' +
         '「更新状态」合并了报价更新时间与状态（成交中 / 报价中 / 报价停滞 / 无报价）。' +
         '买一、卖一、中间价、价差已移到右侧选中标的卡片；「24h 走势」为 1 小时收盘迷你折线，每 5 分钟刷新，红涨绿跌。' +
-        '「前一日」为上一美股交易日 16:00 ET 收盘涨跌，带「拆N」表示检测到 N:1 拆股并已还原。</div>' +
+        '「前一日」为上一美股交易日当天的涨跌（周五 vs 周四）；「收盘以来」为上一美股交易日 16:00 ET 收盘至今的累计涨跌；带「拆N」表示检测到 N:1 拆股并已还原。</div>' +
       '</section>';
 
     html += '<section class="card side-card" data-toc="选中标的 · 24h 走势" data-toc-group="实时行情">' +
@@ -442,7 +442,7 @@
       'WebSocket <code>api.hyperliquid.xyz/ws</code>，无需 API Key、无需连接钱包。HIP-3 标的必须带 DEX 前缀（如 ' +
       '<code>xyz:NVDA</code>），不能只用 <code>NVDA</code>。<br>' +
       '<b>报价口径</b>：最新成交 = <code>trades</code> 推送的成交价与成交时间；买一/卖一 = <code>bbo</code> 推送；' +
-      '中间价 = 买卖中值；价差 =（卖一−买一）÷ 中间价，单位 bp；24h 涨跌 = 最新成交 ÷ 交易所 <code>prevDayPx</code> − 1；' +
+      '中间价 = 买卖中值；价差 =（卖一−买一）÷ 中间价，单位 bp；收盘以来 = 最新成交 ÷ 上一美股交易日 16:00 ET 收盘 − 1；' +
       '前一日 = 上一美股交易日 16:00 ET 收盘 ÷ 再前一交易日 − 1（周末保持不变，便于看周五收盘）；' +
       '24h 成交额 = 交易所 <code>dayNtlVlm</code>；24h 走势 = <code>candleSnapshot</code> 的 1 小时收盘迷你折线，每 5 分钟刷新。颜色沿用本站「红涨绿跌」。<br>' +
       '<b>刷新机制</b>：页面只在可见时每 5 秒请求一次同源行情快照；切换到其他栏目、标签页隐藏或栏目滚出视口后停止请求。' +
@@ -558,7 +558,7 @@
         var st = STATUS[statusOf(focusQ)];
         txt = esc(focusQ.name) + "（" + esc(focusQ.symbol) + "）最新成交 <b>" +
           (focusQ.last_px === null ? "—" : "$" + fmtPx(focusQ.last_px)) + "</b>" +
-          (focusQ.chg_pct === null ? "" : "（<span class=\"" + cls(focusQ.chg_pct) + "\">" + fmtPct(focusQ.chg_pct) + "</span>）") +
+          (function(){ var sc = sinceClosePct(focusQ); return sc === null ? "" : "（较上收盘 <span class=\"" + cls(sc) + "\">" + fmtPct(sc) + "</span>）"; })() +
           "，最后成交 " + agoText(focusQ.last_trade_ms) + "，买一 " +
           (focusQ.bid === null ? "—" : fmtPx(focusQ.bid)) + " / 卖一 " +
           (focusQ.ask === null ? "—" : fmtPx(focusQ.ask)) +
@@ -583,7 +583,7 @@
       tr.innerHTML =
         '<td><div class="c-name"><b>' + esc(q.name) + '</b><span>' + esc(q.symbol) + '</span></div></td>' +
         '<td data-f="last"><span class="pxv">—</span></td>' +
-        '<td data-f="chg" class="flat">—</td>' +
+        '<td data-f="sinceClose" class="flat">—</td>' +
         '<td data-f="prevChg" class="flat">—</td>' +
         '<td data-f="spark" class="spark-cell"><span class="spark-empty">—</span></td>' +
         '<td data-f="vol">—</td>' +
@@ -634,15 +634,16 @@
           pxCell.classList.add(dir);
         }
       }
-      tr.querySelector('[data-f="chg"]').innerHTML = q.chg_pct === null ? "—" : fmtPct(q.chg_pct);
-      tr.querySelector('[data-f="chg"]').className = cls(q.chg_pct);
+      var sc = sinceClosePct(q);
+      tr.querySelector('[data-f="sinceClose"]').innerHTML = sc === null ? "—" : fmtPct(sc);
+      tr.querySelector('[data-f="sinceClose"]').className = cls(sc);
       var pc = tr.querySelector('[data-f="prevChg"]');
       if(pc) pc.innerHTML = prevDayHtml(q.coin);
       // 首次 renderPage 发生在 S.ready 之前，renderSparklines 会提前 return；
       // 这里补一次，确保本地缓存/后端返回的走势在首批行情到达后就能显示。
       var sp = tr.querySelector('[data-f="spark"]');
       if(sp && !sp.querySelector("svg") && S.spark[q.coin]){
-        sp.innerHTML = sparkSvg(S.spark[q.coin], q.chg_pct);
+        sp.innerHTML = sparkSvg(S.spark[q.coin], sc);
       }
       tr.querySelector('[data-f="vol"]').textContent = fmtUsd(q.day_ntl_vlm);
       tr.querySelector('[data-f="oi"]').textContent = fmtQty(q.open_interest);
@@ -704,6 +705,7 @@
     switch(k){
       case "last": return num(q.last_px);
       case "chg": return num(q.chg_pct);
+      case "sinceClose": return num(sinceClosePct(q));
       case "prevChg": var pv = S.prevDay[q.coin]; return pv ? num(pv.chg) : null;
       case "mid": return num(q.mid);
       case "spread": return num(q.spread_bp);
@@ -775,13 +777,14 @@
     if(title) title.innerHTML = esc(q.name) + ' <span style="font-size:11.5px;font-weight:500;color:var(--text-3);letter-spacing:0">' + esc(q.symbol) + ' · ' + esc(q.coin) + '</span>';
 
     var st = STATUS[statusOf(q)];
-    var change = q.chg_pct === null ? "—" : fmtPct(q.chg_pct);
+    var sc = sinceClosePct(q);
+    var change = sc === null ? "—" : fmtPct(sc);
     var h = '';
-    h += '<div class="sq-top"><span class="sq-price ' + cls(q.chg_pct) + '">' +
+    h += '<div class="sq-top" title="上一美股交易日 16:00 ET 收盘以来"><span class="sq-price ' + cls(sc) + '">' +
       (q.last_px === null ? "—" : "$" + fmtPx(q.last_px)) +
-      '<small class="' + cls(q.chg_pct) + '">' + change + '</small></span>' +
+      '<small class="' + cls(sc) + '">' + change + '</small></span>' +
       '<span class="badge ' + st.cls + '">' + st.label + '</span></div>';
-    h += '<div class="sq-sub">最后成交 ' +
+    h += '<div class="sq-sub">较上收盘 ' + change + ' · 最后成交 ' +
       (q.last_trade_ms ? fmtClock(q.last_trade_ms) + " · " + agoText(q.last_trade_ms) : "无") +
       (q.last_sz === null ? "" : " · 数量 " + fmtSz(q.last_sz)) + '</div>';
     h += '<div class="sq-grid">' +
@@ -1048,7 +1051,7 @@
     var color = (dir === null || Math.abs(dir) < 1e-9) ? "var(--text-3)" :
       (dir > 0 ? "var(--up)" : "var(--down)");
     var last = pts[pts.length - 1];
-    var tip = "24h 迷你走势 · 24h 涨跌 " + fmtPct(hasTone ? tone : seriesChg) +
+    var tip = "1h 收盘迷你走势 · 收盘以来 " + fmtPct(hasTone ? tone : seriesChg) +
       " · 区间 " + fmtPx(min) + " / " + fmtPx(max);
     return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" ' +
       'role="img" aria-label="' + esc(tip) + '">' +
@@ -1067,7 +1070,7 @@
       if(!tr) return;
       var cell = tr.querySelector('[data-f="spark"]');
       var q = S.qmap && S.qmap[coin];
-      if(cell) cell.innerHTML = sparkSvg(S.spark[coin], q ? q.chg_pct : null);
+      if(cell) cell.innerHTML = sparkSvg(S.spark[coin], q ? sinceClosePct(q) : null);
     });
   }
 
@@ -1076,6 +1079,12 @@
     if(!iso) return "";
     var d = new Date(iso + "T12:00:00");
     return isNaN(d.getTime()) ? "" : WEEK_CN[d.getDay()];
+  }
+
+  function sinceClosePct(q){
+    var p = S.prevDay && S.prevDay[q.coin];
+    if(!p || !p.close || q.last_px === null || q.last_px === undefined) return null;
+    return (q.last_px / p.close - 1) * 100;
   }
 
   function prevDayHtml(coin){
@@ -1147,6 +1156,7 @@
           saveSparkCache();
           renderSparklines();
           renderPrevDayCells();
+          syncTable();
         }else{
           S.sparkAt = Date.now() - 270000;
         }
