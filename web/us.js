@@ -314,7 +314,7 @@
 
   function pickDefaultFocus(){
     if(!S.quotes.length) return S.focus;
-    // 默认选中成交额最大的美股，避免 BTC 的主市场成交量把首屏带到加密品种
+    // 默认选中成交额最大的美股，避免 BTC / ETH 的主市场成交量把首屏带到加密品种
     var best = null;
     S.quotes.forEach(function(q){
       if(q.group !== "美股") return;
@@ -369,7 +369,7 @@
 
     var html = '';
     html += '<div class="page-head"><div><h1>暗盘行情 <span>美股 · 商品 · 24 小时连续报价</span></h1>' +
-      '<div class="page-sub" style="text-align:left">Hyperliquid 的 24 小时暗盘：美股永续 + 黄金 / 白银 / 布伦特油 / WTI 油 + 主交易所比特币，含最新成交、24h 迷你走势与选中标的 K 线；无成交时保留真实成交时间。</div></div>' +
+      '<div class="page-sub" style="text-align:left">Hyperliquid 的 24 小时暗盘：美股永续 + 黄金 / 白银 / 布伦特油 / WTI 油 + 主交易所比特币 / 以太坊，含最新成交、24h 迷你走势与选中标的 K 线；无成交时保留真实成交时间。</div></div>' +
       '<div class="page-sub">数据源 Hyperliquid · 公开读取无需账户<br>页面可见时 5 秒刷新，切走即停</div></div>';
 
     html += '<div class="kpi-grid" id="kpiGrid"></div>';
@@ -451,7 +451,7 @@
       '<code>data/us_dark/latest.json</code>，保留 7 天。<br>' +
       '<b>已知局限</b>：这是永续合约的链上报价，<b>不是正股 / 现货成交价</b>；股票休市时流动性显著变薄、价差走阔，' +
       '商品（黄金 / 白银 / 原油）为 24 小时合约、数量单位随品种（盎司 / 桶），与股票共用同一 DEX 与清算；' +
-      '比特币为主交易所加密永续（无 DEX 前缀，代码 <code>BTC</code>），仅作 24 小时风险资产对照。' +
+      '比特币 / 以太坊为主交易所加密永续（无 DEX 前缀，代码 <code>BTC</code> / <code>ETH</code>），仅作 24 小时风险资产对照。' +
       '标的清单为人工维护（见 <code>config.py</code> 的 <code>US_DARK_MARKETS</code>），' +
       '已下架市场会被自动过滤。「持仓量」是合约张数对应的标的数量，不是交易所库存。<br>' +
       '<b>不做的事</b>：不补点、不插值、不用 markPx 冒充成交价；没有真实成交就明确显示最后成交时间。' +
@@ -1144,15 +1144,21 @@
       .then(function(j){
         clearTimeout(to);
         // 后端偶尔只拿到部分标的：合并而不是整体替换，缺失的标的保留旧值；
-        // 覆盖不足 95% 时 30 秒后重试，避免「这一列忽然消失」。
+        // 当前目录有任一标的缺走势/前一日时 30 秒后重试，避免「这一列忽然消失」。
         if(j.ok && j.series && Object.keys(j.series).length){
           Object.keys(j.series).forEach(function(k){ S.spark[k] = j.series[k]; });
           var pd = j.prev_day || {};
           Object.keys(pd).forEach(function(k){ S.prevDay[k] = pd[k]; });
           S.prevSession = j.session || S.prevSession;
-          var have = Object.keys(S.spark).length;
-          var total = S.catalog.length || 66;
-          S.sparkAt = (have >= total * 0.95) ? Date.now() : Date.now() - 270000;
+          // 必须逐个核对当前目录：旧 localStorage 里的 66 个键会让「覆盖率 ≥95%」
+          // 误判为完整，新加的 ETH 就一直缺走势/前一日，相关三列空到 5 分钟 TTL。
+          // 只要当前目录里有任一标的缺 series 或 prev_day，就缩短 TTL 30 秒重试。
+          var pending = [];
+          S.catalog.forEach(function(m){
+            var p = S.prevDay[m.coin];
+            if(!S.spark[m.coin] || !p || !p.close) pending.push(m.coin);
+          });
+          S.sparkAt = pending.length ? Date.now() - 270000 : Date.now();
           saveSparkCache();
           renderSparklines();
           renderPrevDayCells();

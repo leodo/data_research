@@ -56,21 +56,24 @@ def main() -> int:
     feed._catalog = [
         {"coin": "xyz:NVDA", "symbol": "NVDA", "name": "英伟达", "group": "美股", "dex": "xyz"},
         {"coin": "BTC", "symbol": "BTC", "name": "比特币", "group": "商品", "dex": "main"},
+        {"coin": "ETH", "symbol": "ETH", "name": "以太坊", "group": "商品", "dex": "main"},
     ]
     orig_post = U.post_info
 
     def fake_post(body, timeout=8.0):
         if body.get("dex") == "xyz":
             raise RuntimeError("simulated 502")
-        return ({"universe": [{"name": "BTC", "szDecimals": 5}]},
-                [{"prevDayPx": "1", "markPx": "2"}])
+        return ({"universe": [{"name": "BTC", "szDecimals": 5},
+                              {"name": "ETH", "szDecimals": 4}]},
+                [{"prevDayPx": "1", "markPx": "2"},
+                 {"prevDayPx": "3", "markPx": "4"}])
 
     U.post_info = fake_post
     try:
         feed._refresh_catalog()
     finally:
         U.post_info = orig_post
-    check("目录刷新失败不缩容", len(feed._catalog) == 2 and bool(feed._catalog_err),
+    check("目录刷新失败不缩容", len(feed._catalog) == 3 and bool(feed._catalog_err),
           f"catalog={len(feed._catalog)} err={feed._catalog_err}")
 
     print("[2/4] 启动静态服务")
