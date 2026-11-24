@@ -43,7 +43,7 @@ NAME = {
     "below_net": "破净率", "nhnl": "新高新低差NH-NL",
     "adv_ratio": "上涨家数占比与动能广度", "hs300_rsi": "沪深300 RSI14",
     "arms": "阿姆氏指标TRIN", "breadth_score": "市场宽广度综合",
-    "mcclellan": "麦克莱伦摆动指标", "composite": "8指标等权综合分",
+    "mcclellan": "麦克莱伦摆动指标", "composite": "加权综合分",
 }
 
 

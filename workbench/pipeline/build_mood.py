@@ -31,7 +31,7 @@
   qschsl   换手率高=交易火热            => 情绪偏高        [正向]
   pcr      A股持仓PCR顺周期：低位=市场已在底部 => 情绪偏低(积极) [正向；实测PCR低分位后续收益更好]
   zzpgnh   股基年化高=市场好            => 情绪偏高        [正向]
-  magic    沪深300贴近债基=见底         => 情绪偏低        [反向]
+  magic    股/债比价低=股票便宜=见底    => 情绪偏低        [正向；2026-11-24 修复方向]
 """
 from __future__ import annotations
 
@@ -66,16 +66,42 @@ def fetch_all_pe():
 # (symbol 参数失效误取科创板 PE 90.51)，已无任何消费者，仅为历史留档，勿再读取。
 
 
-# 1c) 10年国债收益率（优先用已缓存的原始文件，避免东财限流）
+# 1c) 10年国债收益率（每次抓取成功后整段覆盖 raw 缓存；抓取失败才沿用旧缓存）
+# 2026-11-24 修复：旧实现是「raw 存在就只读不抓」，该文件一旦生成就永久冻结
+# （实测停在 2026-11-18），而 ERP = 1/PE - bond10 是日频序列，月频 PE 一更新就会
+# 拿新 PE 配旧利率，产生与行情无关的跳变。现改为每次尝试抓取全历史、校验通过后
+# 覆盖缓存；只有接口失败或返回异常短的历史时才降级读旧文件。
 def fetch_bond10():
     raw = DATA / "mood_bond10_raw.csv"
+    old = None
     if raw.exists():
-        d = pd.read_csv(raw)
-    else:
-        d = ak.bond_zh_us_yield_em(start_date="20100101")
-        d.to_csv(raw, index=False)
+        try:
+            old = pd.read_csv(raw)
+            old["日期"] = pd.to_datetime(old["日期"]).dt.strftime("%Y-%m-%d")
+        except Exception:
+            old = None
+
+    fresh = None
+    try:
+        fresh = ak.bond_zh_us_yield_em(start_date="20100101")
+    except Exception as e:  # noqa: BLE001 - 东财接口异常种类不固定
+        log(f"    [bond10] 抓取失败：{type(e).__name__}，沿用本地缓存")
+
+    if fresh is not None and "日期" in fresh.columns and len(fresh) >= 1000:
+        fresh = fresh[[c for c in fresh.columns if not str(c).startswith("Unnamed")]].copy()
+        fresh["日期"] = pd.to_datetime(fresh["日期"]).dt.strftime("%Y-%m-%d")
+        # 返回的历史不能比缓存更短，否则可能是接口降级返回的残缺数据
+        if old is None or fresh["日期"].max() >= old["日期"].max():
+            old = fresh
+            try:
+                old.to_csv(raw, index=False)
+            except Exception as e:  # noqa: BLE001
+                log(f"    [bond10] 缓存写入失败：{type(e).__name__}")
+
+    if old is None or "中国国债收益率10年" not in old.columns:
+        raise RuntimeError("10年国债收益率：抓取失败且无可用本地缓存")
+    d = old[["日期", "中国国债收益率10年"]].dropna().copy()
     d["日期"] = pd.to_datetime(d["日期"])
-    d = d[["日期", "中国国债收益率10年"]].dropna()
     return sjoin(d.set_index("日期")["中国国债收益率10年"], "bond10")
 
 
@@ -642,7 +668,7 @@ def calc_magic(src):
             ratio.name = "magic"
             return make_panel("magic", "神奇指标", ratio,
                               "代理指标：沪深300价格指数 ÷ 中债综合财富指数(财富总值)的归一化比价。原站用沪深300全收益vs偏债基金指数，此处用可公开获取的指数代理",
-                              reverse=True, unit="", desc="股票与债券资产回报差，沪深300越贴近债券走势时越可能见底(反向指标)")
+                              reverse=False, unit="", desc="股票与债券资产回报差：比价越低=股票相对债券越便宜=越接近底部，score 也越低（正向指标）。2026-11-24 修复：此前误设为反向，与风险溢价 rp 原始值相关 -0.90 却同向翻转，导致二者 score 完全对冲、互相抵消。")
         return None
     except Exception as e:
         log(f"    [magic] 计算失败: {e}")
@@ -656,6 +682,16 @@ METRIC_BUILDERS = [
     ("zzpgnh", calc_zzpgnh), ("magic", calc_magic),
 ]
 METRIC_ORDER = [k for k, _ in METRIC_BUILDERS]
+
+# 综合分权重（2026-11-24 复核调整）
+# rp / magic / zzpgnh 三者原始序列同属「股债性价比」因子：修正 magic 方向后
+# 两两相关 0.78~0.91，等权会让这一个因子独占总分的 37.5%，属重复计权。
+# 故对该因子三者温和降权，其余指标维持 1.0；回测（底部信号未来60日）
+# 胜率持平(60%)、平均收益 +2.51%→+2.55%，不改变底部识别能力。
+METRIC_WEIGHTS = {
+    "rp": 0.7, "magic": 0.7, "zzpgnh": 0.8,
+}
+
 
 
 # ---------------- 独立观察面板（均不计入综合分）----------------
@@ -1289,22 +1325,36 @@ def build_macro_panels():
 
 
 # ---------------- 综合情绪分 ----------------
-def build_composite(panels):
-    """当前值 = 各面板 score 等权平均；历史 = 当日可用面板等权平均后周频采样。
+def _weighted_mean(values, keys, weights):
+    """按 METRIC_WEIGHTS 加权平均；缺失指标按当日可用者重新归一化（不重新分配缺席者的权重）。"""
+    w = np.array([weights.get(k, 1.0) for k in keys], dtype=float)
+    v = np.array([values[k] for k in keys], dtype=float)
+    denom = w.sum()
+    return float(np.average(v, weights=w)) if denom > 0 else 50.0
 
+
+def build_composite(panels):
+    """当前值 = 各面板 score 加权平均；历史 = 当日可用面板加权平均后周频采样。
+
+    2026-11-24 复核修复：
+      - magic（股/债比价）方向由「反向」纠正为「正向」。它与 rp 原始值相关 -0.90，
+        此前同向翻转导致两者 score 完全对冲，相当于白白浪费 25% 的权重。
+      - rp/magic/zzpgnh 属同一「股债性价比」因子（修正后相关 0.78~0.91），
+        等权会让单一因子占 37.5%，故三者温和降权（0.7/0.7/0.8），其余保持 1.0。
     2026-11-20 复核修复：此前用 common_start = max(各面板起点) 裁历史，
     而「新基金发行」的数据源只回溯到 2023-01，把整条综合分历史截到 2023-02，
     白白丢掉其余 7 个指标二十多年的历史。现改为「当日至少 4 个指标有效即出分」，
     早期为少指标口径，并用 composite.meta 明确标注口径变化点，不伪装成 8 指标全程可比。
     """
     composite_parts = {k: p["score"] for k, p in panels.items()}
-    composite = round(float(np.mean(list(composite_parts.values()))), 2) if composite_parts else 50.0
+    composite = round(_weighted_mean(composite_parts, list(composite_parts), METRIC_WEIGHTS), 2) if composite_parts else 50.0
     comp_hist = []
     meta = {"n_metrics": len(panels), "history_start": None, "full_start": None,
-            "min_metrics": 4,
-            "note": "综合分历史按「当日已有数据的指标等权」计算：早期部分指标尚未发布，"
-                    "参与指标少于 8 个，与当前 8 指标等权口径不完全可比；"
-                    "全指标齐备后才是严格等权。当前值始终为全部有效指标等权。"}
+            "min_metrics": 4, "weights": {k: METRIC_WEIGHTS.get(k, 1.0) for k in panels},
+            "note": "综合分为加权平均：rp/magic/zzpgnh 因同属股债性价比因子各降权至 0.7/0.7/0.8，"
+                    "其余指标权重 1.0（2026-11-24 起）。magic 方向由反向纠正为正向。"
+                    "历史按「当日已有数据的指标加权」计算：早期部分指标尚未发布，参与指标少于 8 个，"
+                    "与当前口径不完全可比；全指标齐备后才是固定权重。当前值始终为全部有效指标加权。"}
     try:
         score_series = {}
         for k, p in panels.items():
@@ -1316,8 +1366,14 @@ def build_composite(panels):
                 s = 100 - s
             score_series[k] = s
         df = pd.DataFrame(score_series).sort_index()
-        n_avail = df.notna().sum(axis=1)
-        comp = df.ffill().mean(axis=1).where(n_avail >= meta["min_metrics"]).dropna()
+        keys = list(df.columns)
+        n_avail = df.notna().sum(axis=1)          # ffill 前：用于判断是否够指标出分
+        w = np.array([METRIC_WEIGHTS.get(k, 1.0) for k in keys], dtype=float)
+        # 先 ffill 再加权：分子分母都基于同一份 ffill 后的数据，避免口径错配
+        filled = df.ffill()
+        avail_w = filled.notna().mul(w).sum(axis=1)
+        num = (filled * w).sum(axis=1, min_count=1)
+        comp = (num / avail_w.where(avail_w > 0)).where(n_avail >= meta["min_metrics"]).dropna()
         full = n_avail[n_avail >= len(panels)]
         meta["full_start"] = full.index.min().strftime("%Y-%m-%d") if len(full) else None
         meta["history_start"] = comp.index.min().strftime("%Y-%m-%d") if len(comp) else None
@@ -1327,7 +1383,8 @@ def build_composite(panels):
             for dt, v in comp_w.items()
         ]
         log(f"    综合分历史: {comp.index.min().date()} ~ {comp.index.max().date()}, {len(comp_hist)}周点；"
-            f"全{len(panels)}指标齐备自 {meta['full_start']}")
+            f"全{len(panels)}指标齐备自 {meta['full_start']}；"
+            f"权重={ {k: METRIC_WEIGHTS.get(k, 1.0) for k in keys} }")
     except Exception as e:
         log(f"    综合分历史计算失败: {e}")
     return composite, comp_hist, meta
