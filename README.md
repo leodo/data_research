@@ -30,9 +30,12 @@
 
 ```bash
 python -m pip install -r requirements.txt
-python start_site.py            # 按需更新数据并启动，自动打开浏览器
-python start_site.py --force    # 强制重建全部数据后再启动
-python start_site.py --no-browser  # 同上，但不自动打开浏览器（后台/测试）
+python start_site.py            # 逐步骤检查，只增量更新落后的部分，然后启动
+python start_site.py --dry-run  # 只打印每个步骤的数据日期与执行计划，不动数据、不起服务
+python start_site.py --force    # 忽略新鲜度，22 步全部按增量口径重跑
+python start_site.py --deep     # 与 --force 同用：向子脚本透传 --force 做全历史重算（很慢，慎用）
+python start_site.py --only=cb,mood  # 只允许指定分组/步骤参与更新
+python start_site.py --no-browser    # 同上，但不自动打开浏览器（后台/测试）
 python serve.py                 # 只起静态服务，不更新数据（调试页面时用）
 ```
 
@@ -121,9 +124,9 @@ archive/                                治理前旧版脚本与备份（backups
 
 `build_mood.py` 内部按「取数 `load_sources()` → ERP 股债归因 `build_erp_attrib(src)` → 指标注册表 `METRIC_BUILDERS` / `MACRO_BUILDERS` / `SIGNAL_BUILDERS` → 共振板 `build_turning.build()` → 组装 `build_composite()` → 输出 `write_output()`」组织，每个指标一个 `calc_*` 函数。**新增指标只需写一个 `calc_*` 并在注册表登记一行**，不用动 `main()`；卡片带 `data-toc` / `data-toc-group` 后会自动进入二级目录。ERP 归因复用 `load_sources()` 已加载的 PE / 国债序列，落盘 `mood_erp_attrib.csv` 供归因卡片与 rp 主卡警示读取，故由 `main()` 同进程调用、不单独占 DAG 节点。
 
-`start_site.py` 的 `PIPELINES` 定义了显式依赖顺序，情绪链必须按
-`rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_holder_change → build_mood → build_confirm → build_factor_matrix → audit_efficacy`
-执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。可转债链 `build_cb.py` 与前两条链无依赖，单独登记为 `PIPELINES["cb"]`。新增构建脚本时要同步登记到这里。
+`start_site.py` 的 `STEPS` 定义了显式依赖顺序与每一步的产物探针，情绪链必须按
+`rebuild_turnover → build_crowding → build_etf_ratio → build_margin → build_pb → build_breadth → build_below_net → build_breadth_extra → build_arms → build_fund_position → build_money_supply → build_repurchase → build_holder_change → build_mood → build_confirm → build_factor_matrix → audit_efficacy → build_horizon_profile → build_daily_confidence → build_rsi_breadth`
+执行，否则汇总脚本读到的是旧的上游数据。`build_arms.py` 必须排在宽度/成交额缓存之后（它读的是那些 CSV 与逐股缓存）；`build_confirm.py` 必须排在 `build_mood.py` **之后**（要读当天生成的 `mood_data.json` 综合分历史）；`build_factor_matrix.py → audit_efficacy.py` 顺序不可颠倒（L1 的因子值唯一来源是 L0 的 `data/factor_matrix.csv`）。这四个后置脚本都只读现有产物、只写自己的文件，不回写 `mood_data.json`。可转债链 `build_cb.py` 与前两条链无依赖，单独登记为 `group="cb"`。新增构建脚本时要同步登记到 `STEPS`，并写明 `probe`（产物日期探针）、`lag`（允许落后的交易日数）与 `depends`（读了哪些上游的产物）。
 
 `build_turning.py` 不单独列入 DAG：它由 `build_mood.main()` 在 `load_sources()` 之后同进程调用（此时各源缓存已落盘），并生成信号卡要读的 `mood_tech.csv`。也可 `python -m workbench.pipeline.build_turning` 单独重算。
 
@@ -175,10 +178,14 @@ archive/                                治理前旧版脚本与备份（backups
 
 - **A 类 · 真增量**：PCR 用按日接口，读缓存末日、回溯 3 天重叠、只补后续交易日（`build_mood.py --pcr-full` 可全量重建）。
 - **B 类 · 整抓即最新**：申万行业、基金指数、两融账户统计、全 A PB、基金股票仓位(`fund_stock_position_lg`)、货币供应量(`macro_china_money_supply_em`)、回购方案(`stock_repurchase_em`)等接口一次返回全历史，重抓就自动吸收新数据，无需增量。申万额外做了 31 个行业独立 CSV 缓存 + 拒绝数据倒退保护；三个 2026-11-20 新增的 B 类接口抓取失败时会沿用已有缓存，不让启动链中断。
-- **C 类 · 昂贵/不稳定**：成分股强度需全量重抓（约 771 秒），按官方交易日历容忍 3 个交易日滞后，用 `*_stamp.txt` 保证同一自然日最多刷一次，失败降级沿用旧缓存。拥挤度与市场宽度按个股独立 CSV 断点续抓，已有缓存只补最近几个交易日。
+- **C 类 · 昂贵/不稳定**：成分股强度需全量重抓（约 771 秒），按官方交易日历容忍 3 个交易日滞后，用 `*_stamp.txt` 保证同一自然日最多刷一次，失败降级沿用旧缓存。拥挤度与市场宽度按个股独立 CSV 断点续抓，已有缓存只补最近几个交易日；**且「只差最新一个交易日」时走全市场快照快路径**（`workbench/snapshot.py`，一次 `stock_zh_a_spot_sina` 请求给出 5500+ 只个股当日收盘价与成交额，逐只缓存只追加一行），把这一步从约 28 分钟降到约 1 分钟。快照仅在「今日已收盘 + 缓存末日正好是上一交易日 + 该股当日有成交」时生效，否则该股回落逐只增量（停牌股不会落行）。
 - **D 类 · 纯本地派生**：宽度扩展包（NH-NL / 涨跌家数 / 动量广度）、阿姆氏指标与市场宽广度体系（`build_arms.py`，约 22 秒）、共振信号板、ERP 股债归因都复用已落盘的 CSV 与 `data/breadth_prices/` + `data/crowding_amounts/` 逐股缓存，**零个股请求**，每次运行整算一遍，不做增量以保证横截面一致性。ERP 归因直接在 `build_mood.py` 内用已加载的 PE / 国债序列计算，连文件回读都省了。
 
-启动器的新鲜度判定不看"数据日期是否等于今天"（那样会因个别源永远滞后而每次启动都重建），而是用 `data/last_update.json` 记录**今日是否已尝试更新**；同一天重复启动直接跳过，需要重跑用 `--force`。页面各卡片会显示真实截止日与滞后天数，请以卡片为准，不要只看全局日期。
+**启动器的新鲜度判定（2026-11-24 起改为逐步骤探针）**：每一步都登记了 `probe`——从自己的产物文件里读出最后数据日期，以及 `lag`——该步数据允许落后的交易日数（日频 0、T+1 发布的两融/ETF 占比与破净率 1、周频 5、月频 45）。启动时把探针日期与「应到日期」（最近已收盘交易日回退 lag 个交易日）比较，**只有落后的步骤才跑**；某步要跑时，`depends` 里登记的下游一并跑，保证汇总层不吃旧缓存。全部最新时只读探针（约 1 秒），不联网。旧实现只有「全跳过 / 全跑 22 步」两档、且用 `data/last_update.json` 按天去重——同一天里跑过一次（哪怕失败）就不再重建，真要跑时又 22 步全跑，其中拥挤度与宽度各约 28 分钟。
+
+某步当日失败达 `MAX_ATTEMPTS`（2）次后不再自动重试（避免上游源长期故障时每次启动都白等超时），记录在 `data/step_state.json`，手动重试用 `--force`。恐贪链额外有前置守卫：先花最多 6 秒探一下隐波源 `k.csv`，不可达就直接跳过整步，源恢复后重启即自动补上，不必等它重试 3 次 × 多个 kind 的超时才降级。页面各卡片会显示真实截止日与滞后天数，请以卡片为准，不要只看全局日期。
+
+`--force` 只表示「忽略新鲜度、全部步骤都跑」，**不再透传给子脚本**（旧版透传会让构建脚本走全历史重算，可转债一次 `--force` 曾卡死在 2017 起横截面 20 分钟以上、CPU 基本不动）；需要全历史重算时显式加 `--deep`。
 
 `data/` 是派生产物，不纳入版本控制。克隆仓库后首次运行会重新抓取，其中全 A 个股成交额、全 A 个股收盘价各需约 20 分钟（各 5579 只）、成分股强度约 13 分钟、ETF 份额约 8 分钟，均为断点续抓，中断后重跑可继续。
 
@@ -361,7 +368,7 @@ curl "http://127.0.0.1:8040/api/usdark/health"
 - **双击 `启动.bat` 弹出「选择应用程序」**：改用 `启动.cmd`（关联与 `.bat` 独立），或双击 `修复双击关联.reg` 导入后重启资源管理器；也可右键 → 打开方式 → 选择「Windows 命令处理器 / 命令提示符」并勾选「始终使用此应用」。
 - **一直显示"数据加载中"**：确认是通过 `http://localhost:8040/...` 访问而非直接双击 HTML（`file://` 下 fetch 会被拦截）。
 - **数据日期不齐**：正常现象，卡片上的"数据至 YYYY-MM-DD"才是真实截止日。
-- **想强制刷新**：`python start_site.py --force`，会透传给所有构建脚本。
+- **想强制刷新**：`python start_site.py --force`（全部步骤按增量口径重跑，不向子脚本透传 `--force`）；确实要全历史重算再加 `--deep`。只想看哪些步骤落后而不跑数据，用 `--dry-run`。
 - **改错了想回滚**：`git log` / `git diff` 可用；`archive/` 保存了治理前的旧版脚本快照。
 - **改配色**：只改 `app.css` 的 `:root` / `[data-theme="dark"]` 即可，四页共用。
 - **新增卡片没进目录**：确认元素上有 `data-toc` / `data-toc-group`，且 `mountToc()` 在 `innerHTML` 赋值之后调用。
@@ -385,6 +392,8 @@ curl "http://127.0.0.1:8040/api/usdark/health"
 - 2026-11-21 可转债长周期补全：东财逐券历史（含退市券）复算 2017-11 至 2026-11 的横截面/等权指数/温度代理，2186 个交易日；近 250 日与集思录相关 0.997/0.996/0.979；首次全量约 5–10 分钟，日常增量约数秒到几十秒
 - 2026-11-22 暗盘行情栏目：Hyperliquid 65 → 66 个标的（61 美股 + 黄金/白银/布伦特油/WTI 油 + 主交易所 BTC），标准库 WebSocket 采集 trades/bbo/l2Book，表格 9 列（含「收盘以来」「前一日」）+ 中文名主显示 + 24h 迷你走势，2026-11-23 把原「24h 涨跌」改为「收盘以来」，右侧选中标的 24h K 线与买卖盘（窄屏自动上下排列）；每 5 秒落快照；按可见性门控采集（CDP 实测隐藏期间 0 请求，20 秒无心跳断开），无新成交时只显示真实成交/报价时间
 - 2026-11-22 依赖与隐波容错：环境 akshare 由 1.17.8 升到 requirements 锁定的 1.20.65，修复 `calendar_trade_date_hist_sina` / `index_zh_daily_sina` / `stock_zh_a_spot_sina` 缺失导致的启动报错；`start_site.py` 启动前检查这三个接口，缺失时跳过更新而不是刷 22 段 traceback；`build_fear_greed.py` 对 optbbs 502 做「重试 → 本地缓存 → mood_qvix.csv → 上一版隐波序列」多级降级，无数据时只跳过受影响指数、不写空文件，页面顶部明示暂缺
+- 2026-11-24 启动器改为逐步骤增量：`start_site.py` 从「全跳过 / 全跑 22 步 + 按天去重」改为「逐步骤产物探针 + 依赖传播」——每步登记产物日期读取函数、允许落后交易日数与上游依赖，只跑落后的步骤，上游一跑下游就跟着跑；全部最新时约 1 秒完成检查、不联网。同时新增 `--dry-run`（只看计划）、`--only`（限定分组）、`--deep`（才向子脚本透传 `--force`），`--force` 不再透传（旧版透传导致 `build_cb` 全历史重算卡死 20 分钟以上）。恐贪链加隐波源前置守卫，源不可达直接跳过而不是等多次重试超时
+- 2026-11-24 拥挤度/宽度快照快路径：新增 `workbench/snapshot.py`，用一次 `stock_zh_a_spot_sina` 全市场快照（收盘价与成交额与历史接口逐值一致，抽样 400 只 100% 相等）替代「只差最新一个交易日」时的 5580 次逐只请求，两步合计从约 56 分钟降到约 2–3 分钟；条件不满足自动回落原逐只增量，停牌股不落行
 - 结构治理：`config.py` / `core.py` / `factor_utils.py` / `app.js` / `app.css`、`build_mood` 指标注册表、显式 DAG
 - 工程配套：git 版本控制、`.gitignore`、`.gitattributes`、`requirements.txt`、本文档
 - 数据更新：PCR 真增量、申万缓存与回退保护、成分股滞后容忍、启动器今日去重

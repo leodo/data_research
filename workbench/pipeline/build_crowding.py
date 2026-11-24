@@ -82,7 +82,24 @@ def fetch_all(codes):
     existing = sum(1 for c in codes if (ADIR / f"{c}.csv").exists())
     # 全部交给 fetch_one：它内部会判断"已到最新则跳过 / 否则增量补最新交易日"
     log(f"全A股票 {len(codes)} 只，已有缓存 {existing} 只（逐只检查并增量补齐至 {TODAY}）")
-    todo = list(codes)
+
+    # 快照快路径：缓存只差最新一个交易日时，一次全市场快照即可补齐全部个股，
+    # 不必逐只请求（5580 只逐只约 28 分钟，快照约 1 分钟）。不可用则回落逐只。
+    fast = set()
+    try:
+        from workbench.snapshot import fill_one_day
+        fast = fill_one_day(ADIR, "amount")
+    except Exception as e:  # noqa: BLE001
+        log(f"快照快路径不可用（{type(e).__name__}），回落逐只抓取")
+    if fast:
+        log(f"快照快路径：已用全市场快照补齐 {len(fast)} 只的最新交易日成交额")
+
+    todo = [c for c in codes if c not in fast]
+    if not todo:
+        log("全部个股已到最新，无需逐只抓取")
+        return
+    if fast:
+        log(f"剩余 {len(todo)} 只需逐只增量")
     t0 = time.time()
     done = 0
     errs = 0

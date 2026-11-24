@@ -12,7 +12,8 @@
 data/
 ├─ *.csv                     源端缓存（mood_*.csv / strength_*.csv / cb_history.csv 等）
 ├─ *.json / *.js             页面数据产物（mood_data、index_data、cb_data、confirm_data…）
-├─ last_update.json          启动器「今日是否已尝试更新」标记
+├─ last_update.json          启动器最近一次更新的汇总标记（人读用，判据已不依赖它）
+├─ step_state.json           启动器逐步骤当日尝试次数与结果（失败节流用）
 ├─ breadth_prices/           5579 只个股收盘价缓存（市场宽度/破净率/RSI 用）
 ├─ crowding_amounts/         5579 只个股成交额缓存（换手率/拥挤度/TRIN 用）
 ├─ sw_industries/            31 个申万行业缓存（低估行业指标）
@@ -44,7 +45,7 @@ data/
 
 - `workbench.paths.DATA` 指向本目录；构建脚本只通过它读写，不写死相对路径；
 - 页面通过 `<script src="data/xxx.js">` 读取 `.js` 产物（`web/` 页面对应 `../data/xxx.js`）；
-- `start_site.py` 的新鲜度判断读取 `data/index_data.json`、`mood_data.json`、`cb_data.json` 与 `last_update.json`；
+- `start_site.py` 的新鲜度判断按 `STEPS` 里每一步登记的 `probe` 读取自己的产物日期（`mood_data.json` 的 `data_date`、`cb_data.json` 的 `meta.date`、各 `mood_*.csv` 的末行日期等），与「最近已收盘交易日回退 lag 个交易日」比较后决定该步是否执行；`last_update.json` 与 `step_state.json` 只作汇总与失败节流，不参与「今天是否已更新」的判定；
 - `data/` 不入库，因此目录说明放在 `docs/`，不要试图在 `data/` 里放需要版本控制的文件。
 
 ## 备份建议

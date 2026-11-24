@@ -78,16 +78,35 @@ def fetch_all(codes):
     ADIR.mkdir(parents=True, exist_ok=True)
     existing = sum(1 for c in codes if (ADIR / f"{c}.csv").exists())
     log(f"全A股票 {len(codes)} 只，已有收盘价缓存 {existing} 只（逐只增量补齐至 {TODAY_TAG}）")
+
+    # 快照快路径：缓存只差最新一个交易日时，一次全市场快照即可补齐全部个股收盘价，
+    # 不必逐只请求（5580 只逐只约 28 分钟，快照约 1 分钟）。不可用则回落逐只。
+    fast = set()
+    try:
+        from workbench.snapshot import fill_one_day
+        fast = fill_one_day(ADIR, "close")
+    except Exception as e:  # noqa: BLE001
+        log(f"快照快路径不可用（{type(e).__name__}），回落逐只抓取")
+    if fast:
+        log(f"快照快路径：已用全市场快照补齐 {len(fast)} 只的最新交易日收盘价")
+
+    todo = [c for c in codes if c not in fast]
+    if not todo:
+        log("全部个股已到最新，无需逐只抓取")
+        return
+    if fast:
+        log(f"剩余 {len(todo)} 只需逐只增量")
+
     t0, done, errs, n_upd = time.time(), 0, 0, 0
     with Pool(NPROC) as p:
-        for code, st in p.imap_unordered(fetch_one, codes, chunksize=8):
+        for code, st in p.imap_unordered(fetch_one, todo, chunksize=8):
             done += 1
             if st == "err":
                 errs += 1
             if st == "updated":
                 n_upd += 1
             if done % 500 == 0:
-                log(f"进度 {done}/{len(codes)}  已更新{n_upd}  失败{errs}  用时{time.time()-t0:.0f}s")
+                log(f"进度 {done}/{len(todo)}  已更新{n_upd}  失败{errs}  用时{time.time()-t0:.0f}s")
     log(f"抓取完成：{done} 只，失败 {errs}，用时 {time.time()-t0:.0f}s")
 
 
