@@ -508,7 +508,12 @@ def build_index(key: str, cfg: dict, shared: dict) -> dict:
     # 隐波
     qv = shared["qvix"][cfg["qvix"]]
     df = df.join(qv, how="left")
+    # 源中断后的旧隐波只在其数据末日之前填充；末日之后保持缺失，
+    # 由下面的动态权重归一化处理，不把几天前的极值伪装成"今天的隐波"。
+    qv_last = df["qvix"].dropna().index.max() if df["qvix"].notna().any() else None
     df["qvix"] = df["qvix"].ffill()
+    if qv_last is not None:
+        df.loc[df.index > qv_last, "qvix"] = np.nan
 
     # 升贴水(仅部分指数)
     if cfg["fut"]:
@@ -556,7 +561,9 @@ def build_index(key: str, cfg: dict, shared: dict) -> dict:
         if k not in raw.columns:
             continue
         sc_all, sc_year = pct_score(raw[k], direction=FACTOR_DIRECTION[k])
-        score_cols.append(sc_all * W[k])
+        # 这里保留未加权分位；权重只在下面汇总时统一乘一次，
+        # 否则会出现 W² 的重复加权，把综合分整体压低一个量级。
+        score_cols.append(sc_all)
         series = []
         for dt, val in raw[k].dropna().items():
             if dt in sc_all.index:
@@ -575,20 +582,40 @@ def build_index(key: str, cfg: dict, shared: dict) -> dict:
                 "series": series,
             })
 
-    scores = pd.concat(score_cols, axis=1).dropna()
-    final = scores.sum(axis=1)
-    print(f"  {cfg['name']}: {final.index.min()} ~ {final.index.max()}, {len(final)} 日, 最新 {final.iloc[-1]:.2f}", flush=True)
+    # 逐日按当日可用因子重新归一化权重：某个慢变量（如成分股强度）缓存落后时，
+    # 不再把整行 dropna 掉导致综合分停留在旧日期；权重不足的日期按剩余权重折算。
+    # 各因子起点不同（隐波/强度缓存更短），concat 的 union 索引不保证有序；
+    # 不排序会让 final.index[-1] 指向最早被追加的旧日期，把"最新值"错读成 2022 年。
+    scores = pd.concat(score_cols, axis=1).sort_index()
+    wvec = pd.Series({k: W[k] for k in scores.columns})
+    eff_w = scores.notna().mul(wvec, axis=1)
+    den = eff_w.sum(axis=1).replace(0, np.nan)
+    final = (scores.fillna(0) * wvec).sum(axis=1) / den
+    final = final.dropna().sort_index()
+    if final.empty:
+        raise RuntimeError("没有任何日期具备可用因子")
+    last_row = eff_w.loc[final.index[-1]]
+    used = [k for k, wt in last_row.items() if wt > 0]
+    missing = [k for k in scores.columns if k not in used]
+    print(f"  {cfg['name']}: {final.index.min()} ~ {final.index.max()}, {len(final)} 日, "
+          f"最新 {final.iloc[-1]:.2f}, 当日有效权重 {den.loc[final.index[-1]]:.3f}, "
+          f"缺失因子 {','.join(missing) or '无'}", flush=True)
 
     history = [{"date": d, "value": round(float(v), 2)} for d, v in final.items()]
     last = history[-1]
     state, color = state_of(last["value"])
     fb = QVIX_FALLBACK.get(cfg["qvix"])
-    fb_note = (f" 本次隐波源不可用，隐波沿用{fb[0]}（截至 {fb[1]}），指数仍按最新价格与其余因子重算。"
+    fb_note = (f" 本次隐波源不可用，隐波沿用{fb[0]}（截至 {fb[1]}）；该日之后的隐波按缺失处理，"
+               f"综合分由其余可用因子按剩余权重归一化得出。"
                if fb else "")
     return {
         "value": last["value"], "date": last["date"], "desc": state, "color": color,
         "has_data": True, "source": "transparent-reimplementation",
-        "source_note": f"{cfg['name']}恐贪指数为透明复刻实现(非官方数值)：以隐波45%+150日乖离45%为核心(合计90%)，其余因子分摊10%，以便敏锐捕捉隐波飙升与价格深跌。{cfg['note']} 数据源 akshare。{fb_note}",
+        "source_note": f"{cfg['name']}恐贪指数为透明复刻实现(非官方数值)：以隐波45%+150日乖离45%为核心(合计90%)，其余因子分摊10%，以便敏锐捕捉隐波飙升与价格深跌。{cfg['note']} 数据源 akshare。缺失因子按当日剩余权重归一化，不向前填充过期极值。{fb_note}",
+        "latest_coverage": {
+            "used": used, "missing": missing,
+            "effective_weight": round(float(den.loc[final.index[-1]]), 4),
+        },
         "history": history, "factors": factors,
     }
 
