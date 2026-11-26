@@ -326,6 +326,7 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
     etf300_ratio:{low:"头部300ETF占沪深300流通市值比例偏低，被动资金定价力量较弱。", high:"头部300ETF占比处于高位，被动资金定价力量与拥挤度上升，反映汇金等资金增持宽基ETF。", mid:"头部300ETF占比处于历史中枢。"},
     crowding:   {low:"成交相对分散、微观结构较健康（低位区间），交易拥挤风险小。", high:"成交明显集中于少数头部个股（高位区间，尤其>50%时为结构风险信号），抱团拥挤、结构脆弱，历史上常对应阶段性高低点或风格切换，需警惕。", mid:"成交集中度处于上升趋势中（40~50% 附近），需关注局部过热。"},
     margin_growth:{low:"融资余额增速转负且持续走低，杠杆资金主动撤离、风险偏好收缩，历史上常对应调整或底部区域。", high:"融资余额快速扩张，加杠杆意愿强、情绪偏亢奋，需关注后续去杠杆压力。", mid:"两融资金进出处于常态水平。"},
+    margin_index:{low:"安全垫缺口为负或处历史低位：担保比例高于近 3 年中枢，杠杆安全垫偏厚、强平风险小，多对应情绪平稳或偏热阶段。", high:"安全垫缺口为正且处历史高位：担保比例明显低于近 3 年中枢、安全垫偏薄，强平压力上升；历史上 8 个大底中有 6 个在此区间出现峰值，若叠加指数快速下跌需警惕被动去杠杆。", mid:"担保比例处于近 3 年常态水平，杠杆安全垫不薄不厚。"},
     breadth_ma200:{low:"仅少数个股站上200日均线，市场普跌、内部动能弱，超卖状态常对应底部区域。", high:"多数个股站上200日均线，普涨且趋势强、情绪偏热；若指数创新高而宽度走低则提示涨势由少数权重股支撑。", mid:"站上长均线的个股占比处于历史中枢。"},
     a_pb:       {low:"全A市净率处于历史低分位，整体估值便宜、长期赔率较好。", high:"全A市净率处于历史高分位，整体估值偏贵。", mid:"全市场估值中枢处于历史中位。"},
     below_net:  {low:"破净个股极少，市场极少以低于净资产定价，通常不在底部区域。", high:"破净个股占比处于历史高位，资产折价极端、系统性悲观，历史上与 998/1664/2440/2635 等大底重合，长期赔率较好但可长期钝化。", mid:"破净率处于历史中枢。"},
@@ -961,7 +962,11 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
       h += '<div class="ppct"><div class="k">'+it[0]+'分位</div><div class="v" data-cell="p'+n+'">'+fmt(it[1],0)+'</div></div>';
     });
     h += '</div></div>';
-    h += '<div class="pchart" id="pc_'+k+'"></div>';
+    h += '<div class="pchart" id="pc_'+k+'"'+(k==="margin_index"?' style="height:300px"':'')+'></div>';
+    if(k==="margin_index"){
+      h += '<div style="color:var(--text-3);font-size:11px;margin:-10px 0 6px">上图：<b style="color:#d98a2b">平均维持担保比例(左,%)</b> 与 <b style="color:#4a90d9">上证综指(右,点)</b>；维保低于 240% 的时段指数线段<b style="color:#d94a3d">标红</b>，虚线为 240% 警戒线；下图：<b>安全垫缺口</b> = 近 3 年滚动中枢 − 当前担保比例(pp)，0 轴以上=安全垫偏薄/强平压力区，历史底部多在此出现峰值。<b>两图联动</b>：滚轮缩放或拖动任一图的滑块，另一图同步到同一时间窗口，鼠标悬停也共用同一根竖向准星。</div>';
+      h += '<div class="pchart" id="pc_margin_index_sub" style="height:170px;margin-top:2px"></div>';
+    }
     h += '<div class="panel-interp" data-cell="interp"><b>数据解读：</b>'+interpretation(k,p)+'</div>';
     if(p.aux_text) h += '<div class="panel-interp" data-cell="aux" style="border-left-color:var(--text-3);margin-top:7px">'+esc(p.aux_text)+'</div>';
     h += detailBox(k,p,"详细解读 · "+p.name);
@@ -1450,13 +1455,95 @@ html[data-theme="dark"] .replay-banner{box-shadow:0 6px 22px rgba(0,0,0,.62)}
       });
       charts.push(chart);
     }
-    // 各指标大图（原始值走势，可拖拽/缩放）；key 决定是否在图内叠加对比线
-    // 口径：折线一律直连（smooth:false）。这些是日频/周频的离散观测，
+  // 两融担保比例·安全垫缺口：主图双轴叠加(担保比例/上证综指)+副图水平缺口。
+  // 两图共用同一 xAxis 日期序列并通过 echarts.connect 联动缩放/准星，
+  // 副图才不会失去时间参照系；主图 xAxis[0] 同时供回放按日期定位。
+  function renderMarginIndexChart(p, el){
+    var aux = rangeData(p.auxiliary||[]);
+    var hist = rangeData(p.history||[]);
+    var sub = document.getElementById("pc_margin_index_sub");
+    if(!aux.length) return;
+    var axisLabel = cssVar("--chart-axis-label")||"#8c8c8c";
+    var axisLine = cssVar("--chart-axis-line")||"#e8e8e8";
+    var splitLine = cssVar("--chart-split")||"#f3f3f3";
+    var tipBg = cssVar("--chart-tip-bg")||"#fff";
+    var tipBd = cssVar("--chart-tip-bd")||"#e8e8e8";
+    var tipFg = cssVar("--chart-tip-fg")||"#111";
+    var dates = aux.map(function(x){return x.date;});
+    var mnt = aux.map(function(x){return x.mnt;});
+    var sh  = aux.map(function(x){return x.sh;});
+    var startPct = recentYearsStart(dates,2);
+    // 副图与主图必须用完全相同的类目序列，否则同一 start/end 百分比会落在不同的交易日上，
+    // 联动后反而错位。压力度因 750 日滚动回归预热，起点比 auxiliary 晚约 293 个交易日，
+    // 故按日期映射到主图轴上、缺失处留 null。
+    var valByDate = {};
+    hist.forEach(function(x){ valByDate[x.date] = x.value; });
+    var subVals = dates.map(function(dt){ return valByDate[dt]==null ? null : valByDate[dt]; });
+    var mntC="#d98a2b", shC="#4a90d9", warnC="#d94a3d", WARN=240;
+    // 维保比例低于 240% 的时段，把上证综指线段单独拆成红色序列。
+    // 临界点前一个点同时保留在两条序列里，换色处才不会断线。
+    var isWarn = mnt.map(function(v){return v!=null && v<WARN;});
+    var shNorm = sh.map(function(v,i){
+      return (!isWarn[i] || (i>0&&!isWarn[i-1]) || (i<isWarn.length-1&&!isWarn[i+1])) ? v : null;
+    });
+    var shRisk = sh.map(function(v,i){
+      return (isWarn[i] || (i>0&&isWarn[i-1]) || (i<isWarn.length-1&&isWarn[i+1])) ? v : null;
+    });
+    var main = echarts.init(el);
+    main.setOption({
+      tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:tipBg,borderColor:tipBd,textStyle:{color:tipFg,fontSize:11},
+        formatter:function(ps){ var s=ps[0]?ps[0].axisValue:""; ps.forEach(function(q){ if(q.value==null)return; s+="<br/>"+q.marker+q.seriesName+"：<b>"+Number(q.value).toFixed(2)+"</b>"; }); return s; }},
+      legend:{show:true,top:0,right:8,itemWidth:16,itemHeight:8,textStyle:{color:axisLabel,fontSize:10}},
+      grid:{left:48,right:52,top:30,bottom:52},
+      xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:10,hideOverlap:true}},
+      yAxis:[
+        {type:"value",scale:true,name:"担保比例 %",nameTextStyle:{color:mntC,fontSize:10},axisLabel:{color:mntC,fontSize:10},splitLine:{lineStyle:{color:splitLine}}},
+        {type:"value",scale:true,position:"right",name:"上证综指",nameTextStyle:{color:shC,fontSize:10},axisLabel:{color:shC,fontSize:10},splitLine:{show:false}}
+      ],
+      dataZoom:dataZoomOpt({bottom:8,start:startPct}),
+      series:[
+        {name:"平均维持担保比例",type:"line",yAxisIndex:0,data:mnt,showSymbol:false,smooth:false,lineStyle:{width:2,color:mntC},itemStyle:{color:mntC},
+          markLine:{silent:true,symbol:"none",label:{show:true,formatter:"维保 240% 警戒线",color:warnC,fontSize:10,position:"insideEndTop"},
+            lineStyle:{color:warnC,type:"dashed",width:1.2,opacity:0.85},data:[{yAxis:WARN}]}},
+        {name:"上证综指",type:"line",yAxisIndex:1,data:shNorm,showSymbol:false,smooth:false,lineStyle:{width:1.8,color:shC},itemStyle:{color:shC}},
+        {name:"上证综指·维保<240%",type:"line",yAxisIndex:1,data:shRisk,showSymbol:false,smooth:false,lineStyle:{width:2.4,color:warnC},itemStyle:{color:warnC}}
+      ]
+    });
+    charts.push(main);
+    if(sub && dates.length){
+      var subChart = echarts.init(sub);
+      var zColor = cssVar("--chart-mark")||"#d4d4d4";
+      subChart.setOption({
+        tooltip:{trigger:"axis",axisPointer:crossPointer(),backgroundColor:tipBg,borderColor:tipBd,textStyle:{color:tipFg,fontSize:11},
+          formatter:function(ps){ var s=ps[0]?ps[0].axisValue:""; ps.forEach(function(q){ if(q.value==null)return; s+="<br/>"+q.marker+"安全垫缺口：<b>"+Number(q.value).toFixed(2)+"</b> pp"; }); return s; }},
+        grid:{left:48,right:52,top:12,bottom:30},
+        xAxis:{type:"category",data:dates,boundaryGap:false,axisLine:{lineStyle:{color:axisLine}},axisLabel:{color:axisLabel,fontSize:10,hideOverlap:true}},
+        yAxis:{type:"value",scale:true,axisLabel:{color:axisLabel,fontSize:10,formatter:"{value}pp"},splitLine:{lineStyle:{color:splitLine}}},
+        dataZoom:dataZoomOpt({bottom:4,start:startPct}),
+        series:[{name:"安全垫缺口",type:"line",data:subVals,connectNulls:false,showSymbol:false,smooth:false,
+          lineStyle:{width:1.8,color:stateColor(p.state)},itemStyle:{color:stateColor(p.state)},
+          areaStyle:{color:(stateColor(p.state))+"18"},
+          markLine:{silent:true,symbol:"none",label:{show:true,formatter:"0 = 近3年中枢",color:axisLabel,fontSize:10,position:"insideEndTop"},
+            lineStyle:{color:zColor,type:"dashed",width:1},data:[{yAxis:0}]}}]
+      });
+      // 主副图联动：任一图滚轮缩放/拖拽滑块，另一图同步窗口；tooltip 与竖向准星同步。
+      // 前提是两图 xAxis 类目序列完全一致（见上 valByDate 映射）。
+      var linkGroup = "margin_index_link";
+      main.group = linkGroup;
+      subChart.group = linkGroup;
+      echarts.connect(linkGroup);
+      charts.push(subChart);
+    }
+  }
+
+  // 各指标大图（原始值走势，可拖拽/缩放）；key 决定是否在图内叠加对比线
+  // 口径：折线一律直连（smooth:false）。这些是日频/周频的离散观测，
   // 平滑插值会在两个观测点之间伪造并不存在的中间值，也会抹掉台阶与尖峰；
   // 需要“更平滑的观感”时，应另加一条真实计算出的均线，而不是改渲染。
   function renderOneChart(key, id, p){
       var el = document.getElementById(id);
       if(!p || !el || !p.history) return;
+      if(key==="margin_index"){ renderMarginIndexChart(p, el); return; }
       var h = rangeData(p.history);
       // 保留足够多点以支持滚轮缩放看细节（上限 3000，避免极端长历史拖慢渲染）
       var step = Math.max(1, Math.ceil(h.length/3000));

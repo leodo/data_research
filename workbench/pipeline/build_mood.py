@@ -799,6 +799,66 @@ def calc_margin_panel():
         return None
 
 
+def calc_margin_index_panel():
+    """担保比例·安全垫缺口（水平口径）独立卡片，双轴叠加主图 + 缺口副图
+
+    safety_gap(pp) = 750 交易日滚动中枢 − 当前平均维持担保比例。
+    正值=担保比例低于近 3 年常态、杠杆安全垫偏薄、强平压力上升；负值=安全垫偏厚。
+    方向为「越大越谨慎」，故 reverse=False，数值/分位/风险徽章一致。
+
+    口径变更说明（2026-11-26）：原副图用「20 日变化的滚动回归残差」，差分把
+    最有信息量的绝对水平差分掉了。实测该残差在 8 个历史大底的平均分位 85、
+    在 5 个顶部平均 98（顶部反而更极端，区分度 −12）；改用水平缺口后底部 94、
+    顶部 49，区分度 +45，历史底部出现明确极值。
+    auxiliary 挂载担保比例/指数原值序列，供前端画上方双轴叠加图。
+    """
+    try:
+        d = fetch_margin()
+        if d is None or "safety_gap" not in d.columns:
+            log("    [margin_index] 缺少 safety_gap 列，请先运行 build_margin.py")
+            return None
+        s = d["safety_gap"].dropna()
+        if s.empty:
+            return None
+        p = make_panel(
+            "margin_index", "两融担保比例·安全垫缺口", s,
+            "akshare stock_margin_account_info（平均维持担保比例）与 index_zh_daily_sina（上证综指）。"
+            "安全垫缺口 = 担保比例 750 交易日滚动中枢 − 当前担保比例（min_periods=250，"
+            "仅用当日及以前数据，无前视偏差）；主图叠加上证综指收盘与 240% 维保警戒线。",
+            reverse=False, unit="pp",
+            desc="担保比例与指数高度同向（市值/负债的机械联动），主图双轴叠加用于观察同步性，"
+            "并对维保低于 240% 的时段把指数线段标红、以虚线标出 240% 警戒线。"
+            "副图改用水平口径的「安全垫缺口」=近 3 年滚动中枢 − 当前担保比例：正值=安全垫偏薄、"
+            "强平压力上升，0 轴以上为压力区，用滚动中枢以规避担保比例中枢长期上移的口径漂移。"
+            "早期版本用「20 日变化的回归残差」，实测在历史顶部比底部更极端（区分度 −12），"
+            "无法作为顶底参照，故弃用；残差列仍保留在 CSV 中供对照。主副图缩放与竖向准星联动。"
+            "本卡片为结构观察指标，不计入综合情绪分。")
+        if p:
+            p["score_label"] = "风险分位"
+            p["score_hint"] = "（越高=安全垫越薄、强平压力越大）"
+            aux = d[["maintenance_ratio", "sh_close", "mid_750", "safety_gap"]].dropna(
+                subset=["maintenance_ratio", "sh_close"])
+            p["auxiliary"] = [
+                {"date": dt.strftime("%Y-%m-%d"),
+                 "mnt": round(float(r.maintenance_ratio), 4) if pd.notna(r.maintenance_ratio) else None,
+                 "sh": round(float(r.sh_close), 3) if pd.notna(r.sh_close) else None,
+                 "mid": round(float(r.mid_750), 4) if pd.notna(r.mid_750) else None,
+                 "gap": round(float(r.safety_gap), 4) if pd.notna(r.safety_gap) else None}
+                for dt, r in aux.iterrows()
+            ]
+            last = s.iloc[-1]
+            mnt = d["maintenance_ratio"].dropna()
+            mid = d["mid_750"].dropna()
+            bal = d["margin_bal"].dropna()
+            p["aux_text"] = (f"当前担保比例 {mnt.iloc[-1]:.2f}%，近 3 年中枢 {mid.iloc[-1]:.2f}%，"
+                             f"安全垫缺口 {last:+.2f}pp（正=低于中枢、偏薄）；"
+                             f"融资余额 {bal.iloc[-1]:.0f} 亿元。")
+        return p
+    except Exception as e:
+        log(f"    [margin_index] 计算失败: {e}")
+        return None
+
+
 def calc_breadth_panel():
     """全A站上 200 日均线个股占比（新建，独立卡片）"""
     try:
@@ -1304,6 +1364,7 @@ def build_signal_panels():
 MACRO_BUILDERS = [
     ("etf300_ratio", calc_etf_ratio_panel),
     ("margin_growth", calc_margin_panel),
+    ("margin_index", calc_margin_index_panel),
     ("breadth_ma200", calc_breadth_panel),
     ("a_pb", calc_pb_panel),
     ("erp_attrib", calc_erp_attrib_panel),
